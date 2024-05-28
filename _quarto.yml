@@ -1,0 +1,105 @@
+project:
+  type: website
+  output-dir: docs
+  resources:
+    - "apple-touch-icon-precomposed.png"
+    - "apple-touch-icon.png"
+    - "images/cgem-logo.png"
+    - "images/GitHub-Mark-32px.png"
+    - "images/MRC_HGU_Edinburgh RGB.png"
+    - "theme.css"
+  render:
+    - "index.qmd"
+    - "source/preprocessing/*"
+    - "source/selection/fcal.qmd"
+    - "source/selection/crp.qmd"
+    - "source/other/Variation.qmd"
+    - "source/other/FCALvsCRP.qmd"
+    - "404.qmd"
+  execute-dir: project
+format:
+  html:
+    theme:
+      light: [default]
+      dark: [darkly]
+    css: theme.css
+    code-fold: true
+    code-link: true
+    toc: true
+    code-tools:
+      source: true
+      toggle: true
+    html-math-method: katex
+    embed-resources: true
+    mainfont: "Mulish"
+    monofont: "Noto Sans Mono"
+
+website:
+  title: "Analysis by Constantine-Cooke et al."
+  favicon: "favicon.png"
+  twitter-card:
+    creator: "@nathansam"
+    site: "@EdinUni_IGC"
+  page-navigation: true
+  open-graph: true
+  navbar:
+    background: "#004276"
+    search: true
+    right:
+      - href: index.qmd
+        text: "About"
+      - href: source/preprocessing/preprocessing.qmd
+        text: "Preprocessing"
+      - text: "Model selection"
+        menu:
+        - href: source/selection/fcal.qmd
+          text: "Faecal calprotectin"
+        - href: source/selection/crp.qmd
+          text: "C-reactive protein"
+      - text: "Post-hoc"
+        menu:
+        - href: source/other/FCALvsCRP.qmd
+          text: "Comparison between FCAL and CRP"
+        - href: source/other/Variation.qmd
+          text: "Variation between LCMM runs"
+      - icon: github
+        href: "#Link"
+  page-footer:
+    right:
+      - icon: twitter
+        href: https://twitter.com/IBDNathan
+  repo-url: https://git.ecdf.ed.ac.uk/s1961592/libdr
+  repo-actions: [issue]
+  reader-mode: true
+
+bibliography: references.bib
+google-scholar: true
+date: "last-modified"
+title-block-banner: false
+
+execute:
+  freeze: auto
+  cache: true
+
+affiliations:
+  - id: HGU
+    name: "MRC Human Genetics Unit"
+    city: "Edinburgh"
+    region: "Scotland"
+    country: "United Kingdom"
+    url: "https://www.ed.ac.uk/mrc-human-genetics-unit"
+  - id: CGEM
+    name: "Centre for Genomic and Experimental Medicine"
+    city: "Edinburgh"
+    country: "United Kingdom"
+    url: "https://www.ed.ac.uk/centre-genomic-medicine"
+  - id: IBD
+    name: "Edinburgh IBD Unit"
+    city: "Edinburgh"
+    country: "United Kingdom"
+    url: "https://services.nhslothian.scot/EdinburghIBDUnit/Pages/default.aspx"
+  - id: Turing
+    name: "The Alan Turing Institute"
+    city: "London"
+    country: "United Kingdom"
+    url: "https://www.turing.ac.uk"

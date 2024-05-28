@@ -1,0 +1,183 @@
+---
+title: "Variation between LCMM runs"
+author:
+  - name: "Nathan Contantine-Cooke" 
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    corresponding: true
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
+  - name: "Karla Monterrubio-Gómez"
+    url: https://scholar.google.com/citations?user=YmyxSXAAAAAJ&hl=en
+    affiliations:
+      - ref: HGU
+  - name: "Catalina A. Vallejos"
+    url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: HGU
+      - ref: Turing
+#comments:
+#  giscus: 
+#    repo: quarto-dev/quarto-docs
+---
+
+```{R}
+library(lcmm)
+library(ggplot2)
+library(splines)
+library(pander)
+library(libdr)
+
+prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+
+fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
+
+
+grbf.dir <- paste0(prefix,"cache/boot/G=", 4)
+grbf.files <- list.files(grbf.dir)
+
+Models <- list()
+
+for (i in 1:length(grbf.files)) {
+  Models[[i]] <- readRDS(paste0(grbf.dir, "/", grbf.files[i]))
+}
+```
+
+
+```{R}
+df <- data.frame(calpro_time = seq(0,7, by = 0.01),
+                 diagnosis = fcal[1:701, "diagnosis"])
+
+
+A1 <- predictY(Models[[1]], newdata = df, var.time="calpro_time", draws = TRUE)
+A3 <- predictY(Models[[3]], newdata = df, var.time="calpro_time", draws = TRUE)
+A6 <- predictY(Models[[6]], newdata = df, var.time="calpro_time", draws = TRUE)
+
+plotdf <- data.frame(calpro_time = df$calpro_time,
+                     pred = A1$pred[,"Ypred_class1"],
+                     Model = "1",
+                     Cluster = "1")
+plotdf <- rbind(plotdf,
+                data.frame(calpro_time = df$calpro_time,
+                           pred = A1$pred[,"Ypred_class2"],
+                           Model = "1",
+                           Cluster = "2"))
+plotdf <- rbind(plotdf,
+                data.frame(calpro_time = df$calpro_time,
+                           pred = A1$pred[,"Ypred_class3"],
+                           Model = "1",
+                           Cluster = "3"))
+
+plotdf <- rbind(plotdf,
+                data.frame(calpro_time = df$calpro_time,
+                           pred = A1$pred[,"Ypred_class4"],
+                           Model = "1",
+                           Cluster = "4"))
+
+
+plotdf <- rbind(plotdf,
+                data.frame(calpro_time = df$calpro_time,
+                           pred = A6$pred[,"Ypred_class1"],
+                           Model = "2",
+                           Cluster = "4"))
+#
+plotdf <- rbind(plotdf,
+                data.frame(calpro_time = df$calpro_time,
+                           pred = A6$pred[,"Ypred_class2"],
+                           Model = "2",
+                           Cluster = "1"))
+plotdf <- rbind(plotdf,
+                data.frame(calpro_time = df$calpro_time,
+                           pred = A6$pred[,"Ypred_class3"],
+                           Model = "2",
+                           Cluster = "3"))
+
+plotdf <- rbind(plotdf,
+                data.frame(calpro_time = df$calpro_time,
+                           pred = A6$pred[,"Ypred_class4"],
+                           Model = "2",
+                           Cluster = "2"))
+
+p <- ggplot(plotdf, aes(x = calpro_time,
+                        y = pred,
+                        linetype = Model,
+                        color = Cluster)) +
+  geom_line(linewidth = 1.1) +
+  theme_minimal() +
+  scale_color_manual(values = c("#FFC759",
+                                "#FF499E",
+                                "#51E5FF",
+                                "#4CB944")) +
+  guides(colour = guide_legend(order = 2),
+         linetype = guide_legend(order = 1)) +
+  xlab("Time (years)") +
+  ylab("Predicted Log(FCAL)")
+
+ggsave("paper/algo-variation.png", p, width = 8.5, height = 4.5, units = "in")
+ggsave("paper/algo-variation.pdf", p, width = 8.5, height = 4.5, units = "in")
+print(p)
+```
+
+```{R}
+log.lik.vec <- c()
+for (i in seq_along(Models)) {
+  log.lik.vec <- c(log.lik.vec, Models[[i]]$loglik)
+}
+knitr::kable(table(round(log.lik.vec, 5)))
+```
+
+```{R}
+
+if (!dir.exists("paper/heatmaps")) {
+  dir.create("paper/heatmaps")
+}
+
+for (G in 2:6) {
+  grbf.dir <- paste0(prefix,"cache/boot/G=",G)
+  grbf.files <- list.files(grbf.dir)
+  models <- list()
+
+  for (i in 1:length(grbf.files)) {
+    models[[i]] <- readRDS(paste0(grbf.dir, "/", grbf.files[i]))
+  }
+  lcmmHeatmap(models,
+              file.name = paste0("paper/heatmaps/G=", G, "-heatmap"),
+              png = TRUE,
+              pdf = TRUE)
+}
+```
+
+
+## Acknowledgments {.appendix}
+
+This work is funded by the Medical Research Council & University of Edinburgh
+via a Precision Medicine PhD studentship (MR/N013166/1, to **NC-C**).
+
+## Author contributions {.appendix}
+
+## References {.appendix}
+
+::: {#refs}
+:::
+
+## Reuse {.appendix}
+
+Licensed by 
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY</a>
+ unless otherwise stated.
+ 
+## {.appendix}
+
+<div class = "center">
+  <img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
+  <img src="../../images/cgem-logo.png" alt="Centre for Genomic & Experimental Medicine logo" height = 50px>
+</div>
+
+---
+
+## Session info {.appendix}
+
+```{R Session info}
+pander(sessionInfo())
+```
+

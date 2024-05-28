@@ -1,0 +1,1694 @@
+---
+title: "Preprocessing"
+author:
+  - name: "Nathan Constantine-Cooke"
+    corresponding: true
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
+  - name: "Karla Monterrubio-Gómez"
+    url: https://scholar.google.com/citations?user=YmyxSXAAAAAJ&hl=en
+    affiliations:
+      - ref: HGU
+      - ref: CGEM
+  - name: "Nikolas Plevris"
+    affiliations:
+      - ref: CGEM
+      - ref: IBD
+  - name: "Matthew Lyons"
+    url: https://scholar.google.com/citations?user=I9vcMcQAAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: IBD
+  - name: "Phillip W. Jenkinson"
+    affiliations:
+      - ref: IBD
+  - name: "Charlie W. Lees"
+    url: https://scholar.google.com/citations?user=rHc0qf0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: CGEM
+      - ref: IBD
+  - name: "Catalina A. Vallejos"
+    url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: HGU
+      - ref: Turing
+#comments:
+#  giscus: 
+#    repo: quarto-dev/quarto-docs
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+## Introduction
+
+```{R Package load}
+#| message: false
+#| warning: false
+set.seed(123)
+### Required packages
+library(tidyverse) # ggplot2, dplyr, and magrittr
+library(knitr) # Markdown utilities
+library(pander) # Pretty markdown rendering
+library(datefixR) # Standardising dates
+library(lubridate) # Date handling
+library(patchwork) # Arranging plots
+```
+
+This page details preprocessing steps undertaken prior to model fitting.
+These steps include examining data quality, performing data cleaning, and
+deriving the study cohort. 
+
+The data used in this pipeline have been primarily obtained from TRAK, a system
+used by NHS Lothian for the electronic ordering of laboratory tests. However, we
+also use additional data which have been manually curated by the Lees group for
+previous studies (see @Jenkinson2020).
+
+Prior to this report, all subject CHI (community health index) numbers, which 
+uniquely identifies a patient when they interact with NHS Scotland services, 
+were pseudoanonymised. Each CHI has been replaced with a unique random number. 
+
+### Inclusion/exclusion criteria definitions
+
+The inclusion criteria for this study can broadly be categorised into two
+classifications: baseline and longitudinal. Baseline criteria can be applied
+using information known at diagnosis whilst longitudinal criteria are based on 
+biomarker measurements taken over time.
+
+The longitudinal criteria for each biomarker (FCAL and CRP) are considered
+independently. If a subject meets the below criteria for FCAL but not CRP, then
+only the FCAL for the subject will be modelled and vice versa. 
+
+::: {.panel-tabset}
+
+#### Baseline 
+
+##### Diagnosis of Inflammatory bowel disease
+
+As inflammatory bowel disease (IBD) is the disease of interest for this study,
+subjects are required to have a confirmed diagnosis of either Crohn's disease,
+ulcerative colitis, or inflammatory bowel disease unclassified. 
+
+##### Diagnosis date
+
+Study subjects are required to have been diagnosed with IBD between October 2004
+and December 2017. The lower bound is required as FCAL tests were not introduced
+until 2005 and we require study subjects to have a FCAL available close to
+diagnosis (see the longitudinal tab). The upper bound is required to ensure
+subjects have the opportunity to have at least five years of follow-up. The most
+recent FCAL observation in this dataset is January 2023 which informed when
+deciding upon this cut-off.
+
+#### Longitudinal
+
+##### Diagnostic measurement
+
+We require study subjects to have a biomarker measurement taken ±90 days of
+reported date of diagnosis. 
+
+##### At least three non-censored measurements
+
+To ensure stability and interpretability, study subjects are also required to
+have at three non-censored biomarker measurements taken across follow-up. Like
+most biomarkers, the biomarkers used in this study are subject to censoring.
+However, these censored observations make it impossible to detect changes over
+time and we therefore do not wish to be reliant on censored observations. 
+
+:::
+
+### Datasets
+
+```{R Read files}
+if (file.exists("/.dockerenv")) { # Check if running in Docker
+  # Assume igmm/Vallejo-predict/libdr/ is passed to the data volume
+  prefix <- "data/"
+} else {
+  # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
+  # mounted at /Volumes
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+}
+
+fcal <- read.csv(paste0(prefix, "2022-12-07/fcal-cleaned.csv"))
+
+# Extract from TRAK which also now introduces CRP.
+labs <- read.csv(paste0(prefix, "2023-02-15/labs.csv"))
+labs.fcal <- subset(labs, TEST == "f-Calprotectin-ALP")
+# labs prefix not required for crp as labs is the only crp extract
+crp <- subset(labs, TEST == "C-Reactive Prot")
+updated <- read.csv(paste0(prefix, "2023-03-13/allPatientsNathanCleaned.csv"))
+outcomes <- read.csv(paste0(prefix, "2022-12-07/cd-cleaned.csv"))
+```
+
+Multiple datasets are used in this report with varying degrees of previous
+curation.
+
+* `labs.csv` is a January 2023 extraction from TRAK describing
+  `r nrow(labs)` test results (FCAL: `r nrow(labs.fcal)`; CRP:
+  `r nrow(crp)`). Each row represents a test result with columns indicating the
+  corresponding subject ID, the test type (FCAL or CRP), the time of the test,
+  and the test result. This dataset contains the most recent data out of the
+  other datasets. However, there has been no manual curation of these data, and
+  no information about the patient's  characteristics are available (other than
+  their ID). 
+* `fcal-cleaned.csv` does not describe CRP data. However, these data have been 
+  curated by the Lees group (primarily by **ML**) and includes additional FCAL
+  results. These are likely from other studies which involved FCAL data, such
+  as [PREdiCCt](https://www.predicct.co.uk). In addition to `r nrow(fcal)`
+  FCAL test results, each row also provides the sex, IBD type, date of
+  diagnosis, and date of death (if applicable) for the corresponding subject. 
+* `allPatientsNathanCleaned.csv` provides sex, IBD type, and diagnosis date for
+  most (but not all) subjects in `labs.csv` not described by `fcal-cleaned.csv`. 
+* `cd-cleaned.csv`, curated and maintained by **PWJ**, describes CD patient
+  data (n = `r nrow(outcomes)`). In addition to the same basic patient
+  characteristic variables in other datasets, this dataset also describes
+  surgical outcomes and biologic treatments prescribed to the subject. 
+  
+::: {.callout-note}
+The "cleaned" in the above file names refers to the CHI numbers having been
+replaced. No further processing of the data has been undertaken for this study
+prior to the steps outlined in this report.
+:::
+
+## Subject data
+
+We will create a "dictionary" which, for each subject, lists their subject ID,
+their IBD type, and their date of diagnosis. In addition to ensuring inclusion
+criteria are met, date of diagnosis will be used to retime all biomarker
+measurements of a subject such that $t=0$ corresponds to their diagnosis date.
+IBD types are used to test if clusters are enriched by IBD type and may be used
+to adjust the clustering. 
+
+There are multiple potential sources for date of diagnosis and IBD type: the
+CD outcomes dataset (maintained by **PWJ**), a demographics dataset maintained
+by the Lees group, and a raw TRAK extraction. For every subject listed in at least one of
+these datasets, we have tried to extract their date of diagnosis and diagnosis
+type. We have assumed a hierarchy of datasets where manually curated datasets
+are preferred for extracting data over a dataset generated with minimal
+human involvement. 
+
+```{R Create subject dictionary}
+ids <- unique(c(outcomes$ids, fcal$ids, updated$ids))
+diagnosis <- character()
+date.of.diag <- character()
+for (id in ids) {
+  if (id %in% outcomes$ids) {
+    # Outcomes data only contains CD subjects
+    diagnosis <- c(diagnosis, "Crohn's Disease")
+    date.of.diag <- c(
+      date.of.diag,
+      subset(outcomes, ids == id)$diagnosisDate
+    )
+  } else if (id %in% updated$ids) {
+    diagnosis <- c(diagnosis, subset(updated, ids == id)[1, "diagnosis"])
+    date.of.diag <- c(
+      date.of.diag,
+      subset(updated, ids == id)[1, "diagnosisDate"]
+    )
+  } else if (id %in% fcal$ids) {
+    diagnosis <- c(diagnosis, subset(fcal, ids == id)[1, "diagnosis"])
+    date.of.diag <- c(
+      date.of.diag,
+      subset(fcal, ids == id)[1, "diagnosis_date"]
+    )
+  } else {
+    diagnosis <- c(diagnosis, "Unknown")
+    date.of.diag <- c(
+      date.of.diag,
+      "Unknown"
+    )
+  }
+}
+
+dict <- data.frame(
+  ids = ids,
+  diagnosis = diagnosis,
+  date.of.diag = fix_date_char(date.of.diag)
+)
+
+rm(id, ids, diagnosis, date.of.diag) # clean up
+dict <- fix_date_df(dict, "date.of.diag")
+```
+
+```{R}
+dict <- fcal[,c("ids", "sex")] %>%
+  distinct(ids,
+           .keep_all = TRUE) %>%
+  merge(x = dict, by = "ids", all.x = TRUE, all.y = FALSE)
+
+
+# Update NA sex if sex available from updated
+
+dict <- merge(dict,
+              updated[, c("ids", "sex")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) 
+
+for (i in 1:nrow(dict)){
+  if (is.na(dict[i, "sex.x"]) & !is.na(dict[i, "sex.y"])) {
+    dict[i, "sex.x"] <- dict[i, "sex.y"]
+  }
+}
+
+dict$sex <- dict$sex.x
+dict$sex.x <- dict$sex.y <- NULL
+
+# Add age at IBD diagnosis
+updated <- fix_date_df(updated, "diagnosisDate")
+updated$age <- with(updated, year(diagnosisDate) - dateOfBirth)
+dict <- merge(dict,
+              updated[, c("ids", "age")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE)
+```
+
+
+There are a total of `r nrow(dict)` subjects in our dictionary before filtering
+by inclusion/exclusion criteria. `r sum(is.na(dict$date.of.diag))` subjects had
+an `NA` date of diagnosis and will be removed
+(resulting in `r nrow(dict) - sum(is.na(dict$date.of.diag))` subjects)
+
+```{R Remove NA date of diagnosis}
+dict <- dict[!is.na(dict$date.of.diag), ]
+```
+
+
+### Diagnosis type
+
+As can be seen in the below frequency table, two spellings of Crohn's disease 
+(with and without an apostrophe) and three names for IBDU are being used. There
+is also a subject reported to not have IBD. 
+
+```{R Frequency table to diagnosis pre-process}
+#| label: tbl-diag-pre
+#| tbl-cap: Frequency table of reported IBD type
+kable(table(dict$diagnosis, useNA = "always"),
+  col.names = c("Variable", "Frequency")
+)
+``` 
+
+The Crohn's disease and IBDU names have been standardised (IBDU,
+Inflammatory Bowel Disease, Inflammatory Bowel Disease - Unknown Subtype are
+assumed to be equivalent). The subject reported to not have IBD has been
+removed. 
+
+```{R Contingency table of IBD diagnosis pre and post processing}
+#| label: tbl-diag-post
+#| tbl-cap: Contingency table showing mapping of IBD types to a standardised format
+#| results: "hold"
+dict$old <- dict$diagnosis
+dict$diagnosis <- plyr::mapvalues(
+  dict$diagnosis,
+  from = c(
+    "Crohns Disease",
+    "Inflamatory Bowel Disease",
+    "Inflamatory Bowel Disease - Unknown Subtype"
+  ),
+  to = c(
+    "Crohn's Disease",
+    "IBDU",
+    "IBDU"
+  )
+)
+dict <- subset(dict, diagnosis != "Not IBD")
+
+
+kable(addmargins(table(dict$diagnosis, dict$old), margin = 2))
+dict$old <- NULL
+```
+
+
+### Date of diagnosis
+
+Date of diagnosis in an integral aspect of the inclusion criteria and also used
+to retime biomarker measurements. 
+
+#### Applying exclusion criteria 
+
+```{R Apply date of diagnosis exclusion}
+# no. subjects over upper bound
+n.upper <- nrow(subset(dict, year(date.of.diag) >= 2018))
+# no. subjects under lower bound
+n.lower <- nrow(subset(dict, (year(date.of.diag) < 2004) |
+  (year(date.of.diag) == 2004 & month(date.of.diag) <= 9)))
+
+# subset to subjects meeting the criteria.
+dict <- subset(dict, year(date.of.diag) <= 2017)
+dict <- subset(dict, (year(date.of.diag) >= 2005) |
+  (year(date.of.diag) == 2004 & month(date.of.diag) >= 10))
+```
+
+As described in the
+[inclusion/exclusion criteria section](#inclusionexclusion-criteria-definitions),
+study subjects are required to be diagnosed between October 2004 and December
+2017. As such, subjects who do not meet this criteria will be excluded.
+`r n.upper` subjects were diagnosed in 2018 or later and were removed, and 
+`r n.lower` subjects were diagnosed prior to October 2004 and were likewise
+removed. This results in a cohort size of `r nrow(dict)` subjects. 
+
+```{R Clean up excluded date of diagnosis counts}
+#| include: false
+rm(n.upper, n.lower) # clean up
+```
+
+#### Exploration
+
+We now explore date of diagnosis to ensure data quality is at a suitable
+standard.
+
+##### Year of diagnosis
+
+From @fig-diag-year, we can see the number of IBD diagnoses each year is
+relatively static with the exception of 2004 and 2005. The former describes
+only three months of the year, and incidence was likely still increasing across
+both of these two years.  @Jones2019 found IBD incidence from 2008 onwards to be
+consistent over time for patients diagnosed by NHS Lothian which is in agreement
+with our findings.
+
+```{R Year of diagnosis}
+#| label: fig-diag-year
+#| fig-cap: "Distribution of year of diagnosis"
+dict %>%
+  ggplot(aes(x = year(date.of.diag))) +
+  geom_histogram(fill = "#B8F2E6", color = "black", binwidth = 1) +
+  theme_minimal() +
+  xlab("Year of IBD diagnosis") +
+  ylab("Frequency")
+```
+
+##### Month of diagnosis
+
+It appears there are subjects for whom only year of diagnosis was available.
+This has resulted in the 1<sup>st</sup> of January for that year being
+recorded as the date of diagnosis for that subject. As such, far more diagnoses
+are reported in January than in other months (@fig-diag-month). There are
+`r sum(day(dict$date.of.diag) == 1 & month(dict$date.of.diag) == 1)`
+subjects reported to have been diagnosed on New Year's day .
+
+If a subject's exact date of diagnosis is not known, then this is most likely
+because the subject was not diagnosed by NHS Lothian. Instead, the date of
+diagnosis would have needed to be recalled by the subject which introduces the
+inaccuracy observed.
+
+As subjects are require a diagnostic biomarker measurement to be available
+within 90 days of reported date of diagnosis to be included in this study and
+patients diagnosed outside of NHS Lothian will not have a biomarker test result
+available within this period, the effect on  our study should be minimal.
+However, we will revisit month of diagnosis after filtering by existence of
+diagnostic biomarker measurements to confirm our assumption. 
+
+```{R Month of diagnosis (preprocessed)}
+#| label: fig-diag-month
+#| fig-cap: "Bar plot of month of diagnosis"
+dict %>%
+  ggplot(aes(x = as.factor(month(date.of.diag, label = TRUE)))) +
+  geom_bar(color = "black", fill = "#FEC601", linewidth = 0.3) +
+  theme_minimal() +
+  ylab("Frequency") +
+  xlab("Month of IBD Diagnosis")
+```
+
+## Faecal calprotectin
+
+Faecal calprotectin (FCAL), a marker of intestinal inflammation, has been
+obtained from two datasets. The first dataset has been curated by members of the
+Lees group whilst the second dataset is a direct extract from TRAK, a patient
+monitoring system used by NHS Lothian. 
+
+### Incorporating later extract
+
+Data from these datasets has been merged and duplicates of data (same
+subject ID, measurement date, and recorded value) were removed. We also
+reduced the FCAL dataset to only describe subjects for whom IBD type and date of
+diagnosis are available for.
+
+For the TRAK extract, times for test results are given in datetime format (where
+both date and time of the day are provided). The times have been dropped as this
+degree of granularity is not required.
+
+```{R FCAL merge}
+fcal <- fcal[, c("ids", "calpro_date", "calpro_result")]
+labs.fcal <- labs.fcal[, c("CHI", "COLLECTION_DATE", "TEST_DATA")] %>%
+  subset(CHI %in% dict$ids)
+
+# Collection dates include collection times which are not required. Discarding.
+labs.fcal$COLLECTION_DATE <- fix_date_char(
+  stringr::str_split_fixed(labs.fcal$COLLECTION_DATE, " ", n = 2)[, 1]
+)
+colnames(labs.fcal) <- c("ids", "calpro_date", "calpro_result")
+fcal <- rbind(fcal, labs.fcal)
+fcal <- fix_date_df(fcal, "calpro_date")
+fcal <- fcal %>% distinct(ids,
+  calpro_date,
+  calpro_result,
+  .keep_all = TRUE
+)
+fcal <- subset(fcal, ids %in% dict$ids)
+fcal <- merge(fcal,
+              dict[, c("ids", "diagnosis", "sex", "age")],
+              by = "ids",
+              all.x = TRUE)
+```
+
+### Test results
+
+FCAL data can be both left and right censored. FCAL recorded as "<20" were
+mapped to "20". FCAL recorded as ">1250", ">2500", or ">6000" were all mapped to
+"1250". Any FCAL tests given an error code by the laboratory have been removed. 
+
+::: {.callout-note collapse="true"}
+#### More information on FCAL censoring
+
+The lower limit of detection is
+$<20 \mu g/g$ ($20 \mu g$ of calprotectin per $g$ of stool). By reducing the
+upper limit, it is possible to run more tests in parallel. As a higher
+throughput has been required over time, the upper threshold for tests has
+become lower. Initially test results over $6000 \mu g/g$ were censored, then
+$2500 \mu g/g$ and now $1250 \mu g /g$ is the upper limit for FCAL tests.  This
+change has resulted in minimal impact in clinics as $1250 \mu g/g$ is still
+considered a high FCAL result. However, this change has potential
+implications for research. 
+::: 
+
+```{R FCAL censor mapping}
+#| label: "fig-fcal-meas"
+#| fig-cap: "Density plot of FCAL measurements by observed value"
+#| warning: false
+fcal$calpro_result <- plyr::mapvalues(
+  fcal$calpro_result,
+  from = c(
+    "<20",
+    ">1250",
+    ">2500",
+    ">6000"
+  ),
+  to = c(
+    "20",
+    "1250",
+    "2500",
+    "2500"
+  )
+)
+
+temp <- fcal[is.na(as.numeric(fcal[, "calpro_result"])), ]
+
+fcal$calpro_result <- as.numeric(fcal$calpro_result) # Remove error codes
+fcal <- fcal[!is.na(fcal[, "calpro_result"]), ]
+
+fcal[fcal[, "calpro_result"] > 1250, "calpro_result"] <- 1250
+fcal$calpro_result <- as.numeric(fcal$calpro_result)
+
+fcal %>%
+  ggplot(aes(x = calpro_result)) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#9FD8CB",
+    color = "#517664"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("FCAL (µg/g)") +
+  ylab("Density")
+```
+
+FCAL test results on the original measurement scale are heavily right-skewed
+towards $100 \mu g/g$. These data will be log
+transformed- resulting in the multi-modal distribution seen in @fig-logfcal-meas. 
+
+```{R}
+#| label: "fig-logfcal-meas"
+#| fig-cap: "Density plot of logged FCAL test results"
+fcal %>%
+  ggplot(aes(x = log(calpro_result))) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#9FD8CB",
+    color = "#517664"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("log(FCAL (µg/g))") +
+  ylab("Density")
+```
+
+### Observations per subject
+
+Although we explore the number of observations per subject in this section, we
+will not yet apply the inclusion criteria of having at least three FCAL
+measurements. This is because
+[we later](#at-least-three-measurements-maximum-followup) reduce the maximum
+follow-up which will impact the number of observations per subject. 
+
+The number of FCAL measurements per subject is right-skewed (@fig-fcal-dist).
+However, there are also subjects with many FCAL observations. These subjects
+were investigated and found to often have a complex disease course, such as
+acute severe ulcerative colitis, and required close monitoring as a result. 
+
+```{R Number of FCAL observations per subject}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of number of FCAL measurements per subject. The red line indicates the required minimum number of observations for inclusion"
+
+FCcounts <- as.vector(table(fcal$ids))
+FCcountsdf <- tibble(ids = names(table(fcal$ids)), counts = FCcounts)
+FCcountsdf %>%
+  ggplot(aes(x = counts)) +
+  geom_histogram(binwidth = 1, fill = "#887C9B") +
+  geom_vline(xintercept = 2.5, color = "#D80032") +
+  theme_minimal() +
+  xlab("Number of FCAL observations per subject") +
+  ylab("Count")
+```
+
+### Retiming 
+
+Time of FCAL measurements were retimed and scaled to be the number of years
+since IBD diagnosis.
+
+```{R FCAL time mapping}
+#| label: fig-fcal-spag-pre
+#| fig-cap: "Spaghetti plot of FCAL trajectories (preprocessed)"
+
+diagnosis_date <- as.Date(NULL)
+for (i in 1:nrow(fcal)) {
+  diagnosis_date <- c(
+    diagnosis_date,
+    subset(dict, ids == fcal[i, "ids"])$date.of.diag
+  )
+}
+
+# Dates have already been converted to Date class by fix_date_char() for dict
+fcal$calpro_time <- as.numeric(fcal$calpro_date - diagnosis_date) / 365.25
+rm(i, diagnosis_date) # Tidy up
+
+fcal <- fcal[!is.na(fcal[, "calpro_time"]), ]
+
+fcal %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.6) +
+  theme_minimal() +
+  scale_color_manual(values = viridis::viridis(length(unique(fcal$ids)))) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(FCAL (µg/g))") +
+  ggtitle("")
+```
+
+After retiming, it is clear some FCAL observations are earlier than diagnosis
+and in some cases substantially earlier (@fig-fcal-spag-pre). Tests taken
+close to reported date of diagnosis are likely "early" as a result of diagnostic
+delay whereas tests from much earlier were likely requested due to other
+conditions. 
+
+As such, FCAL results earlier than 90 days prior to diagnosis will be discarded.
+If a subject has an FCAL within 90 days before diagnosis, then all of their
+FCAL tests will be retimed such that their earliest FCAL within this period is 
+equal to 0 and all later measurements are shifted accordingly to maintain the 
+same differences between measurement times. 
+
+We also reduce the dataset to only subjects with a diagnostic FCAL which equates
+to subjects with a FCAL measurement within 3 months of diagnosis $t \leq 0.25$
+
+```{R FCAL retiming}
+#| label: fig-fcal-spag-post
+#| fig-cap: "Spaghetti plot of FCAL trajectories (processed)"
+fcal <- subset(fcal, calpro_time >= -0.25)
+
+
+diagnostic <- numeric()
+for (id in unique(fcal$ids)) {
+  temp <- subset(fcal, ids == id)
+  if (any(temp$calpro_time < 0.25)) diagnostic <- c(diagnostic, id)
+}
+
+fcal <- subset(fcal, ids %in% diagnostic)
+
+# Retime so that t_0 = 0.
+for (id in unique(fcal$ids)) {
+  temp <- subset(fcal, ids == id)
+  if (any(temp$calpro_time < 0)) {
+    add <- sort(temp$calpro_time)[1]
+    fcal[fcal[, "ids"] == id, "calpro_time"] <-
+      fcal[fcal[, "ids"] == id, "calpro_time"] + abs(add)
+  }
+}
+
+fcal %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.6) +
+  theme_minimal() +
+  scale_color_manual(values = viridis::viridis(length(unique(fcal$ids)))) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(FCAL (µg/g))") +
+  ggtitle("")
+```
+
+There are `r length(diagnostic)` subjects with a diagnostic FCAL available. 
+
+### Minimum followup
+
+We do not require a minimum follow-up for a subject as this may bias our
+findings. For example, UC patients who undergo a proctocolectomy (surgical
+removal of the colon and rectum) are less likely to have FCAL measurements after
+their surgery than patients who did not require surgery. By applying criteria
+based on follow-up, we could indirectly exclude subjects based on disease
+outcomes. 
+
+```{R}
+#| label: fig-fcal-follow-up
+#| fig-cap: "Histogram of FCAL follow-up per subject"
+tab <- matrix(ncol = 2, nrow = 0)
+colnames(tab) <- c("ids", "Followup")
+for (id in unique(fcal$ids)) {
+  followup <- max(subset(fcal, ids == id)$calpro_time)
+  tab <- rbind(tab, c(id, followup))
+}
+
+tab <- as.data.frame(tab)
+
+tab |>
+  ggplot(aes(x = Followup)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Followup (years)")
+```
+
+We have also plotted number of FCAL measurements for each subject against their
+follow-up to explore the relationship between these two attributes (@fig-n-fcal).
+
+```{R}
+#| label: fig-n-fcal
+#| fig-cap: "Number of FCAL measurements against follow-up for each subject"
+tab.temp <- tab
+hmm <- data.frame(
+  ids = names(table(fcal$ids)),
+  n = as.vector(table(fcal$ids))
+)
+tab.temp <- merge(tab.temp, hmm, by = "ids")
+tab.temp %>%
+  ggplot(aes(y = n, x = Followup)) +
+  geom_point(color = "#FF4F79", size = 2) +
+  ylab("Number of FCAL measurements") +
+  theme_minimal()
+```
+
+### Measurement frequency
+
+```{R FCAL frequency}
+fcal <- subset(
+  fcal,
+  ids %in% as.numeric(
+    names(
+      table(fcal$ids)[table(fcal$ids) >= 3]
+    )
+  )
+)
+```
+
+We require a subject has at least three FCAL measurements across the follow-up
+period to meet our inclusion criteria.
+
+There are `r length(unique(fcal$ids))` subjects who have at least three FCAL 
+measurements available (before
+[reducing the maximum followup](#maximum-followup)).
+
+### Maximum followup 
+
+A maximum follow-up should be specified in the interest of constructing robust
+models which are not heavily influenced by observations at the end of follow-up
+where observations are more sparse. We also ensure a subject is only included if
+they have at least three FCAL measurements during the restricted follow-up. 
+
+The decision for a specific cut-off is based upon two tables. @tbl-follow-up
+explores how increasing the follow-up changes the mean, median, and interquartile
+range of the number of observations per subject. @tbl-count-fcal investigates
+how many subjects have at least one FCAL after a set threshold. 
+
+```{R}
+#| label: tbl-follow-up
+#| tbl-cap: Statistics for number of observations across a range of maximum follow-up
+years <- seq(1, 15, by = 1)
+mean.n <- c()
+median.n <- c()
+IQR.n <- c()
+freq <- c()
+
+for (year in years) {
+  # restrict to measurements within threshold
+  temp <- subset(fcal, calpro_time <= year)
+  # restrict to subjects with at least three measurements within threshold
+  temp <- subset(temp, ids %in% as.numeric(names(table(temp$ids)[table(temp$ids) >= 3])))
+  counts <- table(temp$ids)
+  mean.n <- c(mean.n, round(mean(counts), 2))
+  median.n <- c(median.n, median(counts))
+  IQR.n <- c(IQR.n, IQR(counts))
+  freq <- c(freq, length(names(counts)))
+}
+
+knitr::kable(
+  data.frame(
+    years = years,
+    freq = freq,
+    mean.n = mean.n,
+    median.n = median.n,
+    IQR.n = IQR.n
+  )[5:15, ],
+  col.names = c(
+    "Year cut-off",
+    "Number of subjects",
+    "Mean",
+    "Median",
+    "IQR"
+  )
+)
+```
+
+```{R}
+#| label: tbl-count-fcal
+#| tbl-cap: "How many subjects have an FCAL available after a given number of years?"
+count <- numeric()
+for (year in years) {
+  count <- c(count, length(unique(subset(fcal, calpro_time > year)$ids)))
+}
+
+count.tab <- data.frame(
+  years = years,
+  count = count
+)
+kable(count.tab, col.names = c("Years", "Number of subjects"))
+```
+
+From the above table, ten years of maximum follow-up appears to be the most 
+appropriate. However, we instead elect to use seven years of maximum follow-up
+in order to [be consistent with CRP](#maximum-followup-1)
+
+
+```{R}
+fcal <- subset(fcal, calpro_time <= 7)
+# restrict to subjects with at least three measurements within threshold
+fcal <- subset(
+  fcal,
+  ids %in% as.numeric(
+    names(
+      table(fcal$ids)[table(fcal$ids) >= 3]
+    )
+  )
+)
+```
+
+
+### Censored observations
+
+```{R Generate FCAL counts}
+id.vector <- numeric()
+count <- numeric()
+censored.left <- numeric()
+censored.right <- numeric()
+
+for (id in unique(fcal$ids)) {
+  fcal.subject <- subset(fcal, ids == id)
+  id.vector <- c(id.vector, id)
+  count <- c(count, nrow(fcal.subject))
+  censored.left <- c(censored.left, sum(fcal.subject$calpro_result == 20))
+  censored.right <- c(censored.right, sum(fcal.subject$calpro_result == 1250))
+}
+
+countsDF <- tibble(
+  ids = id.vector,
+  count = count,
+  censored.left = censored.left,
+  censored.right = censored.right
+)
+```
+
+We now explore censored FCAL observations and begin by considering FCAL results
+which have been left-censored ($\leq 20 \mu g/g$). From @fig-left-censor-fcal,
+we can clearly see there are subjects with entirely left-censored FCAL
+observations (n = `r nrow(subset(countsDF, censored.left/count ==1))`). 
+
+```{R}
+#| label: fig-left-censor-fcal
+#| fig-cap: "Left-censored observations per subject"
+#  Hold results for no. of measurements and no. of censored obs per subject
+countsDF %>%
+  ggplot(aes(x = censored.left / count, y = count)) +
+  geom_point(alpha = 0.5, size = 0.9, color = "#70A288") +
+  ylab("Total number of observations") +
+  xlab("Proportion of left-censored observations") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+Looking at right-censored observations (@fig-right-censor-fcal), we see there
+are fewer subjects with a high proportion (>50%  of censored observations).
+Nevertheless, there are still subjects with only right censored observations 
+(n = `r nrow(subset(countsDF, censored.right/count ==1))`). 
+
+```{R}
+#| label: fig-right-censor-fcal
+#| fig-cap: "Right-censored observations per subject"
+countsDF %>%
+  ggplot(aes(
+    x = censored.right / count, # Proportion censored
+    y = count
+  )) + # Total censored
+  # Add jitter to better show distribution
+  geom_point(alpha = 0.5, size = 0.9, color = "#D5896F") +
+  ylab("Total number of observations") +
+  xlab("Proportion of right-censored observations") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+In line with our inclusion criteria, we exclude subjects with fewer than three
+non-censored observations.
+
+```{R}
+keep <- countsDF[with(countsDF, count - (censored.left + censored.right) >= 3), ]
+fcal <- subset(fcal, ids %in% keep$ids)
+```
+
+This results in a cohort size of `r length(unique(fcal$ids))`
+(`r nrow(countsDF) - nrow(keep)` subjects removed).
+
+### Revisiting month of diagnosis
+
+After filtering by subjects who have a diagnostic FCAL available, January is
+no longer over-represented for month of diagnosis as we hypothesised
+(@fig-diag-month-redux)
+
+```{R Month of diagnosis (postprocessed)}
+#| label: fig-diag-month-redux
+#| fig-cap: "Bar plot of month of diagnosis"
+dict.temp <- subset(dict, ids %in% unique(fcal$ids))
+dict.temp %>%
+  ggplot(aes(x = as.factor(month(date.of.diag, label = TRUE)))) +
+  geom_bar(color = "black", fill = "#FEC601", linewidth = 0.3) +
+  theme_minimal() +
+  ylab("Frequency") +
+  xlab("Month of IBD Diagnosis")
+```
+
+## C-reactive protein
+
+C-reactive protein (CRP) is a blood-based marker of inflammation. Unlike FCAL,
+which is highly specific to gastrointestinal inflammation, CRP levels are
+indicative of overall inflammation and are more likely to be affected by
+extra-intestinal factors such as infections. However, patient adherence to CRP
+testing is very strong, and CRP has seen historic usage in the field of IBD.
+Although CRP has been used for many years, we unfortunately only have test
+results from as early as 2008 due to the transition towards using TRAK for
+storing CRP results instead of the previous system. 
+
+As there is only one extract for CRP data (obtained from TRAK), merging multiple
+datasets is not required. As with the FCAL data, the recorded time of day for 
+each test has been discarded in favour of the date. Any potential duplicate
+results have been removed.
+
+
+```{R crp preprocess}
+crp <- crp[, c("CHI", "COLLECTION_DATE", "TEST_DATA")] %>%
+  subset(CHI %in% dict$ids)
+
+# Collection dates include collection times which are not required. Discarding.
+crp$COLLECTION_DATE <- fix_date_char(
+  stringr::str_split_fixed(crp$COLLECTION_DATE, " ", n = 2)[, 1]
+)
+
+
+
+colnames(crp) <- c("ids", "crp_date", "crp_result")
+
+crp <- merge(crp,
+             dict[, c("ids", "diagnosis", "sex", "age")],
+             by = "ids",
+             all.x = TRUE)
+# Remove potential duplicates
+crp <- crp %>% distinct(ids,
+  crp_date,
+  crp_result,
+  .keep_all = TRUE
+)
+```
+
+### Test results
+
+CRP is left-censored, but does not appear to be right-censored. Multiple
+cut-offs are reported
+(`r unique(as.numeric(gsub("<", "", names(table(crp$crp_result))[2:8])))`)
+with there also being variations for how  $< 1mg/L$ is reported
+(`r names(table(crp$crp_result))[3:5]`). We map every observation $< 1$ to 1
+and map <2, <3, and < 5 to 2, 3, and 5 respectively. Any failed tests (e.g 
+due to contamination or an insufficient sample being provided) are discarded.
+
+```{R crp censor mapping}
+#| label: "fig-crp-meas"
+#| fig-cap: "Density plot of FCAL measurements by observed value"
+#| warning: false
+
+
+# Remove censoring indicators
+crp$crp_result <- as.numeric(
+  plyr::mapvalues(
+    crp$crp_result,
+    from = c("<0.2", "<1", "<1.", "<1.0", "<2", "<3", "<5"),
+    to = c(1, 1, 1, 1, 2, 3, 5)
+  )
+)
+
+crp <- crp %>%
+  mutate(crp_result = if_else(crp_result < 1, 1, crp_result))
+
+# Remove error test results
+crp <- crp[!is.na(crp[, "crp_result"]), ]
+# Map numerical <1 test results (e.g 0.2) to 1.
+
+crp %>%
+  ggplot(aes(x = crp_result)) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#FFC800",
+    color = "#FF8427"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("CRP (mg/L)") +
+  ylab("Density")
+```
+
+As can be seen in @fig-crp-meas, extremely elevated CRP has been observed in
+some cases. These observations are physiologically valid. However, these data
+may skew our models and may be candidates for removal.  
+
+As with the FCAL data, the CRP data is also log transformed (@fig-logcrp-meas). 
+
+```{R}
+#| label: "fig-logcrp-meas"
+#| fig-cap: "Density plot of logged CRP test results"
+
+crp$crp_result <- log(crp$crp_result)
+
+crp %>%
+  ggplot(aes(x = crp_result)) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#FFC800",
+    color = "#FF8427"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("log(CRP (mg/L))") +
+  ylab("Density")
+```
+
+Observing @fig-logcrp-meas, it would appear the influence of extremely elevated
+CRP results will be minimal. 
+
+### Observations per subject
+
+As with FCAL, we explore the number of observations per subject in this section.
+We do not yet apply the inclusion criteria of having at least three CRP
+measurements.
+
+```{R Number of CRP observations per subject}
+#| label: fig-crp-dist
+#| fig-cap: "Distribution of number of CRP measurements per subject. The pink line indicates the required minimum number of observations for inclusion"
+
+CRPcounts <- as.vector(table(crp$ids))
+CRPcountsdf <- tibble(counts = CRPcounts)
+CRPcountsdf %>%
+  ggplot(aes(x = counts)) +
+  geom_histogram(binwidth = 1, fill = "#0081A7") +
+  geom_vline(xintercept = 2.5, color = "#FF88DC") +
+  theme_minimal() +
+  xlab("Number of CRP observations per subject") +
+  ylab("Count")
+```
+
+From @fig-crp-dist, we can see the strong patient adherence to CRP tests
+[referred to earlier](#crp). Very few subjects (n = `r sum(CRPcounts < 3)`) have
+fewer than three CRP measurements available. 
+
+### Retiming 
+
+As with the FCAL data, the times of CRP measurements are retimed and scaled to
+be the number of years since IBD diagnosis.
+
+```{R CRP time mapping}
+#| label: fig-crp-spag-pre
+#| fig-cap: "Spaghetti plot of CRP trajectories (preprocessed)"
+
+diagnosis_date <- as.Date(NULL)
+for (i in 1:nrow(crp)) {
+  diagnosis_date <- c(
+    diagnosis_date,
+    subset(dict, ids == crp[i, "ids"])$date.of.diag
+  )
+}
+
+# Dates have already been converted to Date class by fix_date_char() for dict
+crp$crp_time <- as.numeric(crp$crp_date - diagnosis_date) / 365.25
+rm(i, diagnosis_date) # Tidy up
+
+crp <- crp[!is.na(crp[, "crp_time"]), ]
+
+crp %>%
+  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = viridis::viridis(length(unique(crp$ids)))) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(CRP (mg/L))") +
+  ggtitle("")
+```
+
+As should be expected given the ubiquitous nature of CRP testing, many CRP
+observations are earlier than diagnosis (@fig-crp-spag-pre). Tests taken
+close to reported date of diagnosis are likely "early" as a result of diagnostic
+delay whereas tests from much earlier were likely requested due to other
+conditions. 
+
+As with FCAL, CRP results earlier than 90 days prior to diagnosis will be
+discarded. If a subject has a CRP within 90 days before diagnosis, then all of
+their CRP tests will be retimed such that their earliest CRP within this period
+is  equal to 0 and all later measurements are shifted accordingly to maintain
+the same differences between measurement times. 
+
+::: {.callout-note}
+This may mean $t_0$ corresponds to slightly different dates across FCAL and CRP
+for the same subject.
+:::
+
+We also reduce the dataset to only subjects with a diagnostic CRP which equates
+to subjects with a CRP measurement within 3 months of diagnosis $t \leq 0.25$
+
+```{R CRP retiming}
+#| label: fig-crp-spag-post
+#| fig-cap: "Spaghetti plot of CRP trajectories (processed)"
+crp <- subset(crp, crp_time >= -0.25)
+
+diagnostic <- numeric()
+for (id in unique(crp$ids)) {
+  temp <- subset(crp, ids == id)
+  if (any(temp$crp_time < 0.25)) diagnostic <- c(diagnostic, id)
+}
+
+crp <- subset(crp, ids %in% diagnostic)
+
+# Retime so that t_0 = 0.
+for (id in unique(crp$ids)) {
+  temp <- subset(crp, ids == id)
+  if (any(temp$crp_time < 0)) {
+    add <- sort(temp$crp_time)[1]
+    crp[crp[, "ids"] == id, "crp_time"] <-
+      crp[crp[, "ids"] == id, "crp_time"] + abs(add)
+  }
+}
+
+crp %>%
+  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = viridis::viridis(length(unique(crp$ids)))) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(CRP (mg/L))") +
+  ggtitle("")
+```
+
+There are `r length(diagnostic)` subjects with a diagnostic CRP available.
+
+### Minimum followup
+
+As a reminder, we do not require a minimum follow-up for a subject as this may
+bias our findings. 
+
+```{R}
+#| label: fig-crp-follow-up
+#| fig-cap: "Histogram of CRP follow-up per subject"
+tab <- matrix(ncol = 2, nrow = 0)
+colnames(tab) <- c("ids", "Followup")
+for (id in unique(crp$ids)) {
+  followup <- max(subset(crp, ids == id)$crp_time)
+  tab <- rbind(tab, c(id, followup))
+}
+
+tab <- as.data.frame(tab)
+
+tab |>
+  ggplot(aes(x = Followup)) +
+  geom_histogram(color = "black", fill = "#B38D97", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Followup (years)")
+```
+
+We have also plotted number of CRP measurements for each subject against their
+follow-up to explore the relationship between these two attributes (@fig-n-crp).
+
+```{R}
+#| label: fig-n-crp
+#| fig-cap: "Number of CRP measurements against follow-up for each subject"
+tab.temp <- tab
+hmm <- data.frame(
+  ids = names(table(crp$ids)),
+  n = as.vector(table(crp$ids))
+)
+tab.temp <- merge(tab.temp, hmm, by = "ids")
+tab.temp %>%
+  ggplot(aes(y = n, x = Followup)) +
+  geom_point(color = "#216869", size = 2) +
+  ylab("Number of CRP measurements") +
+  xlab("Follow-up (years)") +
+  theme_minimal()
+```
+
+### Measurement frequency
+
+We require a subject to have at least three CRP measurements across the follow-up
+period to meet our inclusion criteria.
+
+```{R CRP frequency}
+crp <- subset(
+  crp,
+  ids %in% as.numeric(
+    names(
+      table(crp$ids)[table(crp$ids) >= 3]
+    )
+  )
+)
+```
+
+There are `r length(unique(crp$ids))` subjects who have at least three CRP 
+measurements available (before
+[reducing the maximum followup](#maximum-followup-1)).
+
+
+### Maximum followup 
+
+A maximum follow-up should be specified in the interest of constructing robust
+models which are not heavily influenced by observations at the end of follow-up
+where observations are more sparse. These two requirements are dependent on one
+another as the maximum follow-up affects whether or not a subject has at least
+three measurements taken within follow-up. 
+
+As with FCAL, the decision for a specific cut-off is based upon how increasing
+follow-up changes the mean, median, and interquartile range of the number of
+observations per subject (@tbl-follow-up-crp) and how many subjects have CRP
+observations after set thresholds (@tbl-count-crp).
+
+```{R}
+#| label: tbl-follow-up-crp
+#| tbl-cap: Statistics for number of observations across a range of maximum follow-up
+years <- seq(5, 15, by = 1)
+mean.n <- c()
+median.n <- c()
+IQR.n <- c()
+freq <- c()
+
+for (year in years) {
+  # restrict to measurements within threshold
+  temp <- subset(crp, crp_time <= year)
+  # restrict to subjects with at least three measurements within threshold
+  temp <- subset(temp, ids %in% as.numeric(names(table(temp$ids)[table(temp$ids) >= 3])))
+  counts <- table(temp$ids)
+  mean.n <- c(mean.n, round(mean(counts), 2))
+  median.n <- c(median.n, median(counts))
+  IQR.n <- c(IQR.n, IQR(counts))
+  freq <- c(freq, length(names(counts)))
+}
+
+knitr::kable(
+  data.frame(
+    years = years,
+    freq = freq,
+    mean.n = mean.n,
+    median.n = median.n,
+    IQR.n = IQR.n
+  ),
+  col.names = c(
+    "Year cut-off",
+    "Number of subjects",
+    "Mean",
+    "Median",
+    "IQR"
+  )
+)
+```
+
+```{R}
+#| label: tbl-count-crp
+#| tbl-cap: "How many subjects have an CRP available after a given number of years?"
+years <- seq(1, 15, by = 1)
+count <- numeric()
+for (year in years) {
+  count <- c(count, length(unique(subset(crp, crp_time > year)$ids)))
+}
+
+count.tab <- data.frame(years = years, count = count)
+kable(count.tab, col.names = c("Years", "Number of subjects"))
+```
+
+From the above table, seven years of maximum follow-up appears to be the most 
+appropriate. 
+
+```{R}
+crp <- subset(crp, crp_time <= 7)
+# restrict to subjects with at least three measurements within threshold
+crp <- subset(
+  crp,
+  ids %in% as.numeric(
+    names(
+      table(crp$ids)[table(crp$ids) >= 3]
+    )
+  )
+)
+```
+
+### Additional pre-processing
+
+As can be seen in @fig-crp-sample, the CRP data exhibits substantial noise and
+there are many data points which can substantially increase running times when
+fitting models. As such, we have taken the step to pre-process the data by
+grouping FCAL observations into time intervals for each subject and using the
+median where there are multiple observations. 
+
+```{R}
+#| label: fig-crp-sample
+#| fig-cap: "CRP trajectories for a random sample of 15 subjects"
+ids.sample <- sample(unique(crp$ids), 15)
+crp.sub <- subset(crp, ids %in% ids.sample)
+
+crp.sub %>%
+  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = colorspace::darken(
+    rainbow(15), amount = 0.4)
+    ) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(CRP (mg/L))") +
+  ggtitle("")
+```
+
+```{R}
+id.list <- unique(crp$ids)
+crp.ma <- matrix(NA, nrow = length(id.list), ncol = 7)
+
+for (i in seq_along(id.list)) {
+  subject_data <- subset(crp, ids == id.list[i])
+  for (j in seq(0, 6)) {
+    if (j == 6) {
+      sub.obs <- subset(
+        subject_data,
+        crp_time >= j - 0.5 & crp_time <= j + 1
+      )
+    } else {
+      sub.obs <- subset(
+        subject_data,
+        crp_time >= j - 0.5 & crp_time < j + 0.5
+      )
+    }
+    if (nrow(sub.obs) > 0) {
+      crp.ma[i, j + 1] <- median(sub.obs$crp_result)
+    }
+  }
+}
+
+rownames(crp.ma) <- id.list
+
+crp.ma  <- crp.ma [rowSums(is.na(crp.ma)) <= 4, ]
+
+id.list <- rownames(crp.ma)
+
+crp.ma <- reshape2::melt(t(crp.ma ), id.vars = row.names(crp.ma ), na.rm = TRUE)
+colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
+crp.ma  <- crp.ma[, c(2, 3, 1)]
+
+
+crp.ma$crp_time <- crp.ma$crp_time - 1
+
+
+
+# Take into account uneven spacing at start and end
+crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+  from = c(0, 6),
+  to = c(0.25, 6.25)
+)
+
+
+# Add diagnosis type back
+crp.ma <- merge(crp.ma, dict[, -3], by = "ids", all.x = TRUE, all.y = FALSE)
+
+
+##########################
+#--     Plotting       --#
+##########################
+
+p <- subset(crp.ma, ids %in% sample(unique(crp.ma$ids), 20)) %>%
+  ggplot(aes(x = crp_time, y = crp_result, color = as.factor(ids))) +
+  geom_point(alpha = 0.6) +
+  geom_line(alpha = 0.6) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  ylab("Median Log (CRP)") +
+  xlab("Time")
+ggsave("plots/crp-med-traj.png", p, width = 10, height = 5, units = "in")
+print(p)
+```
+
+```{R}
+p1 <- crp.ma %>%
+  ggplot(aes(x = exp(crp_result))) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#EE92C2",
+    color = "#7B5D6F"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("CRP (mg/L)") +
+  ylab("Density")
+
+p2 <- crp.ma %>%
+  ggplot(aes(x = crp_result)) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#ADF1D2",
+    color = "#50635A"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("log(CRP (mg/L))") +
+  ylab("Density")
+
+print(p1 + p2)
+
+ggsave("plots/crp-dist-ma.pdf", p1 + p2, width = 8, height = 4.5, units = "in")
+```
+
+
+### Revisiting month of diagnosis
+
+After filtering by subjects who have a diagnostic CRP available, January is
+no longer over-represented for month of diagnosis. This is a comparable finding
+to FCAL (@fig-diag-month-redux).
+
+```{R Month of diagnosis (postprocessed)}
+#| label: fig-diag-month-redux-crp
+#| fig-cap: "Bar plot of month of diagnosis"
+dict.temp <- subset(dict, ids %in% unique(fcal$ids))
+dict.temp %>%
+  ggplot(aes(x = as.factor(month(date.of.diag, label = TRUE)))) +
+  geom_bar(color = "black", fill = "#FEC601", linewidth = 0.3) +
+  theme_minimal() +
+  ylab("Frequency") +
+  xlab("Month of IBD Diagnosis")
+```
+
+## Updated density plots
+
+The following plots are updated versions of previous density plots
+(@fig-fcal-meas, @fig-logfcal-meas, @fig-crp-meas and @fig-logcrp-meas). These plots only include subjects who have met the inclusion criteria.
+
+```{R Updated FCAL distribution}
+#| label: "fig-fcal-meas-update"
+#| fig-cap: "Updated density plot of FCAL measurements by observed value"
+#| warning: false
+
+p1 <- fcal %>%
+  ggplot(aes(x = calpro_result)) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#2E86AB",
+    color = "#07004D"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("FCAL (µg/g)") +
+  ylab("Density")
+print(p1)
+```
+
+
+```{R}
+#| label: "fig-logfcal-meas-update"
+#| fig-cap: "Updated density plot of logged FCAL test results"
+p2 <- fcal %>%
+  ggplot(aes(x = calpro_result)) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#F7A072",
+    color = "#936136"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("log(FCAL (µg/g))") +
+  ylab("Density")
+print(p2)
+
+ggsave("plots/fcal-dist.pdf", p1 + p2, width = 8, height = 4.5, units = "in")
+```
+
+```{R Updated CRP distribution}
+#| label: "fig-crp-meas-update"
+#| fig-cap: "Updated density plot of CRP measurements by observed value"
+#| warning: false
+p1 <- crp %>%
+  ggplot(aes(x = exp(crp_result))) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#EE92C2",
+    color = "#7B5D6F"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("CRP (mg/L)") +
+  ylab("Density")
+print(p1)
+```
+
+```{R}
+#| label: "fig-logcrp-meas-update"
+#| fig-cap: "Updated density plot of logged CRP test results"
+p2 <- crp %>%
+  ggplot(aes(x = crp_result)) +
+  geom_density(
+    linewidth = 0.8,
+    alpha = 0.5,
+    fill = "#ADF1D2",
+    color = "#50635A"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("log(CRP (mg/L))") +
+  ylab("Density")
+print(p2)
+ggsave("plots/crp-dist.pdf", p1 + p2, width = 8, height = 4.5, units = "in")
+```
+
+## Updated trajectory plots
+
+### FCAL
+
+```{R}
+ids.sample <- sample(unique(fcal$ids), 15)
+fcal.sub <- subset(fcal, ids %in% ids.sample)
+
+cairo_pdf("plots/fcal-traj.pdf", width = 8, height = 6)
+fcal.sub %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
+  geom_line(alpha = 0.7) +
+  geom_point(alpha = 0.7) +
+  theme_minimal() +
+  scale_color_manual(values = colorspace::lighten(rainbow(length(ids.sample)),
+    amount = -0.35
+  )) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(FCAL (µg/g))") +
+  ggtitle("")
+invisible(dev.off())
+
+fcal.sub %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
+  geom_line(alpha = 0.7) +
+  geom_point(alpha = 0.7) +
+  theme_minimal() +
+  scale_color_manual(values = colorspace::lighten(rainbow(length(ids.sample)),
+    amount = -0.35
+  )) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(FCAL (µg/g))") +
+  ggtitle("")
+```
+  
+```{R}
+temp <- fcal
+temp <- temp[order(temp$calpro_time), ]
+
+fc.ids <- unique(temp$ids)
+fc.result <- c()
+
+for (id in fc.ids) {
+  fc.result <- c(fc.result, subset(temp, ids == id)[1, "calpro_result"])
+} 
+
+fc.plot.data <- data.frame(ids = fc.ids, fc.result)
+fc.plot.data <- merge(fc.plot.data,
+                       dict[, c("ids", "age")],
+                       by = "ids",
+                       all.x = TRUE, 
+                       all.y = FALSE)
+```
+
+```{R}
+fc.plot.data %>%
+  ggplot(aes(x = age, y = log(fc.result))) +
+  geom_point(color = "#F46036") +
+  xlab("Age at diagnosis") +
+  ylab("Log(FC)") +
+  geom_smooth(method = 'lm', formula = y~x, color = "#5B85AA") +
+  theme_minimal()
+```
+  
+  
+### CRP
+
+```{R}
+ids.sample <- sample(unique(crp$ids), 15)
+crp.sub <- subset(crp.ma, ids %in% ids.sample)
+
+cairo_pdf("plots/crp-traj.pdf", width = 8, height = 6)
+crp.sub %>%
+  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
+  geom_line(alpha = 0.7) +
+  geom_point(alpha = 0.7) +
+  theme_minimal() +
+  scale_color_manual(values = colorspace::lighten(rainbow(length(ids.sample)),
+                                                  amount = -0.35
+  )) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(CRP (mg/L))") +
+  ggtitle("")
+invisible(dev.off())
+
+crp.sub %>%
+  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
+  geom_line(alpha = 0.7) +
+  geom_point(alpha = 0.7) +
+  theme_minimal() +
+  scale_color_manual(values = colorspace::lighten(rainbow(length(ids.sample)),
+                                                  amount = -0.35
+  )) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(CRP (mg/L))") +
+  ggtitle("")
+```
+
+```{R}
+temp <- crp
+temp <- temp[order(temp$crp_time), ]
+
+crp.ids <- unique(temp$ids)
+crp.result <- c()
+
+for (id in crp.ids) {
+  crp.result <- c(crp.result, subset(temp, ids == id)[1, "crp_result"])
+} 
+
+crp.plot.data <- data.frame(ids = crp.ids, crp.result)
+crp.plot.data <- merge(crp.plot.data,
+                       dict[, c("ids", "age")],
+                       by = "ids",
+                       all.x = TRUE, 
+                       all.y = FALSE)
+```
+
+```{R}
+crp.plot.data %>%
+  ggplot(aes(x = age, y = crp.result)) +
+  geom_point(color = "#F46036") +
+  xlab("Age at diagnosis") +
+  ylab("Log(CRP (mg/L))") +
+  geom_smooth(method = 'lm', formula = y~x, color = "#5B85AA") +
+  theme_minimal()
+```
+
+## Data saving
+
+The processed subject dictionary and FCAL and CRP datasets have been saved to
+files, so they can be used for the primary analysis. 
+
+```{R}
+if (!dir.exists(paste0(prefix, "processed"))) {
+  dir.create(paste0(prefix, "processed"))
+}
+
+fcal$calpro_result <- log(fcal$calpro_result)
+
+saveRDS(dict, paste0(prefix, "processed/dict.RDS"))
+saveRDS(fcal, paste0(prefix, "processed/fcal.RDS"))
+saveRDS(crp, paste0(prefix, "processed/crp.RDS"))
+saveRDS(crp.ma, paste0(prefix, "processed/median-crp.RDS"))
+```
+
+## Acknowledgments {.appendix}
+
+This work is funded by the Medical Research Council & University of Edinburgh
+via a Precision Medicine PhD studentship (MR/N013166/1, to **NC-C**).
+
+## Author contributions {.appendix}
+
+**NC-C** performed the processing and wrote the text. **NP**, **ML**, and
+**PWJ**, curated and provided datasets. **KM-G**, **CWL**, and **CAV** provided
+supervisory support and assisted with revisions. 
+
+## References {.appendix}
+
+::: {#refs}
+:::
+
+## Reuse {.appendix}
+
+Licensed by 
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY</a>
+ unless otherwise stated.
+ 
+## {.appendix}
+
+<div class = "center">
+  <img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
+  <img src="../../images/cgem-logo.png" alt="Centre for Genomic & Experimental Medicine logo" height = 50px>
+</div>
+
+---
+
+## Session info {.appendix}
+
+```{R Session info}
+pander(sessionInfo())
+```

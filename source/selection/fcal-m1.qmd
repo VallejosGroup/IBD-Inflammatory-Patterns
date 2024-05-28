@@ -1,0 +1,35 @@
+#### Initial LME
+
+```{R LME code}
+#| eval: false
+#| echo: true
+#| code-fold: false
+
+## Modelling ##
+library(lcmm)
+library(splines)
+
+fcal <- readRDS("fcal.RDS")
+fcal$calpro_result <- log(fcal$calpro_result)
+
+if(!dir.exists("cache")) dir.create("cache")
+
+if(!file.exists("m1.RDS")) {
+  m1 <-  hlme(fixed =  calpro_result ~ ns(calpro_time,
+                                          df = 4,
+                                          knots = seq(from = 7/4,
+                                             to = 21/4,
+                                             by = 7/4),
+                                          Boundary.knots = c(0, 7)),
+              random = ~  1,
+              subject = "ids",
+              data = fcal,
+              verbose = TRUE,
+              var.time = "calpro_time",
+              maxiter = 8000)
+  if (m1$conv != 1) stop("LME did not converge \n")
+  saveRDS(m1, "m1.RDS")
+  message("Finished fitting m1")
+}
+```
+

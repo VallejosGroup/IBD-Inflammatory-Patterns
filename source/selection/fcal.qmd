@@ -1,0 +1,1215 @@
+---
+title: "Model selection"
+subtitle: "Faecal calprotectin"
+author:
+  - name: "Nathan Constantine-Cooke" 
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    corresponding: true
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
+  - name: "Karla Monterrubio-Gómez"
+    url: https://scholar.google.com/citations?user=YmyxSXAAAAAJ&hl=en
+    affiliations:
+      - ref: HGU
+  - name: "Catalina A. Vallejos"
+    url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: HGU
+      - ref: Turing
+#comments:
+#  giscus: 
+#    repo: quarto-dev/quarto-docs
+---
+      
+## Introduction
+
+```{R Setup}
+#| message: false
+set.seed(123)
+if (file.exists("/.dockerenv")) { # Check if running in Docker
+  # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
+  prefix <- "data/"
+} else {
+  # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
+  # mounted at /Volumes
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+}
+
+
+##########################
+#--     Packages       --#
+##########################
+
+library(tidyverse)
+# Support package (source found in libdr/)
+library(libdr)
+## Modelling ##
+library(lcmm)
+library(kml) # K-means
+library(mice) # Imputation
+## Presentation ##
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+
+
+
+##########################
+#--     Data read      --#
+##########################
+
+dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
+fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
+
+###########################################
+#-- Create directories and readme files --#
+###########################################
+
+if (!dir.exists("plots")) {
+  dir.create("plots")
+}
+
+fileConn <- file("plots/README.md")
+
+# write lines to the file connection
+writeLines(
+  c(
+    "# README",
+    "",
+    paste(
+      "This directory contains plots created by the analysis",
+      "but are not provided as figures (supplementary or",
+      "otherwise) in the paper"
+    )
+  ),
+  fileConn
+)
+# close the file connection
+close(fileConn)
+rm(fileConn)
+
+if (!dir.exists("cache")) dir.create("cache")
+fileConn <- file("cache/README.md")
+writeLines(
+  c(
+    "# README",
+    "",
+    paste(
+      "This directory stores cached versions of R objects which",
+      "take a long time to create (such as LCMM fit objects)."
+    )
+  ),
+  fileConn
+)
+close(fileConn)
+rm(fileConn)
+
+if (!dir.exists("paper")) dir.create("paper")
+fileConn <- file("paper/README.md")
+writeLines(
+  c(
+    "# README",
+    "",
+    paste(
+      "This directory contains all figures used in the paper.",
+      "The sup subdirectory contains supplementary figures"
+    )
+  ),
+  fileConn
+)
+close(fileConn)
+rm(fileConn)
+
+if (!dir.exists("paper/sup")) dir.create("paper/sup")
+
+if (!dir.exists("plots/residuals")) {
+  dir.create("plots/residuals")
+}
+```
+
+This report describes how the latent class mixed models (LCMMs) were fitted.
+Different models are explored to determine the most appropriate models for FCAL
+and CRP.
+
+## Model specification
+
+LCMMs are an extension of linear mixed effects models with an added
+cluster-specific fixed effect component.  We use LCMMs with a natural cubic
+spline formulation for the fixed effects component. Random effects are specified
+as intercepts, and an autoregressive process is used to model correlation
+between observations. 
+
+Natural cubic splines have a few notable advantages [@Elhakeem2022]:
+
+1. Less parameters need to be estimated than either a Gaussian radial basis
+   function regression model or a polynomial regression model with the same
+   flexibility . This reduces the time complexity when fitting the model and in
+   the future may also make extensions more practically feasible. 
+2. Natural cubic splines enforce linearity between $t_0$ and the first knot and
+  between the last knot and $t_\text{max}$ which ensures the model does not
+  behave erratically in these sometimes problematic areas. 
+3. Natural cubics are not highly sensitive to a continuous parameter and instead
+  requires only $K$, the number of knots, to be tuned: being robust to where
+  the knots themselves are placed.
+
+
+For full formal definitions of the models and statistics we have used in the
+work, please refer to the supplementary material for our paper. 
+
+
+## Knot choice
+
+To determine the most appropiate number of knots for the natural cubic splines,
+we consider 3, 4, and 5 knots. We only use six-cluster models for this
+analysis as this reasonably captures heterogeneity without being too expensive
+computationally.
+
+Our previous work used 3 knots across a 5-year period. As we are now modelling
+across a 7-year period, we may need to increase the number of knots to 4 to
+ensure the model remains flexible. We also consider 2 knots in case a more
+smoooth model is required.
+
+We place the knots at their default location which is
+at quantiles. We note that the number of
+knots is reported by @harrell2015 to be much more important than knot location.
+
+### Model trajectories 
+
+::: {.panel-tabset}
+
+#### 2 knots
+
+From @fig-2-knots, we can see specifying only two knots results in very smooth
+curves for the mean trajectory of each cluster. However, this model appears
+to be too smooth which results in a relatively poor fit. 
+
+```{R}
+#| label: fig-2-knots
+#| fig-cap: "Cluster profiles for the six-cluster model assuming two knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+knots.2 <- readRDS(paste0(prefix, "cache/fcal/ncs/2-knots.RDS"))
+knots.2.list <- list()
+knots.2.list[[6]] <- knots.2
+cairo_pdf("paper/2-knots.pdf",
+          width = 9,
+          height = 9)
+spaghettiPlot(fcal,
+              knots.2.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              n.knots = 2,
+              var.time = "calpro_time")
+invisible(dev.off())
+spaghettiPlot(fcal,
+              knots.2.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              n.knots = 2,
+              var.time = "calpro_time")
+```
+
+#### 3 knots
+
+Three knots appears to be the most appropriate specification (@fig-3-knots).
+Whilst there is  perhaps some evidence of overfitting, this appears to be
+minimal. 
+
+```{R}
+#| label: fig-3-knots
+#| fig-cap: "Cluster profiles for the six-cluster model assuming three knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+knots.3 <- readRDS(paste0(prefix, "cache/fcal/ncs/fcal-6.RDS"))
+knots.3.list <- list()
+knots.3.list[[6]] <- knots.3
+cairo_pdf("paper/3-knots.pdf",
+          width = 9,
+          height = 9)
+spaghettiPlot(fcal,
+              knots.3.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              n.knots = 3,
+              var.time = "calpro_time")
+invisible(dev.off())
+spaghettiPlot(fcal,
+              knots.3.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              n.knots = 3,
+              var.time = "calpro_time")
+```
+
+#### 4 knots
+
+Four knots appears to be too many. @fig-4-knots presents a minor improvement to 
+model fit over the three knot specification, and there are signs of overfitting
+which is likely driven by the small distances between knots. 
+
+```{R}
+#| label: fig-4-knots
+#| fig-cap: "Cluster profiles for the six-cluster model assuming four knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+knots.4 <- readRDS(paste0(prefix, "/cache/fcal/ncs/4-knots.RDS"))
+knots.4.list <- list()
+knots.4.list[[6]] <- knots.4
+cairo_pdf("paper/4-knots.pdf",
+          width = 9,
+          height = 9)
+spaghettiPlot(fcal,
+              knots.4.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              n.knots = 4,
+              var.time = "calpro_time")
+invisible(dev.off())
+spaghettiPlot(fcal,
+              knots.4.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              n.knots = 4,
+              var.time = "calpro_time")
+```
+
+#### 2 GRBFs 
+
+```{R}
+#| label: fig-grbf-k-2
+#| fig-cap: "Cluster profiles for the six-cluster model assuming two knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+knots.grbf <- readRDS(paste0(prefix, "cache/fcal/grbf/k=2/grbf-1.2.RDS"))
+knots.grbf.list <- list()
+knots.grbf.list[[6]] <- knots.grbf
+png("paper/grbf-plots.png", width = 8, height = 7, units = "in", res = 300)
+spaghettiPlot(fcal,
+              knots.grbf.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              knot.type = "equal",
+              n.knots = 2,
+              grbf = TRUE,
+              l = 1.2,
+              var.time = "calpro_time")
+invisible(dev.off())
+spaghettiPlot(fcal,
+              knots.grbf.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              knot.type = "equal",
+              n.knots = 2,
+              grbf = TRUE,
+              l = 1.2,
+              var.time = "calpro_time")
+```
+
+#### 3 GRBFs 
+
+```{R}
+#| label: fig-grbf-spec-k-3
+#| fig-cap: "Cluster profiles for the six-cluster model assuming three knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+knots.grbf <- readRDS(paste0(prefix, "/cache/fcal/grbf/k=3/grbf-1.2.RDS"))
+knots.grbf.list <- list()
+knots.grbf.list[[6]] <- knots.grbf
+png("paper/grbf-plots.png", width = 8, height = 7, units = "in", res = 300)
+spaghettiPlot(fcal,
+              knots.grbf.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              knot.type = "equal",
+              n.knots = 3,
+              grbf = TRUE,
+              l = 1.2,
+              var.time = "calpro_time")
+invisible(dev.off())
+spaghettiPlot(fcal,
+              knots.grbf.list,
+              G = 6,
+              log = TRUE,
+              tmax = 7,
+              sizes = FALSE,
+              knots = TRUE,
+              knot.type = "equal",
+              n.knots = 3,
+              grbf = TRUE,
+              l = 1.2,
+              var.time = "calpro_time")
+```
+
+:::
+
+### Model statistics 
+
+```{R}
+#| results: "hold"
+#| label: tbl-knot-stats
+#| tbl-cap: Model statistics for differing numbers of knots for natural cubic splines
+knots.df <- tibble(Knots = c(2, 3, 4, "GRBF"),
+                   loglik = c(knots.2$loglik,
+                              knots.3$loglik,
+                              knots.4$loglik,
+                              knots.grbf$loglik),
+                   AIC = c(knots.2$AIC,
+                           knots.3$AIC,
+                           knots.4$AIC,
+                           knots.grbf$AIC),
+                   BIC = c(knots.2$BIC,
+                           knots.3$BIC,
+                           knots.4$BIC,
+                           knots.grbf$BIC))
+knitr::kable(knots.df,
+             col.names = c("Knots",
+                           "Maxmum log likelihood",
+                           "AIC",
+                           "BIC")
+             )
+rm(knots.3, knots.3.list, knots.4, knots.4.list, knots.grbf.list)
+```
+
+AIC and BIC both suggest a 4-knot specification to be optimal (@tbl-knot-stats). 
+However, visual inspection of the mean cluster trajectories
+([see above](#model-trajectories)) suggests the 4-knot approach results in
+overfitting- especially around knot locations. This will also become more of
+an issue as the number of clusters increase and additional sparsity is exhibited
+for some clusters.
+
+As such, we have elected to use natural cubic splines with 3 knots placed at 
+quantiles. 
+
+
+## Model loading
+
+Fitting the LCMMs discussed in this report takes multiple days in some cases and
+uses 25 CPU cores per model. We have fitted these models using 
+[Eddie](https://www.ed.ac.uk/information-services/research-support/research-computing/ecdf/high-performance-computing),
+the University  of Edinburgh's High performance computing solution. The code in
+the dropdown box below was used to fit the models.
+
+As recommended by @Proust-Lima2017, a linear mixed effects model is first 
+itted to generate initial starting values, (the "Initial LME" tab) and then a
+grid search approach is used to converge the LCMMs towards a global maximum for
+each assumed number of clusters based on maximum likelihood (the "LCMM" tab). 
+
+::: {.callout-note collapse="true" icon=false}
+
+### Code used to fit models
+
+::: {.panel-tabset}
+{{< include fcal-m1.qmd >}}
+
+{{< include fcal-lcmm.qmd >}}
+:::
+
+:::
+
+
+After the above code is run, the resultant models are saved in 
+`cvallejo-predicct/libdr/cache/` for use in this report. 
+
+When an LCMM is fitted, the assumed number of clusters (*or "classes"*) must be
+specified a priori. Here we consider 4-8 clusters as 4 clusters were already
+found in our previous work [@constantine-cooke2023], and we expect to find more
+clusters given our inclusion criteria is more relaxed.
+
+A posteriori model statistics and visual investigations must be used to decide
+upon the optimum number of classes.
+
+## FCAL
+
+### Natural Cubic Splines
+
+```{R Load NCS FCAL models}
+# set the number of groups
+G.fcal <- numeric()
+models.fcal <- list()
+G.cands <- seq(2, 10)
+for (G.cand in G.cands) {
+  file.name <- paste0(prefix, "/cache/fcal/ncs/fcal-", G.cand, ".RDS")
+  if (file.exists(file.name)) {
+    G.fcal <- c(G.fcal, G.cand)
+    models.fcal[[G.cand]] <- readRDS(file.name)
+  }
+}
+rm(G.cand)
+```
+
+From the alluvial plot comparing FCAL models (@fig-fcal-alluvial), we can see
+newly formed clusters are quite robust- remaining consistent as the number of
+clusters increases.  However, new clusters are formed from multiple clusters
+which implies these clusters do not have a high degree of separation from one
+another. From  @fig-fcal-alluvial, 6 clusters appear to be a reasonable choice. 
+
+```{R FCAL alluvial}
+#| label: fig-fcal-alluvial
+#| fig-cap: Alluvial plot of cluster membership across G for FCAL
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("ids", "class", "G")
+for (G in G.fcal) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.fcal[[G]]$pprob[, 1:2], G = G))
+}
+alluvial.df <- as.data.frame(alluvial.df)
+
+alluvial.df$ids <- as.character(alluvial.df$ids)
+alluvial.df$class <- as.factor(alluvial.df$class)
+
+# eliminate label switching
+
+alluvial.df[alluvial.df[, "G"] == 3, "class" ] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
+                  from = c(seq(1, 3)),
+                  to = c(3, 2, 1))
+
+alluvial.df[alluvial.df[, "G"] == 4, "class" ] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
+                  from = c(seq(1, 4)),
+                  to = c(4, 2, 1, 3))
+
+alluvial.df[alluvial.df[, "G"] == 5, "class" ] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
+                  from = c(seq(1, 5)),
+                  to = c(3, 4, 5, 1, 2))
+
+alluvial.df[alluvial.df[, "G"] == 6, "class" ] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
+                  from = c(seq(1, 6)),
+                  to = c(1, 4, 3, 5, 6, 2))
+
+alluvial.df[alluvial.df[, "G"] == 7, "class" ] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
+                  from = c(seq(1, 7)),
+                  to = c(3, 1, 5, 4, 2, 7, 6))
+
+alluvial.df[alluvial.df[, "G"] == 8, "class" ] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
+                  from = c(seq(1, 8)),
+                  to = c(8, 1, 7, 4, 5, 2, 6, 3))
+
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = rainbow(8)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
+
+p <- p + ggtitle("", "")
+ggsave("paper/alluvial-FCAL-all.png",
+       p,
+       width = 12,
+       height = 6.75,
+       units = "in")
+ggsave("paper/alluvial-FCAL-all.pdf",
+       p,
+       width = 12,
+       height = 6.75,
+       units = "in")
+```
+
+#### Posterior classifications
+
+From the below data, we can see how posterior probabilities change as the number
+of assumed clusters increase
+
+
+:::{.column-page}
+::: {.panel-tabset}
+
+```{R FCAL postpro}
+#| results: "asis"
+postprob_quiet <- quietly(postprob)
+for (G in G.fcal) {
+  cat(paste0("##### G = ", G, "\n"))
+  output <- postprob_quiet(models.fcal[[G]])$result
+  cat(pander::pander(output[[1]]))
+  cat(pander::pander(output[[2]]))
+  cat(pander::pander(output[[3]]))
+}
+rm(output)
+```
+
+:::
+:::
+
+
+#### Residual plots
+
+::: {.panel-tabset}
+
+```{R FCAL residuals}
+#| results: "asis"
+for (G in G.fcal) {
+  cat(paste0("##### G = ", G, "\n"))
+  plot(models.fcal[[G]], shades = TRUE)
+}
+```
+
+##### Chosen model
+
+```{R Assess FCAL NCS normality}
+#| label: fig-NCS-norm
+#| fig-cap: "Plots assessing normality for the distribution of residuals for the chosen NCS model for FCAL. (A) Histrogram; (B) Q-Q plot."
+p1 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
+  ggplot(aes(x = residuals)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 fill = "#D8829D",
+                 color = "#AF6A80",
+                 bins = 30) +
+  geom_density(color = "#023777", size = 1.2) +
+  theme_classic() +
+  theme(axis.line = element_line(colour = "gray")) +
+  ylab("Density") +
+  xlab("Residuals") +
+  ggtitle("A")
+
+p2 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
+  ggplot(aes(sample = residuals)) +
+    stat_qq_band() +
+    stat_qq_line(color = "#D8829D") +
+    stat_qq_point(color = "#023777")  +
+    theme_classic() +
+    theme(axis.line = element_line(colour = "gray")) + 
+    ylab("Theoretical Quantiles") +
+    xlab("Sample Quantiles") +
+  ggtitle("B")
+ggsave("paper/Residual-plot-fcal-ncs.pdf",
+       plot = p1 / p2,
+       width = 8,
+       height = 8,
+       units = "in")
+print(p1 / p2)
+```
+
+```{R}
+#| label: fig-NCS-norm-cluster
+#| fig-cap: "Q-Q plots assessing normality for the distribution of residuals stratifed by cluster assignment."
+predClass <- models.fcal[[6]]$pprob[, c("ids", "class")]
+temp <- merge(models.fcal[[6]]$pred, predClass, by = "ids")
+labels <- c("A", "B", "C", "D", "E", "F")
+p <- list()
+
+for (i in 1:6) {
+  p[[i]] <- subset(temp, class == i) %>%
+    ggplot(aes(sample = resid_ss)) +
+    stat_qq_band() +
+    stat_qq_line(color = "#D8829D") +
+    stat_qq_point(color = "#023777")  +
+    theme_classic() +
+    theme(axis.line = element_line(colour = "gray")) + 
+    ylab("Theoretical Quantiles") +
+    xlab("Sample Quantiles") +
+  ggtitle(labels[i])
+}
+
+ArrangedPlot <-  (p[[1]] + p[[2]]) / (p[[3]] + p[[4]]) / (p[[5]] + p[[6]])
+
+ggsave("paper/cluster-resids-ncs.pdf",
+       ArrangedPlot,
+       width = 8,
+       height = 8,
+       units = "in")
+print(ArrangedPlot)
+```
+:::
+
+#### Model metrics
+
+```{R FCAL metrics plot}
+#| label: fig-fcal-metrics
+#| fig-cap: "Model metrics for FCAL for G = 4-8"
+summaryplot(models.fcal[[4]],
+            models.fcal[[5]],
+            models.fcal[[6]],
+            models.fcal[[7]],
+            models.fcal[[8]], 
+            which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
+            mfrow = c(2,3),
+            axis = "Class")
+```
+
+```{R FCAL metrics table}
+fcal.metrics <- makeMetrics(G.fcal, models.fcal)
+buildDT(fcal.metrics)
+```
+
+The optimum AIC is <b>
+`r format(sort(fcal.metrics[, 2])[1], scientific = FALSE)` </b> with cluster
+`r order(fcal.metrics[,2])[1] + 3`. The optimum BIC is
+<b>`r format(sort(fcal.metrics[, 3])[1], scientific = FALSE)` </b> with cluster
+`r order(fcal.metrics[, 3])[1] + 3`
+
+#### Spaghetti plots per cluster
+
+::: {.panel-tabset}
+
+```{R FCAL spaghetti plots}
+#| results: "asis"
+for (G in G.fcal) {
+  cat(paste0("##### G = ", G, "\n\n"))
+  cat("###### Log-scale, all subjects \n\n")
+  grid::grid.newpage()
+  spaghettiPlot(fcal,
+                models.fcal,
+                G = G,
+                log = TRUE,
+                tmax = 7,
+                sizes = TRUE,
+                knots = TRUE,
+                knot.type = "equal",
+                var.time = "calpro_time")
+}
+```
+
+:::
+
+#### IBD Association
+
+For the cluster membership model, an IBDU or UC diagnosis for cluster 5 was
+found to be statistically significant ($p = 0.01755$ and $p = 0.00645$
+respectively). The coefficient for UC for cluster 4 was also
+statistically different from zero (p = $0.00009$). For this comparison, cluster
+6 was the reference cluster and CD was the reference level in for the diagnosis
+factor. 
+
+```{R}
+cluster <- numeric()
+
+dict.fcal <- subset(dict, ids %in% unique(fcal$ids))
+
+for (id in dict.fcal$ids) { 
+  cluster <- c(cluster,
+               subset(models.fcal[[6]]$pprob, ids == id)$class)
+}
+
+
+dict.fcal$diagnosis <- as.factor(dict.fcal$diagnosis )
+dict.fcal$cluster <- as.factor(cluster)
+rm(cluster)
+```
+
+::: {.panel-tabset}
+
+##### Population
+
+```{R}
+describe_cat("diagnosis", dict.fcal)
+```
+
+##### Cluster = 1
+
+```{R}
+describe_cat("diagnosis", subset(dict.fcal, cluster == 1))
+```
+##### Cluster = 2
+
+```{R}
+describe_cat("diagnosis", subset(dict.fcal, cluster == 2))
+```
+
+##### Cluster = 3
+
+```{R}
+describe_cat("diagnosis", subset(dict.fcal, cluster == 3))
+```
+
+##### Cluster = 4
+
+```{R}
+describe_cat("diagnosis", subset(dict.fcal, cluster == 4))
+```
+
+##### Cluster = 5
+
+```{R}
+describe_cat("diagnosis", subset(dict.fcal, cluster == 5))
+```
+
+##### Cluster = 6
+
+```{R}
+describe_cat("diagnosis", subset(dict.fcal, cluster == 6))
+```
+
+:::
+
+##### Fisher’s exact test
+
+```{R}
+fisher.test(dict.fcal$diagnosis,
+            dict.fcal$cluster,
+            simulate.p.value = TRUE, # calculate p-values using Monte Carlo
+            B = 1e5) # replicates for Monte Carlo test 
+```
+
+### Gaussian radial basis functions
+
+```{R}
+G.grbf <- numeric()
+models.grbf <- list()
+for (G.cand in G.cands) {
+  file.name <- paste0(prefix, "/cache/fcal/grbf/final/fcal-", G.cand, ".RDS")
+  if (file.exists(file.name)) {
+    G.grbf <- c(G.grbf, G.cand)
+    models.grbf[[G.cand]] <- readRDS(file.name)
+  }
+}
+rm(G.cand)
+```
+
+
+```{R FCAL alluvial}
+#| label: fig-grbf-alluvial
+#| fig-cap: Alluvial plot of cluster membership across G for FCAL
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("ids", "class", "G")
+for (G in G.grbf) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.grbf[[G]]$pprob[, 1:2], G = G))
+}
+alluvial.df <- as.data.frame(alluvial.df)
+
+alluvial.df$ids <- as.character(alluvial.df$ids)
+alluvial.df$class <- as.factor(alluvial.df$class)
+
+# eliminate label switching
+
+ alluvial.df[alluvial.df[, "G"] == 3, "class" ] <-
+   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
+                   from = c(seq(1, 3)),
+                   to = c(3, 1, 2))
+# 
+ alluvial.df[alluvial.df[, "G"] == 4, "class" ] <-
+   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
+                   from = c(seq(1, 4)),
+                   to = c(2, 3, 1, 4))
+ 
+ alluvial.df[alluvial.df[, "G"] == 5, "class" ] <-
+   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
+                   from = c(seq(1, 5)),
+                   to = c(1, 4, 5, 2, 3))
+ 
+ alluvial.df[alluvial.df[, "G"] == 6, "class" ] <-
+   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
+                   from = c(seq(1, 6)),
+                   to = c(3, 5, 1, 6, 2, 4))
+ 
+ alluvial.df[alluvial.df[, "G"] == 7, "class" ] <-
+   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
+                   from = c(seq(1, 7)),
+                   to = c(6, 3, 2, 4, 5, 7, 1))
+# 
+ alluvial.df[alluvial.df[, "G"] == 8, "class" ] <-
+   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
+                   from = c(seq(1, 8)),
+                   to = c(1, 5, 3, 8, 6, 2, 4, 7))
+
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = rainbow(8)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
+
+p <- p + ggtitle("", "")
+ggsave("paper/alluvial-FCAL-grbf.png",
+       p,
+       width = 12,
+       height = 6.75,
+       units = "in")
+ggsave("paper/alluvial-FCAL-grbf.pdf",
+       p,
+       width = 12,
+       height = 6.75,
+       units = "in")
+```
+
+#### Posterior classifications
+
+From the below data, we can see how posterior probabilities change as the number
+of assumed clusters increase
+
+
+:::{.column-page}
+::: {.panel-tabset}
+
+```{R grbf postpro}
+#| results: "asis"
+for (G in G.grbf) {
+  cat(paste0("##### G = ", G, "\n"))
+  output <- postprob_quiet(models.grbf[[G]])$result
+  cat(pander::pander(output[[1]]))
+  cat(pander::pander(output[[2]]))
+  cat(pander::pander(output[[3]]))
+}
+rm(output)
+```
+
+:::
+:::
+
+
+#### Residual plots
+
+::: {.panel-tabset}
+
+```{R GRBF residuals}
+#| results: "asis"
+for (G in G.grbf) {
+  cat(paste0("##### G = ", G, "\n"))
+  plot(models.grbf[[G]], shades = TRUE)
+}
+```
+
+:::
+
+##### Chosen model
+
+```{R Assess FCAL NCS normality}
+#| label: fig-GRBF-norm
+#| fig-cap: "Plots assessing normality for the distribution of residuals for the chosen GRBF model for FCAL. (A) Histrogram; (B) Q-Q plot."
+p1 <- data.frame(residuals = resid(models.grbf[[6]])) %>%
+  ggplot(aes(x = residuals)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 fill = "#D8829D",
+                 color = "#AF6A80",
+                 bins = 30) +
+  geom_density(color = "#023777", size = 1.2) +
+  theme_classic() +
+  theme(axis.line = element_line(colour = "gray")) +
+  ylab("Density") +
+  xlab("Residuals") +
+  ggtitle("A")
+
+p2 <- data.frame(residuals = resid(models.grbf[[6]])) %>%
+  ggplot(aes(sample = residuals)) +
+    stat_qq_band() +
+    stat_qq_line(color = "#D8829D") +
+    stat_qq_point(color = "#023777")  +
+    theme_classic() +
+    theme(axis.line = element_line(colour = "gray")) + 
+    ylab("Theoretical Quantiles") +
+    xlab("Sample Quantiles") +
+  ggtitle("B")
+ggsave("paper/Residual-plot-fcal-grbf.pdf",
+       plot = p1 / p2,
+       width = 8,
+       height = 8,
+       units = "in")
+print(p1 / p2)
+```
+
+```{R}
+#| label: fig-GRBF-norm-cluster
+#| fig-cap: "Q-Q plots assessing normality for the distribution of residuals stratifed by cluster assignment."
+predClass <- models.grbf[[6]]$pprob[, c("ids", "class")]
+temp <- merge(models.grbf[[6]]$pred, predClass, by = "ids")
+labels <- c("A", "B", "C", "D", "E", "F")
+p <- list()
+
+for (i in 1:6) {
+  p[[i]] <- subset(temp, class == i) %>%
+    ggplot(aes(sample = resid_ss)) +
+    stat_qq_band() +
+    stat_qq_line(color = "#D8829D") +
+    stat_qq_point(color = "#023777")  +
+    theme_classic() +
+    theme(axis.line = element_line(colour = "gray")) + 
+    ylab("Theoretical Quantiles") +
+    xlab("Sample Quantiles") +
+  ggtitle(labels[i])
+}
+
+ArrangedPlot <-  (p[[1]] + p[[2]]) / (p[[3]] + p[[4]]) / (p[[5]] + p[[6]])
+
+ggsave("paper/cluster-resids-grbf.pdf",
+       ArrangedPlot,
+       width = 8,
+       height = 8,
+       units = "in")
+print(ArrangedPlot)
+```
+
+#### Model metrics
+
+
+```{R GRBF metrics plot}
+#| label: fig-grbf-metrics
+#| fig-cap: "Model metrics for FCAL for G = 2-8"
+summaryplot(models.grbf[[2]],
+            models.grbf[[3]],
+            models.grbf[[4]],
+            models.grbf[[5]],
+            models.grbf[[6]],
+            models.grbf[[7]],
+            models.grbf[[8]], 
+            which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
+            mfrow = c(2,3),
+            axis = "Class")
+```
+
+```{R grbf metrics table}
+grbf.metrics <- makeMetrics(G.grbf, models.grbf)
+buildDT(grbf.metrics)
+```
+
+The optimum AIC is <b>
+`r format(sort(grbf.metrics[, 2])[1], scientific = FALSE)` </b> with cluster
+`r order(grbf.metrics[,2])[1] + 3`. The optimum BIC is
+<b>`r format(sort(grbf.metrics[, 3])[1], scientific = FALSE)` </b> with cluster
+`r order(grbf.metrics[, 3])[1] + 3`
+
+
+#### Spaghetti plots per cluster
+
+::: {.panel-tabset}
+
+```{R grbf spaghetti plots}
+#| results: "asis"
+for (G in G.grbf) {
+  cat(paste0("##### G = ", G, "\n\n"))
+  cat("###### Log-scale, all subjects \n\n")
+  grid::grid.newpage()
+  spaghettiPlot(fcal,
+                models.grbf,
+                G = G,
+                log = TRUE,
+                tmax = 7,
+                sizes = TRUE,
+                knots = TRUE,
+                knot.type = "equal",
+                grbf = TRUE,
+                var.time = "calpro_time")
+}
+```
+
+:::
+
+#### IBD Associations
+
+```{R}
+
+cluster <- numeric()
+
+dict.grbf <- subset(dict, ids %in% unique(fcal$ids))
+
+for (id in dict.grbf$ids) { 
+  cluster <- c(cluster,
+               subset(models.grbf[[6]]$pprob, ids == id)$class)
+}
+
+
+dict.grbf$diagnosis <- as.factor(dict.grbf$diagnosis )
+dict.grbf$cluster <- as.factor(cluster)
+rm(cluster)
+```
+
+::: {.panel-tabset}
+
+##### Population
+
+```{R}
+describe_cat("diagnosis", dict.grbf)
+```
+
+##### Cluster = 1
+
+```{R}
+describe_cat("diagnosis", subset(dict.grbf, cluster == 1))
+```
+##### Cluster = 2
+
+```{R}
+describe_cat("diagnosis", subset(dict.grbf, cluster == 2))
+```
+
+##### Cluster = 3
+
+```{R}
+describe_cat("diagnosis", subset(dict.grbf, cluster == 3))
+```
+
+##### Cluster = 4
+
+```{R}
+describe_cat("diagnosis", subset(dict.grbf, cluster == 4))
+```
+
+##### Cluster = 5
+
+```{R}
+describe_cat("diagnosis", subset(dict.grbf, cluster == 5))
+```
+
+##### Cluster = 6
+
+```{R}
+describe_cat("diagnosis", subset(dict.grbf, cluster == 6))
+```
+
+:::
+
+##### Fisher’s exact test
+
+```{R}
+fisher.test(dict.grbf$diagnosis,
+            dict.grbf$cluster,
+            simulate.p.value = TRUE, # calculate p-values using Monte Carlo
+            B = 1e5) # replicates for Monte Carlo test 
+```
+
+### NCS vs GRBF comparison
+
+```{R}
+pred.df <- data.frame(calpro_time = seq(0, 7, by = 0.01),
+                      diagnosis = "Crohn's Disease")
+pred.df <- rbind(pred.df,
+                 data.frame(calpro_time = seq(0, 7, by = 0.01),
+                            diagnosis = "Ulcerative colitis"))
+pred.df <- rbind(pred.df,
+                 data.frame(calpro_time = seq(0, 7, by = 0.01),
+                            diagnosis = "IBDU"))
+
+p.list <- list()
+
+l <- 1.2
+centers <- c(7 / 4, 14 / 4, 21 / 4)
+pred.df$grbf1 <- exp(-1 * ((pred.df$calpro_time - centers[1])^2) / (2 * l^2))
+pred.df$grbf2 <- exp(-1 * ((pred.df$calpro_time - centers[2])^2) / (2 * l^2))
+pred.df$grbf3 <- exp(-1 * ((pred.df$calpro_time - centers[3])^2) / (2 * l^2))
+
+NCS.pred <- predictY(models.fcal[[6]], pred.df, "calpro_time", draws = TRUE)$pred
+GRBF.pred <- predictY(models.grbf[[6]], pred.df, "calpro_time", draws = TRUE)$pred
+
+NCS.switch <- c(3, 5, 1, 2, 6, 4)
+
+for (g in 1:6) {
+  plot.df <- data.frame(time = pred.df$calpro_time,
+                        pred = NCS.pred[, NCS.switch[g]],
+                        upper  = NCS.pred[, NCS.switch[g] + 6],
+                        lower = NCS.pred[, NCS.switch[g] + 12],
+                        Model = "NCS")
+  plot.df <- rbind(plot.df, 
+                   data.frame(time = pred.df$calpro_time,
+                        pred = GRBF.pred[, g],
+                        upper  = GRBF.pred[, g + 6],
+                        lower = GRBF.pred[, g + 12],
+                        Model = "GRBF"))
+  
+  p <- plot.df %>%
+    ggplot(aes(x = time, color = Model)) + 
+    geom_line(aes(y = pred)) +
+    geom_line(aes(y = upper), lty = 2) +
+    geom_line(aes(y = lower), lty = 2) + 
+    xlab ("Time") +
+    ylab("Predicted cluster mean") +
+    ylim (3 , 8) + 
+    theme_minimal() + scale_color_manual(values = c("#0E6BA8", "#EF6461"))
+  p.list[[g]] <- p
+} 
+
+final.plot <- (p.list[[1]] + p.list[[2]]) /
+  (p.list[[3]] + p.list[[4]]) / 
+  (p.list[[5]] + p.list[[6]])  +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(guides = "collect") & theme(legend.position = "bottom")
+
+
+ggsave("paper/comparison.pdf",
+       final.plot, width = 8.3,
+       height = 11.7,
+       units = "in")
+ggsave("paper/comparison.png",
+       final.plot, width = 8.3,
+       height = 11.7,
+       units = "in")
+print(final.plot)
+```
+
+## Acknowledgments {.appendix}
+
+This work is funded by the Medical Research Council & University of Edinburgh
+via a Precision Medicine PhD studentship (MR/N013166/1, to **NC-C**).
+
+This work has made use of the resources provided by the [Edinburgh Compute and
+Data Facility (ECDF)](http://www.ecdf.ed.ac.uk/).
+
+## Author contributions {.appendix}
+
+
+
+## References {.appendix}
+
+::: {#refs}
+:::
+
+## Reuse {.appendix}
+
+Licensed by 
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY</a>
+ unless otherwise stated.
+ 
+## {.appendix}
+
+<div class = "center">
+  <img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
+  <img src="../../images/cgem-logo.png" alt="Centre for Genomic & Experimental Medicine logo" height = 50px>
+</div>
+
+---
+
+## Session info {.appendix}
+
+```{R Session info}
+pander(sessionInfo())
+```

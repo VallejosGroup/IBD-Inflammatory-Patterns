@@ -1,0 +1,371 @@
+---
+title: "Spaghetti comparison"
+subtitle: "Sex and age"
+author:
+  - name: "Nathan Contantine-Cooke" 
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    corresponding: true
+format:
+  html:
+    theme:
+      light: [default]
+      dark: [darkly]
+    code-fold: true
+    code-link: true
+    toc: true
+    code-tools:
+      source: true
+      toggle: true
+    html-math-method: katex
+    embed-resources: true
+    mainfont: "Mulish"
+    monofont: "Noto Sans Mono"
+---
+
+## Introduction
+
+```{R Setup}
+#| message: false
+set.seed(123)
+if (file.exists("/.dockerenv")) { # Check if running in Docker
+  # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
+  prefix <- "data/"
+} else {
+  # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
+  # mounted at /Volumes
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+}
+
+
+##########################
+#--     Packages       --#
+##########################
+
+library(tidyverse)
+# Support package (source found in libdr/)
+library(libdr)
+## Modelling ##
+library(lcmm)
+library(kml) # K-means
+library(mice) # Imputation
+## Presentation ##
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+
+dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
+fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
+crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
+
+model.fc.original <- list()
+model.fc.original[[6]] <- readRDS(paste0(prefix, "cache/fcal/ncs/fcal-6.RDS"))
+
+#model.fc.age.sex <- list()
+#model.fc.age.sex[[6]] <- readRDS(paste0(
+#  prefix,
+#  "/staging/sex+age/crp/",
+#  "age+sex/cache/crp-6.RDS"
+#))
+model.fc.age <- list()
+model.fc.age[[6]] <- readRDS(paste0(
+  prefix,
+  "/staging/sex+age/fcal/",
+  "age/cache/fcal-6.RDS"
+))
+model.fc.sex <- list()
+model.fc.sex[[6]] <- readRDS(paste0(
+  prefix,
+  "/staging/sex+age/fcal/",
+  "sex/cache/fcal-6.RDS"
+))
+
+###
+
+model.crp.original <- list()
+
+model.crp.original[[6]] <- readRDS(paste0(prefix, "cache/crp-ma/crp-6.RDS"))
+
+model.crp.age.sex <- list()
+model.crp.age.sex[[6]] <- readRDS(paste0(
+  prefix,
+  "/staging/sex+age/crp/",
+  "age+sex/cache/crp-6.RDS"
+))
+model.crp.age <- list()
+model.crp.age[[6]] <- readRDS(paste0(
+  prefix,
+  "/staging/sex+age/crp/",
+  "age/cache/crp-6.RDS"
+))
+model.crp.sex <- list()
+model.crp.sex[[6]] <- readRDS(paste0(
+  prefix,
+  "/staging/sex+age/crp/",
+  "sex/cache/crp-6.RDS"
+))
+
+forest.plot <- function(forest.data) {
+  forest.data <- as.data.frame(forest.data)
+  forest.data$covariates <- rownames(forest.data)
+
+  forest.data <- forest.data %>%
+    mutate(sig = if_else(coef - (1.96 * Se) > 0 | coef + (1.96 * Se) < 0,
+      TRUE,
+      FALSE
+    ))
+
+
+  xlim.calc <- max(abs(c(
+    forest.data$coef - (1.96 * forest.data$Se),
+    forest.data$coef + (1.96 * forest.data$Se)
+  )))
+
+  p <- forest.data %>%
+    ggplot(aes(y = covariates)) +
+    theme_minimal() +
+    geom_point(aes(x = coef, color = sig), shape = 15, size = 3) +
+    geom_linerange(aes(
+      xmin = coef - (1.96 * Se),
+      xmax = coef + 1.96 * Se, color = sig
+    )) +
+    geom_vline(xintercept = 0, lty = 2, color = "#00171F") +
+    scale_color_manual(values = c("#007EA7", "#BB4430")) +
+    xlim(-xlim.calc, xlim.calc) +
+    labs(y = "Covariates", x = "Coefficient estimate", color = "Significance")
+  print(p)
+}
+```
+
+
+## Faecal calprotectin
+
+### Original model
+
+```{R}
+libdr::spaghettiPlot(fcal,
+  model.fc.original,
+  G = 6,
+  tmax = 7,
+  var.time = "calpro_time"
+)
+```
+
+```{R}
+forest.data <- summary(model.fc.original[[6]])
+```
+
+```{R}
+forest.plot(forest.data)
+```
+
+```{R}
+plot(model.fc.original[[6]])
+```
+
+### Sex model
+
+```{R}
+forest.data <- summary(model.fc.sex[[6]])
+```
+
+```{R}
+forest.plot(forest.data)
+```
+
+```{R}
+plot(model.fc.sex[[6]])
+```
+
+
+### Age model
+
+Age was significant across all six classes. 
+
+```{R}
+forest.data <- summary(model.fc.age[[6]])
+```
+
+```{R}
+forest.plot(forest.data)
+```
+
+```{R}
+plot(model.fc.age[[6]])
+```
+
+### Age + sex model
+
+
+```{R}
+#forest.data <- summary(model.fc.age.sex[[6]])
+```
+
+```{R}
+#forest.plot(forest.data)
+```
+
+```{R}
+#plot(model.fc.age[[6]])
+```
+
+### Comparison
+
+```{R}
+perf <- data.frame(
+  Model = "Original",
+  AIC = model.fc.original[[6]]$AIC,
+  BIC = model.fc.original[[6]]$BIC,
+  loglik = model.fc.original[[6]]$loglik
+)
+
+perf <- rbind(
+  perf,
+  data.frame(
+    Model = "Age",
+    AIC = model.fc.age[[6]]$AIC,
+    BIC = model.fc.age[[6]]$BIC,
+    loglik = model.fc.age[[6]]$loglik
+  )
+)
+
+
+perf <- rbind(
+  perf,
+  data.frame(
+    Model = "Sex",
+    AIC = model.fc.sex[[6]]$AIC,
+    BIC = model.fc.sex[[6]]$BIC,
+    loglik = model.fc.sex[[6]]$loglik
+  )
+)
+
+#perf <- rbind(
+#  perf,
+#  data.frame(
+#    Model = "Age & Sex",
+#    AIC = model.crp.age.sex[[6]]$AIC,
+#    BIC = model.crp.age.sex[[6]]$BIC,
+#    loglik = model.crp.age.sex[[6]]$loglik
+#  )
+#)
+knitr::kable(perf)
+```
+
+## CRP
+
+### Original model
+
+```{R}
+libdr::spaghettiPlot(crp.median,
+  model.crp.original,
+  G = 6,
+  tmax = 7,
+  var.time = "crp_time"
+)
+```
+
+```{R}
+forest.data <- summary(model.crp.original[[6]])
+```
+
+```{R}
+forest.plot(forest.data)
+```
+
+```{R}
+plot(model.crp.original[[6]])
+```
+
+### Sex model
+
+Sex was only significant in one class. (Class 1)
+
+```{R}
+forest.data <- summary(model.crp.sex[[6]])
+```
+
+```{R}
+forest.plot(forest.data)
+```
+
+```{R}
+plot(model.crp.sex[[6]])
+```
+
+
+### Age model
+
+Age was significant across all six classes. 
+
+```{R}
+forest.data <- summary(model.crp.age[[6]])
+```
+
+```{R}
+forest.plot(forest.data)
+```
+
+```{R}
+plot(model.crp.age[[6]])
+```
+
+### Age + sex model
+
+Age is significant in 5/6 classes. Sex is significant in two classes. 
+
+```{R}
+forest.data <- summary(model.crp.age.sex[[6]])
+```
+
+```{R}
+forest.plot(forest.data)
+```
+
+```{R}
+plot(model.crp.age[[6]])
+```
+
+### Comparison
+
+```{R}
+perf <- data.frame(
+  Model = "Original",
+  AIC = model.crp.original[[6]]$AIC,
+  BIC = model.crp.original[[6]]$BIC,
+  loglik = model.crp.original[[6]]$loglik
+)
+
+perf <- rbind(
+  perf,
+  data.frame(
+    Model = "Age",
+    AIC = model.crp.age[[6]]$AIC,
+    BIC = model.crp.age[[6]]$BIC,
+    loglik = model.crp.age[[6]]$loglik
+  )
+)
+
+
+perf <- rbind(
+  perf,
+  data.frame(
+    Model = "Sex",
+    AIC = model.crp.sex[[6]]$AIC,
+    BIC = model.crp.sex[[6]]$BIC,
+    loglik = model.crp.sex[[6]]$loglik
+  )
+)
+
+perf <- rbind(
+  perf,
+  data.frame(
+    Model = "Age & Sex",
+    AIC = model.crp.age.sex[[6]]$AIC,
+    BIC = model.crp.age.sex[[6]]$BIC,
+    loglik = model.crp.age.sex[[6]]$loglik
+  )
+)
+knitr::kable(perf)
+```

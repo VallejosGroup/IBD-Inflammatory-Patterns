@@ -1,0 +1,9 @@
+#!/bin/bash
+# Workaround beacause Quarto deletes the output directory before rendering.
+# docs is in use by Docker and cannot be removed so use temp directory for
+# output and then copy the files to docs.
+rm -f *.qmd
+cp -r src/*.qmd .
+quarto render --output-dir temp
+rm -rf docs/*
+cp -r temp/* docs

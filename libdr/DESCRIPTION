@@ -1,0 +1,27 @@
+Package: libdr
+Type: Package
+Title: Support Functions used by the LIBDR LCMM Analysis
+Version: 0.1.0
+Authors@R: c(
+    person("Nathan", "Constantine-Cooke", , "nathan.constantine-cooke@ed.ac.uk", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-4437-8713")))
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: GPL (>= 3)
+Depends: 
+    R (>= 4.1.0),
+    splines
+Imports: 
+    lcmm,
+    ggplot2,
+    plyr,
+    knitr,
+    ComplexHeatmap,
+    viridis,
+    doParallel,
+    foreach,
+    tibble
+Suggests: magick
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.2.3

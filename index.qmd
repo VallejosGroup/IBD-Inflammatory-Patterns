@@ -1,0 +1,69 @@
+---
+title: "Analysis for Characterising heterogeneity in inflammatory bowel disease via routinely collected inflammatory longitudinal biomarker profiles in the Lothian IBD Registry"
+format:
+  html:
+    code-tools: false
+date: ""
+sidebar: false
+date-format: ""
+title-block-banner: false # can set as hex 
+author:
+  - name: "Nathan Contantine-Cooke" 
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    corresponding: true
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
+---
+
+```{R}
+#| echo: false
+x <- 1 # If there's no code block then inline R code below won't work. 
+```
+
+## About
+
+This website presents the analytical reports developed for
+*Characterising heterogeneity in inflammatory bowel disease via routinely collected inflammatory longitudinal biomarker profiles in the Lothian IBD Registry*
+by Constantine-Cooke et al. In this work, we expand upon our previous research
+which clustered faecal calprotectin profiles for a subset of Crohn's disease
+patients [@constantine-cooke2023]. This work explores clustering faecal
+calprotectin and CRP profiles across all IBD patients treated by the NHS Lothian
+health board. 
+
+This analysis is designed to be run either inside or outside of a Docker
+container. File paths will be adjusted based on the detected environment. 
+
+The analysis pipeline for this project consists of two stages:
+
+1. [Preprocessing](source/preprocessing/preprocessing.qmd) where data obtained from clinicians are
+   reformatted and any data quality issues are dealt with.
+2. Model selection, where latent class mixed models are fitted with differing
+   numbers of assumed clusters and the most appropriate model is selected.
+   Separate reports are generated for
+   [faecal calprotectin](source/selection/fcal.qmd) and
+   [CRP](source/selection/crp.qmd).
+   
+## Using this website
+
+The navigation menu at the top of the page will allow you to navigate through
+the steps of the analysis pipeline.  The code button at the top of each page can
+be used to show all code blocks instead of clicking on the code buttons for each
+individual block of code. Moving the mouse pointer over any citations in a
+report will produce a pop up box with reference details. Clicking on the
+citation will link to the bibliography at the bottom of the page. 
+
+## Software versions
+
+All analyses have been generated using
+[`r strsplit(R.version$version.string, " (", fixed = TRUE)[[1]][1]`](https://www.r-project.org).
+
+See the Session Information sections at the bottom of each report to see the R
+packages used for that particular report and respective versions. 
+
+## {.appendix}
+
+This website has been generated using the [Quarto](https://quarto.org)
+scientific publishing system built on top of [pandoc](https://pandoc.org). A
+list of major components used by Quarto can be found
+[here](https://quarto.org/license.html)

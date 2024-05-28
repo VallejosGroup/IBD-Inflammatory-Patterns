@@ -1,0 +1,664 @@
+---
+title: "Model selection"
+subtitle: "C-reactive protein"
+author:
+  - name: "Nathan Constantine-Cooke" 
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    corresponding: true
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
+  - name: "Karla Monterrubio-Gómez"
+    url: https://scholar.google.com/citations?user=YmyxSXAAAAAJ&hl=en
+    affiliations:
+      - ref: HGU
+  - name: "Catalina A. Vallejos"
+    url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: HGU
+      - ref: Turing
+#comments:
+#  giscus: 
+#    repo: quarto-dev/quarto-docs
+---
+
+## Introduction
+
+```{R Setup}
+#| message: false
+set.seed(123)
+if (file.exists("/.dockerenv")) { # Check if running in Docker
+  # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
+  prefix <- "data/"
+} else {
+  # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
+  # mounted at /Volumes
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+}
+
+
+##########################
+#--     Packages       --#
+##########################
+
+library(tidyverse)
+# Support package (source found in libdr/)
+library(libdr)
+## Modelling ##
+library(lcmm)
+library(kml) # K-means
+library(mice) # Imputation
+## Presentation ##
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+
+
+
+##########################
+#--     Data read      --#
+##########################
+
+dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
+crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
+crp_median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
+
+###########################################
+#-- Create directories and readme files --#
+###########################################
+
+if (!dir.exists("plots")) {
+  dir.create("plots")
+}
+
+fileConn <- file("plots/README.md")
+
+# write lines to the file connection
+writeLines(
+  c(
+    "# README",
+    "",
+    paste(
+      "This directory contains plots created by the analysis",
+      "but are not provided as figures (supplementary or",
+      "otherwise) in the paper"
+    )
+  ),
+  fileConn
+)
+# close the file connection
+close(fileConn)
+rm(fileConn)
+
+if (!dir.exists("cache")) dir.create("cache")
+fileConn <- file("cache/README.md")
+writeLines(
+  c(
+    "# README",
+    "",
+    paste(
+      "This directory stores cached versions of R objects which",
+      "take a long time to create (such as LCMM fit objects)."
+    )
+  ),
+  fileConn
+)
+close(fileConn)
+rm(fileConn)
+
+if (!dir.exists("paper")) dir.create("paper")
+fileConn <- file("paper/README.md")
+writeLines(
+  c(
+    "# README",
+    "",
+    paste(
+      "This directory contains all figures used in the paper.",
+      "The sup subdirectory contains supplementary figures"
+    )
+  ),
+  fileConn
+)
+close(fileConn)
+rm(fileConn)
+
+if (!dir.exists("paper/sup")) dir.create("paper/sup")
+
+if (!dir.exists("plots/residuals")) {
+  dir.create("plots/residuals")
+}
+```
+
+
+### Unprocessed CRP
+
+```{R Load Unprocessed CRP Models}
+#| fig-width: 12
+#| fig-height: 6.75
+# set the number of groups
+G.crp <- numeric()
+models.crp <- list()
+G.cands <- seq(2, 10)
+for (G.cand in G.cands) {
+  file.name <- paste0(prefix, "/cache/crp/crp-", G.cand, ".RDS")
+  if (file.exists(file.name)) {
+    G.crp <- c(G.crp, G.cand)
+    models.crp[[G.cand]] <- readRDS(file.name)
+  }
+}
+rm(G.cand)
+```
+
+```{R CRP alluvial}
+#| label: fig-crp-alluvial
+#| fig-cap: Alluvial plot of cluster membership across G for CRP
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("ids", "class", "G")
+for (G in G.crp) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.crp[[G]]$pprob[, 1:2], G = G))
+}
+alluvial.df <- as.data.frame(alluvial.df)
+
+alluvial.df$ids <- as.character(alluvial.df$ids)
+alluvial.df$class <- as.factor(alluvial.df$class)
+
+alluvial.df[alluvial.df[, "G"] == 4, "class" ] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
+                  from = c(seq(1, 4)),
+                  to = c(1, 4, 2, 3))
+
+alluvial.df[alluvial.df[, "G"] == 5, "class" ] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
+                  from = c(seq(1, 5)),
+                  to = c(5, 2, 4, 3, 1))
+
+
+# eliminate label switching
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = rainbow(8)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
+
+p <- p + ggtitle("", "")
+ggsave("paper/alluvial-CRP-all.png", p, width = 8, height = 4.5, units = "in")
+ggsave("paper/alluvial-CRP-all.pdf", p, width = 8, height = 4.5, units = "in")
+```
+
+##### Posterior classifications
+
+From the below data, we can see how posterior probabilities change as the number
+of assumed clusters increase
+
+
+:::{.column-page}
+::: {.panel-tabset}
+
+```{R CRP postpro}
+#| results: "asis"
+postprob_quiet <- quietly(postprob)
+for (G in G.crp) {
+  cat(paste0("##### G = ", G, "\n"))
+  output <- postprob_quiet(models.crp[[G]])$result
+  cat(pander::pander(output[[1]]))
+  cat(pander::pander(output[[2]]))
+  cat(pander::pander(output[[3]]))
+}
+rm(output)
+```
+
+:::
+:::
+
+
+##### Residual plots
+
+::: {.panel-tabset}
+
+```{R CRP residuals}
+#| results: "asis"
+for (G in G.crp) {
+  cat(paste0("##### G = ", G, "\n"))
+  plot(models.crp[[G]], shades = TRUE)
+}
+```
+
+:::
+
+##### Model metrics
+
+```{R CRP metrics plot}
+#| label: fig-crp-metrics
+#| fig-cap: "Model metrics for CRP for G = 4-8"
+summaryplot(models.crp[[4]],
+            models.crp[[5]],
+            which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
+            mfrow = c(2,3),
+            axis = "Class")
+```
+
+```{R CRP metrics table}
+crp.metrics <- makeMetrics(G.crp, models.crp)
+buildDT(crp.metrics)
+```
+
+##### Spaghetti plots per cluster
+
+::: {.panel-tabset}
+
+```{R CRP spaghetti plots}
+#| results: "asis"
+for (G in G.crp) {
+  cat(paste0("##### G = ", G, "\n\n"))
+  cat("###### Log-scale, all subjects \n\n")
+  grid::grid.newpage()
+  spaghettiPlot(crp,
+                models.crp,
+                G = G,
+                log = TRUE,
+                tmax = 7,
+                sizes = TRUE,
+                knots = TRUE,
+                knot.type = "equal",
+                var.time = "crp_time")
+}
+```
+
+:::
+
+
+##### IBD Association
+
+```{R}
+cluster <- numeric()
+
+dict.crp <- subset(dict, ids %in% unique(crp$ids))
+
+for (id in dict.crp$ids) { 
+  cluster <- c(cluster,
+               subset(models.crp[[5]]$pprob, ids == id)$class)
+}
+
+dict.crp$diagnosis <- as.factor(dict.crp$diagnosis)
+dict.crp$cluster <- as.factor(cluster)
+rm(cluster)
+```
+
+```{R}
+describe_cat("diagnosis", dict.crp)
+```
+
+###### Cluster = 1
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp, cluster == 1))
+```
+###### Cluster = 2
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp, cluster == 2))
+```
+
+###### Cluster = 3
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp, cluster == 3))
+```
+
+###### Cluster = 4
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp, cluster == 4))
+```
+
+###### Cluster = 5
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp, cluster == 5))
+```
+
+###### Fisher’s exact test
+
+```{R}
+fisher.test(dict.crp$diagnosis,
+            dict.crp$cluster,
+            simulate.p.value = TRUE,
+            B = 1e5)
+```
+
+### Processed CRP
+
+```{R Load Processed CRP Models}
+#| fig-width: 12
+#| fig-height: 6.75
+# set the number of groups
+G.crp <- numeric()
+models.crp.ma <- list()
+G.cands <- seq(2, 10)
+for (G.cand in G.cands) {
+  file.name <- paste0(prefix, "/cache/crp-ma/crp-", G.cand, ".RDS")
+  if (file.exists(file.name)) {
+    G.crp <- c(G.crp, G.cand)
+    models.crp.ma[[G.cand]] <- readRDS(file.name)
+  }
+}
+rm(G.cand)
+```
+
+```{R Processed CRP alluvial}
+#| label: fig-crp-alluvial-ma
+#| fig-cap: Alluvial plot of cluster membership across G for CRP
+
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("ids", "class", "G")
+
+for (G in G.crp) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.crp.ma[[G]]$pprob[, 1:2],
+                                          G = G))
+}
+alluvial.df <- as.data.frame(alluvial.df)
+
+alluvial.df$ids <- as.character(alluvial.df$ids)
+alluvial.df$class <- as.factor(alluvial.df$class)
+
+alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
+    from = c(seq(1, 3)),
+    to = c(1, 3, 2)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
+    from = c(seq(1, 4)),
+    to = c(3, 4, 2, 1)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
+    from = c(seq(1, 5)),
+    to = c(5, 2, 4, 1, 3)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
+    from = c(seq(1, 6)),
+    to = c(6, 2, 1, 4, 3, 5)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
+    from = c(seq(1, 7)),
+    to = c(2, 6, 3, 5, 1, 7, 4)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
+    from = c(seq(1, 8)),
+    to = c(6, 8, 1, 7, 2, 5, 4, 3)
+  )
+
+
+alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 9, "class"],
+    from = c(seq(1, 9)),
+    to = c(7, 9, 6, 4, 8, 1, 5, 2, 3)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 10, "class"],
+    from = c(seq(1, 10)),
+    to = c(2, 10, 7, 3, 5, 1, 9, 6, 8, 4)
+  )
+
+# eliminate label switching
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = rainbow(10)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
+
+
+for (format in c("png", "pdf")) {
+  ggsave(paste0("plots/ma-nocor/alluvial.", format),
+    p,
+    width = 12,
+    height = 6.75,
+    units = "in"
+  )
+}
+```
+
+##### Posterior classifications
+
+From the below data, we can see how posterior probabilities change as the number
+of assumed clusters increase
+
+
+:::{.column-page}
+::: {.panel-tabset}
+
+```{R CRP-ma postpro}
+#| results: "asis"
+for (G in G.crp) {
+  cat(paste0("##### G = ", G, "\n"))
+  output <- postprob_quiet(models.crp.ma[[G]])$result
+  cat(pander::pander(output[[1]]))
+  cat(pander::pander(output[[2]]))
+  cat(pander::pander(output[[3]]))
+}
+rm(output)
+```
+
+:::
+:::
+
+
+##### Residual plots
+
+::: {.panel-tabset}
+
+```{R CRP MA residuals}
+#| results: "asis"
+for (G in G.crp) {
+  cat(paste0("##### G = ", G, "\n"))
+  plot(models.crp.ma[[G]], shades = TRUE)
+}
+```
+
+:::
+
+##### Model metrics
+
+```{R CRP MA metrics plot}
+#| label: fig-crp-ma-metrics
+#| fig-cap: "Model metrics for CRP MA for G = 4-10"
+summaryplot(models.crp.ma[[4]],
+            models.crp.ma[[5]],
+            models.crp.ma[[6]],
+            models.crp.ma[[7]],
+            models.crp.ma[[8]],
+            models.crp.ma[[9]],
+            models.crp.ma[[10]],
+            which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
+            mfrow = c(2,3),
+            axis = "Class")
+```
+
+```{R Processed CRP metrics table}
+crp.metrics <- makeMetrics(G.crp, models.crp.ma)
+buildDT(crp.metrics)
+```
+
+##### Spaghetti plots per cluster
+
+::: {.panel-tabset}
+
+```{R Processed CRP spaghetti plots}
+#| results: "asis"
+for (G in G.crp) {
+  cat(paste0("##### G = ", G, "\n\n"))
+  cat("###### Processed CRP \n\n")
+  grid::grid.newpage()
+  
+  spaghettiPlot(crp_median,
+    models.crp.ma,
+    G,
+    var.time = "crp_time",
+    tmax = 7,
+    knots = TRUE,
+    ylim = "data"
+  )
+  cat("###### Unprocessed CRP \n\n")
+  grid::grid.newpage()
+  spaghettiPlot(crp,
+                models.crp.ma,
+                G = G,
+                log = TRUE,
+                tmax = 7,
+                sizes = TRUE,
+                knots = TRUE,
+                knot.type = "equal",
+                var.time = "crp_time")
+}
+```
+
+:::
+
+
+##### IBD Association
+
+```{R}
+cluster <- numeric()
+
+dict.crp.median <- subset(dict, ids %in% unique(crp_median$ids))
+
+for (id in dict.crp.median $ids) { 
+  cluster <- c(cluster,
+               subset(models.crp[[5]]$pprob, ids == id)$class)
+}
+
+dict.crp.median $diagnosis <- as.factor(dict.crp.median $diagnosis)
+dict.crp.median $cluster <- as.factor(cluster)
+rm(cluster)
+```
+
+```{R}
+describe_cat("diagnosis", dict.crp.median)
+```
+
+###### Cluster = 1
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp.median, cluster == 1))
+```
+###### Cluster = 2
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp.median, cluster == 2))
+```
+
+###### Cluster = 3
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp.median, cluster == 3))
+```
+
+###### Cluster = 4
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp.median, cluster == 4))
+```
+
+###### Cluster = 5
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp.median, cluster == 5))
+```
+
+###### Cluster = 5
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp.median, cluster == 6))
+```
+
+###### Fisher’s exact test
+
+```{R}
+fisher.test(dict.crp.median$diagnosis,
+            dict.crp.median$cluster,
+            simulate.p.value = TRUE,
+            B = 1e5)
+```
+
+
+## Acknowledgments {.appendix}
+
+This work is funded by the Medical Research Council & University of Edinburgh
+via a Precision Medicine PhD studentship (MR/N013166/1, to **NC-C**).
+
+This work has made use of the resources provided by the [Edinburgh Compute and
+Data Facility (ECDF)](http://www.ecdf.ed.ac.uk/).
+
+## Author contributions {.appendix}
+
+
+
+## References {.appendix}
+
+::: {#refs}
+:::
+
+## Reuse {.appendix}
+
+Licensed by 
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY</a>
+ unless otherwise stated.
+ 
+## {.appendix}
+
+<div class = "center">
+  <img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
+  <img src="../../images/cgem-logo.png" alt="Centre for Genomic & Experimental Medicine logo" height = 50px>
+</div>
+
+---
+
+## Session info {.appendix}
+
+```{R Session info}
+pander(sessionInfo())
+```

@@ -1,0 +1,34 @@
+
+/* base variables */
+
+/* Edit the CSS properties in this file to create a custom theme.
+/* (adapted from distill CSS)
+
+/* Optional: embed custom fonts here with `@import`          */
+/* This must remain at the top of this file.                 */
+
+@import url('https://fonts.googleapis.com/css2?family=Mulish');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300');
+
+.code-tools-button {
+  color: white !important;
+  background-color: #004276 !important;
+}
+
+.navbar {
+  font-family: 'Lato', sans-serif;
+}
+
+.title {
+  font-family: 'Lato', sans-serif;
+}
+
+div.center{
+  margin: auto;
+  width: 531px !important;
+}
+
+img.center{
+  padding-right: 20px;
+}

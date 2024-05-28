@@ -1,0 +1,1018 @@
+---
+title: "Whole cohort"
+subtitle: "Model selection"
+author:
+  - name: "Nathan Contantine-Cooke" 
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    corresponding: true
+    affiliations:
+      - ref: HGU
+      - ref: CGEM
+  - name: "Karla Monterrubio-Gómez"
+    url: https://scholar.google.com/citations?user=YmyxSXAAAAAJ&hl=en
+    affiliations:
+      - ref: HGU
+  - name: "Catalina A. Vallejos"
+    url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: HGU
+      - ref: Turing
+#comments:
+#  giscus: 
+#    repo: quarto-dev/quarto-docs
+---
+      
+## Introduction
+
+```{R Setup}
+#| message: false
+set.seed(123)
+
+# Fitting the LCMMs takes a long time.
+# if cache.models is true then the saved model objects will be used instead of
+# refitting the models
+cache.models <- TRUE
+
+##########################
+#--     Packages       --#
+##########################
+
+# Support package (source found in libdr/)
+library(libdr)
+library(tidyverse)
+## Modelling ##
+library(lcmm)
+## Presentation ##
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+
+##########################
+#--     Data read      --#
+##########################
+
+# FCAL/CRP
+if (file.exists("/.dockerenv")) {
+  # Check if running in Docker or not
+  fcal <- read.csv("data/processed/uc/fcal-diag.csv")
+} else if ("SGE_CLUSTER_NAME" %in% names(Sys.getenv())) {
+  # Assume running on HPC (Eddie)
+  fcal <- read.csv("fcal-diag.csv")
+  crp <- read.csv("crp-diag.csv")
+} else {
+  # Assume running locally and IGC(/IGMM) datastore is mounted at /Volumes
+  libdr.data <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+  fcal.cd <- read.csv(paste0(libdr.data, "processed/cd/fcal-diag.csv"))
+  fcal.uc <- read.csv(paste0(libdr.data, "processed/uc/fcal-diag.csv"))
+  fcal <- rbind(fcal.cd, fcal.uc)
+  crp.cd <- read.csv(paste0(libdr.data, "processed/cd/crp-diag.csv"))
+  crp.uc <- read.csv(paste0(libdr.data, "processed/uc/crp-diag.csv"))
+  crp <- rbind(crp.cd, crp.uc)
+  fcal$IBD <- character(length = nrow(fcal))
+  fcal[fcal$ids %in% fcal.cd$ids, "IBD"] <- "CD" 
+  fcal[fcal[, "IBD"] != "CD", "IBD"] <- "UC"
+  rm(fcal.cd, fcal.uc, crp.cd, crp.uc) # Tidy up
+}
+
+# Static information
+libdr.data <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+outcomes.cd <- read.csv(paste0(libdr.data, "processed/cd/outcomes.csv"))
+outcomes.uc <- read.csv(paste0(libdr.data, "processed/cd/outcomes.csv"))
+outcomes <- rbind(outcomes.cd, outcomes.uc)
+outcomes <- outcomes %>% 
+  select(ids, Gender, diagnosisId, diagnosisDate, Age.at.diagnosis) %>% # keep basic variables
+  distinct() # remove duplicates (we had 2 rows per ids value)
+
+dim(fcal)
+
+fcal <- merge(fcal, outcomes, by = "ids", all.x = TRUE)
+
+dim(fcal)
+```
+
+# Exploratory Data Analysis
+
+## FCAL
+
+### Distribution of FCAL and measurement times
+
+First, we explore the distribution of the FCAL values themselves
+
+```{R FCAL distribution}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of FCAL values when in measurement units."
+# load the data
+
+# create a plot
+fcal %>%
+  # create a slab plot
+  ggplot(aes(x = calpro_result, y = NULL)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # create a dot plot
+  geom_dots(binwidth = 10, size = 0.1, side = "bottom", color = "#235789") +
+  # set the theme
+  theme_minimal() +
+  # remove the y axis
+  theme(axis.text.y = element_blank()) +
+  # set the x axis label
+  xlab("FCAL (µg/g)") +
+  # remove the y axis label
+  ylab("") +
+  # set the plot title
+  ggtitle("Distribution of FCAL Measurements")
+```
+
+We then look at stratified densities according to diagnosis type, gender and
+age at diagnosis.
+
+
+```{R FCAL distribution by diagnosis}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of FCAL values when in measurement units."
+# load the data
+
+# create a plot
+fcal %>%
+  # create a slab plot
+  ggplot(aes(x = calpro_result, colour = IBD)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # stratify
+  facet_wrap(~IBD) +
+  # set the theme
+  theme_minimal() +
+  # set the x axis label
+  xlab("FCAL (µg/g)") +
+  # remove the y axis label
+  ylab("Density") +
+  # set the plot title
+  ggtitle("Distribution of FCAL Measurements")
+```
+
+```{R FCAL distribution by gender}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of FCAL values when in measurement units."
+# load the data
+
+# create a plot
+fcal %>%
+  # create a slab plot
+  ggplot(aes(x = calpro_result, colour = Gender)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # stratify
+  facet_wrap(~Gender) +
+  # set the theme
+  theme_minimal() +
+  # set the x axis label
+  xlab("FCAL (µg/g)") +
+  # remove the y axis label
+  ylab("Density") +
+  # set the plot title
+  ggtitle("Distribution of FCAL Measurements")
+```
+
+```{R FCAL distribution by age}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of FCAL values when in measurement units."
+# load the data
+
+fcal <- fcal %>% 
+  mutate(Age.groups = cut(Age.at.diagnosis, 
+                          breaks=c(0, 20, 40, 60, Inf), 
+                          labels=c("[0-20]","[20-40]","[40-60]", "[60-]")))
+
+# create a plot
+fcal %>%
+  # create a slab plot
+  ggplot(aes(x = calpro_result, colour = Age.groups)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # stratify
+  facet_wrap(~Age.groups) +
+  # set the theme
+  theme_minimal() +
+  # set the x axis label
+  xlab("FCAL (µg/g)") +
+  # remove the y axis label
+  ylab("Density") +
+  # set the plot title
+  ggtitle("Distribution of FCAL Measurements")
+```
+
+Next, we look at the distribution of measurement times for the full cohort
+and stratified into the same groups as above.
+
+```{R FCAL time distribution}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of FCAL values when in measurement units."
+# load the data
+
+# create a plot
+fcal %>%
+  # create a slab plot
+  ggplot(aes(x = calpro_time)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # set the theme
+  theme_minimal() +
+  # set the x axis label
+  xlab("Time from diagnosis (years)") +
+  # remove the y axis label
+  ylab("Density") +
+  # set the plot title
+  ggtitle("Distribution of FCAL Measurements")
+```
+
+```{R FCAL time distribution by diagnosis}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of FCAL values when in measurement units."
+# load the data
+
+# create a plot
+fcal %>%
+  # create a slab plot
+  ggplot(aes(x = calpro_time, colour = IBD)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # stratify
+  facet_wrap(~IBD) +
+  # set the theme
+  theme_minimal() +
+  # set the x axis label
+  xlab("Time from diagnosis (years)") +
+  # remove the y axis label
+  ylab("Density") +
+  # set the plot title
+  ggtitle("Distribution of FCAL Measurements")
+```
+
+```{R FCAL time distribution by gender}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of FCAL values when in measurement units."
+# load the data
+
+# create a plot
+fcal %>%
+  # create a slab plot
+  ggplot(aes(x = calpro_time, colour = Gender)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # stratify
+  facet_wrap(~Gender) +
+  # set the theme
+  theme_minimal() +
+  # set the x axis label
+  xlab("Time from diagnosis (years)") +
+  # remove the y axis label
+  ylab("Density") +
+  # set the plot title
+  ggtitle("Distribution of FCAL Measurements")
+```
+
+```{R FCAL time distribution by age}
+#| label: fig-fcal-dist
+#| fig-cap: "Distribution of FCAL values when in measurement units."
+# load the data
+
+# create a plot
+fcal %>%
+  # create a slab plot
+  ggplot(aes(x = calpro_time, colour = Age.groups)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # stratify
+  facet_wrap(~Age.groups) +
+  # set the theme
+  theme_minimal() +
+  # set the x axis label
+  xlab("Time from diagnosis (years)") +
+  # remove the y axis label
+  ylab("Density") +
+  # set the plot title
+  ggtitle("Distribution of FCAL Measurements")
+```
+
+Notes:
+
+- There seems to be an age- and gender-specific pattern in the distribution
+of FCAL values. We may need to include these as covariates.
+- Is there also a pattern in terms of how many measurements per individual? 
+
+### Temporal patterns
+
+```{R FCAL time mapping}
+#| fig-cap: "Spaghetti plot of FCAL trajectories"
+
+fcal <- fcal %>% 
+  mutate(calpro_time_group = cut(calpro_time, 
+                          breaks=c(-Inf, 1, 2, 3, 4, 5, 6, 7), 
+                          labels=c("1","2","3","4", "5", "6","7")))
+
+fcal %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), group = factor(ids))) +
+  geom_line(alpha = 0.1) + 
+  theme_minimal() +
+  xlab("Time (years)") +
+  ylab("Log FCAL") +
+  ggtitle("") 
+
+fcal %>% ggplot(aes(x = calpro_time_group, y = log(calpro_result))) +
+  geom_violin() + 
+  facet_wrap(~IBD)+
+  theme_minimal() +
+  xlab("Time (year)") +
+  ylab("Log FCAL") 
+```
+
+```{R FCAL time mapping by diagnosis}
+#| fig-cap: "Spaghetti plot of FCAL trajectories"
+
+fcal %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), group = factor(ids))) +
+  geom_line(alpha = 0.1) + 
+  facet_wrap(~IBD) +
+  theme_minimal() +
+  xlab("Time (years)") +
+  ylab("Log FCAL") +
+  ggtitle("") 
+```
+
+```{R FCAL time mapping by gender}
+#| fig-cap: "Spaghetti plot of FCAL trajectories"
+
+fcal %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), group = factor(ids))) +
+  geom_line(alpha = 0.1) + 
+  facet_wrap(~Gender) +
+  theme_minimal() +
+  xlab("Time (years)") +
+  ylab("Log FCAL") +
+  ggtitle("") 
+```
+
+```{R FCAL time mapping by age}
+#| fig-cap: "Spaghetti plot of FCAL trajectories"
+
+fcal %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), group = factor(ids))) +
+  geom_line(alpha = 0.1) + 
+  facet_wrap(~Age.groups) +
+  theme_minimal() +
+  xlab("Time (years)") +
+  ylab("Log FCAL") +
+  ggtitle("") 
+```
+
+```{R FCAL time mapping selected examples}
+#| fig-cap: "Spaghetti plot of FCAL trajectories"
+fcal %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), group = factor(ids))) +
+  geom_line(alpha = 0.1, colour = "gray") +
+  geom_line(data = fcal[fcal$ids == 174,], colour = "red") +
+  geom_line(data = fcal[fcal$ids == 40,], colour = "blue") +
+  geom_line(data = fcal[fcal$ids == 48,], colour = "green") +
+  geom_line(data = fcal[fcal$ids == 68,], colour = "purple") +
+  theme_minimal() +
+  xlab("Time (years)") +
+  ylab("Log FCAL") +
+  ggtitle("") 
+
+
+sort(table(fcal$ids))
+```
+
+Notes:
+
+- Was the QC applied correctly? There are inviduals with 4 observations, all
+within the first 2 years. 
+
+## CRP
+
+
+```{R CRP distribution}
+#| label: fig-crp-dist
+#| fig-cap: "Distribution of CRP values when in measurement units."
+# load the data
+
+# create a plot
+crp %>%
+  # create a slab plot
+  ggplot(aes(x = TEST_DATA, y = NULL)) +
+  # set the size and transparency of the slabs
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  # set the theme
+  theme_minimal() +
+  # remove the y axis
+  theme(axis.text.y = element_blank()) +
+  # set the x axis label
+  xlab("CRP (\u03BCg/mL)") +
+  # remove the y axis label
+  ylab("") +
+  # set the plot title
+  ggtitle("Distribution of CRP Measurements")
+```
+
+```{R FCAL log transformation}
+#| label: fig-crp-dist-log
+#| fig-cap: "Distribution of CRP values after a log transformation has been applied."
+# log-transform the CRP measurements
+crp$TEST_DATA <- log(crp$TEST_DATA)
+
+# plot the distribution of the log-transformed FCAL measurements
+crp %>%
+  ggplot(aes(x = TEST_DATA, y = NULL)) +
+  stat_slab(size = 0.8, alpha = 0.5, fill = "#235789") +
+  geom_dots(binwidth = 0.02, size = 0.1, side = "bottom", color = "#235789") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("Log (CRP (\u03BCg/mL))") +
+  ylab("") +
+  ggtitle(
+    "Distribution of Log-Transformed CRP Measurements"
+  )
+```
+
+
+```{R}
+tab <- matrix(ncol = 2, nrow = 0)
+colnames(tab) <- c("Cutoff (years)", "n")
+thresholds <- seq(1, 9)
+ids <- unique(fcal$ids)
+for (threshold in thresholds) {
+  meet_threshold <- matrix(ncol = 2, nrow = 0)
+  for (id in ids) {
+    if (any(subset(fcal, ids == id)$calpro_time > threshold)) {
+      meet_threshold <- rbind(meet_threshold, c(id, 1))
+    } else {
+      meet_threshold <- rbind(meet_threshold, c(id, 0))
+    }
+  }
+  tab <- rbind(tab, c(threshold, sum(meet_threshold[, 2])))
+}
+
+knitr::kable(tab,
+             caption = paste0("Number of subjects with a FCAL measurement ",
+                              "after the cutoff threshold (total n=",
+                              length(unique(fcal$ids)),
+                              ")")) 
+```
+
+
+```{R}
+tab2 <- matrix(ncol = 2, nrow = 0)
+colnames(tab2) <- c("ids", "Followup")
+for (id in ids){
+  followup <- max(subset(fcal, ids == id)$calpro_time)
+  tab2 <- rbind(tab2, c(id, followup))
+}
+
+tab2 <- as.data.frame(tab2)
+
+tab2 |>
+  ggplot(aes(x = Followup)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", bins = 25) +
+  theme_minimal() +
+  ggtitle("Histogram of FCAL followup per subject",
+          "(Followup defined as time of last observed measurement)") +
+  ylab("Count")
+
+tab2 <- subset (tab2, Followup >= 5)
+fcal <- subset(fcal, ids %in% tab2$ids)
+write.csv(fcal, paste0(libdr.data, "/processed/fcal-eddie.csv"))
+```
+
+```{R}
+tab <- matrix(ncol = 2, nrow = 0)
+colnames(tab) <- c("Cutoff (years)", "n")
+thresholds <- seq(1, 9)
+ids <- unique(crp$CHI)
+for (threshold in thresholds) {
+  meet_threshold <- matrix(ncol = 2, nrow = 0)
+  for (id in ids) {
+    if (any(subset(crp, CHI == id)$time > threshold)) {
+      meet_threshold <- rbind(meet_threshold, c(id, 1))
+    } else {
+      meet_threshold <- rbind(meet_threshold, c(id, 0))
+    }
+  }
+  tab <- rbind(tab, c(threshold, sum(meet_threshold[, 2])))
+}
+
+knitr::kable(tab,
+             caption = paste0("Number of subjects with a CRP measurement ",
+                              "after the cutoff threshold (total n=",
+                              length(unique(crp$CHI)),
+                              ")")) 
+```
+
+
+```{R}
+tab2 <- matrix(ncol = 2, nrow = 0)
+colnames(tab2) <- c("ids", "Followup")
+for (id in ids){
+  followup <- max(subset(crp, CHI == id)$time)
+  tab2 <- rbind(tab2, c(id, followup))
+}
+
+tab2 <- as.data.frame(tab2)
+
+tab2 |>
+  ggplot(aes(x = Followup)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", bins = 25) +
+  theme_minimal() +
+  ggtitle("Histogram of CRP followup per subject",
+          "(Followup defined as time of last observed measurement)") +
+  ylab("Count")
+```
+```{R}
+tab2 <- subset (tab2, Followup >= 5)
+crp <- subset(crp, ids %in% tab2$ids)
+
+crp <- subset(crp, !is.infinite(TEST_DATA))
+
+crp <- subset(
+  crp,
+  CHI %in% as.numeric(names(table(crp$CHI)[table(crp$CHI) >= 3]))
+)
+
+
+write.csv(crp, paste0(libdr.data, "/processed/crp-eddie.csv"))
+```
+
+
+```{R}
+#| include: false
+rm(tab, tab2, followup, id, ids, threshold, thresholds, meet_threshold)
+```
+
+## Model loading
+
+The following assumes the above was run to generate datasets for Eddie and then
+scripts in Eddie were run to fit the model objects. These model objects are then
+saved in cvallejo-predicct/libdr/cache/
+
+### FCAL
+
+LCMMs with 2 - 10 assumed clusters are considered. As recommended by
+@Proust-Lima2017, a model is initially fitted with one cluster (I.E a regular
+linear mixed effects model) which is used to sample initial values in  a grid
+search approach which attempts to find optimal models for each assumed number of
+clusters based upon maximum likelihood.
+
+For the fixed and random components of each model, we will consider natural
+cubic splines of time with five knots (I.E seven fixed points including the
+boundaries of the splines. The knots for the natural cubic splines are placed at
+quartiles of FCAL measurement times for the study cohort.
+
+
+```{R Load FCAL models}
+#| fig-width: 12
+#| fig-height: 6.75
+# set the number of groups
+G.fcal <- numeric()
+models.fcal <- list()
+G.cands <- seq(2, 10)
+for (G.cand in G.cands) {
+  if (file.exists(paste0(libdr.data, "/cache/", "fcal-", G.cand, ".RDS"))) {
+    G.fcal <- c(G.fcal, G.cand)
+    models.fcal[[G.cand]] <- readRDS(paste0(
+      libdr.data,
+      "cache/",
+      "fcal-",
+      G.cand,
+      ".RDS"
+    ))
+  }
+}
+rm(G.cand)
+```
+
+```{R FCAL alluvial}
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("ids", "class", "G")
+for (G in G.fcal) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.fcal[[G]]$pprob[, 1:2], G = G))
+}
+alluvial.df <- as.data.frame(alluvial.df)
+
+alluvial.df$ids <- as.character(alluvial.df$ids)
+alluvial.df$class <- as.factor(alluvial.df$class)
+
+
+# eliminate label switching
+alluvial.df <- reLabel(3, alluvial.df) |>
+  reLabel(4, alluvial.df = _) |>
+  reLabel(5, alluvial.df = _) |>
+  reLabel(6, alluvial.df = _) |>
+  reLabel(7, alluvial.df = _) |>
+  reLabel(8, alluvial.df = _) |>
+  reLabel(9, alluvial.df = _)
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  ggtitle(
+    "Alluvial plot of cluster membership across G",
+    "FCAL"
+  ) +
+  scale_fill_manual(values = rainbow(6)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
+
+p <- p + ggtitle("", "")
+ggsave("paper/alluvial-FCAL-all.png", p, width = 8, height = 4.5, units = "in")
+ggsave("paper/alluvial-FCAL-all.pdf", p, width = 8, height = 4.5, units = "in")
+```
+
+#### Posterior classifications
+
+From the below data, we can see how posterior probabilities change as the number
+of assumed clusters increase
+
+
+:::{.column-page}
+::: {.panel-tabset}
+
+```{R FCAL postpro}
+#| results: "asis"
+postprob_quiet <- quietly(postprob)
+for (G in G.fcal) {
+  cat(paste0("##### G = ", G, "\n"))
+  output <- postprob_quiet(models.fcal[[G]])$result
+  cat(pander::pander(output[[1]]))
+  cat(pander::pander(output[[2]]))
+  cat(pander::pander(output[[3]]))
+}
+rm(output)
+```
+
+:::
+:::
+
+
+#### Residual plots
+
+::: {.panel-tabset}
+
+```{R FCAL residuals}
+#| results: "asis"
+for (G in G.fcal) {
+  cat(paste0("##### G = ", G, "\n"))
+  plot(models.fcal[[G]], shades = TRUE)
+}
+```
+
+:::
+
+#### Model metrics
+
+```{R FCAL metrics}
+fcal.metrics <- makeMetrics(G.fcal, models.fcal)
+buildDT(fcal.metrics,
+        caption = "Fit Metrics for the FCAL Models")
+```
+
+#### Spaghetti plots per cluster
+
+::: {.panel-tabset}
+
+```{R FCAL spaghetti plots}
+#| results: "asis"
+for (G in G.fcal) {
+  cat(paste0("##### G = ", G, "\n\n"))
+  cat("###### Log-scale, all subjects \n\n")
+  grid::grid.newpage()
+
+  spaghettiPlot(fcal,
+                models.fcal,
+                G = G,
+                log = TRUE,
+                tmax = 7,
+                sizes = TRUE,
+                knots = TRUE,
+                var.time = "calpro_time")
+    
+}
+```
+
+:::
+
+#### Cutoffs
+
+
+```{R}
+#| results: "asis"
+
+models <- models.fcal[[5]]
+for (g in 1:5) {
+  
+  ids <- subset(models$pprob, class == g)$ids
+
+  tab <- matrix(ncol = 2, nrow = 0)
+  colnames(tab) <- c("Cutoff (years)", "n")
+  thresholds <- seq(1, 9)
+  for (threshold in thresholds) {
+    meet_threshold <- matrix(ncol = 2, nrow = 0)
+    for (id in ids) {
+      if (any(subset(fcal, ids == id)$calpro_time > threshold)) {
+        meet_threshold <- rbind(meet_threshold, c(id, 1))
+      } else {
+        meet_threshold <- rbind(meet_threshold, c(id, 0))
+      }
+    }
+    tab <- rbind(tab, c(threshold, sum(meet_threshold[, 2])))
+  }
+  
+  print(knitr::kable(tab,
+               caption = paste0("Number of subjects in group ", g,
+                                " with a FCAL measurement after the cutoff ",
+                                "threshold (total n=",
+                                length(ids),
+                                ")")))
+}
+```
+
+#### IBD Association
+
+```{R}
+describe_cat <- function(vars, data){
+  if (tibble::is_tibble(data)) {
+    data <- as.data.frame(data)
+  }
+  for (i in 1:length(vars)) {
+    var <- vars[i]
+    print(table(data[, var], useNA = "always"))
+    print(prop.table(table(data[, var], useNA = "always")))
+  }
+}
+
+assoc <- data.frame(ids = unique(fcal$ids))
+IBD <- character()
+cluster <- numeric()
+
+for (id in assoc$ids) { 
+  IBD <- c(IBD, subset(fcal, ids == id)[1, "IBD"])
+  cluster <- c(cluster,
+               subset(models.fcal[[6]]$pprob, ids == id)$class)
+}
+assoc$IBD <- as.factor(IBD)
+assoc$cluster <- as.factor(cluster)
+```
+
+```{R}
+describe_cat("IBD", assoc)
+```
+
+##### Cluster = 1
+
+```{R}
+describe_cat("IBD", subset(assoc, cluster == 1))
+```
+##### Cluster = 2
+
+```{R}
+describe_cat("IBD", subset(assoc, cluster == 2))
+```
+
+##### Cluster = 3
+
+```{R}
+describe_cat("IBD", subset(assoc, cluster == 3))
+```
+
+##### Cluster = 4
+
+```{R}
+describe_cat("IBD", subset(assoc, cluster == 4))
+```
+
+##### Cluster = 5
+
+```{R}
+describe_cat("IBD", subset(assoc, cluster == 5))
+```
+
+##### Cluster = 6
+
+```{R}
+describe_cat("IBD", subset(assoc, cluster == 6))
+```
+
+##### Chi-squared test
+```{R}
+chisq.test(assoc$IBD, assoc$cluster)
+```
+
+
+### CRP
+
+```{R Load CRP models}
+#| fig-width: 12
+#| fig-height: 6.75
+# set the number of groups
+G.crp <- numeric()
+models.crp <- list()
+for (G.cand in G.cands) {
+  if (file.exists(paste0(libdr.data, "cache/", "crp-", G.cand, ".RDS"))) {
+    G.crp <- c(G.crp, G.cand)
+    models.crp[[G.cand]] <- readRDS(paste0(
+      libdr.data,
+      "cache/",
+      "crp-",
+      G.cand,
+      ".RDS"
+    ))
+  }
+}
+rm(G.cand, G.cands)
+```
+
+```{R CRP alluvial}
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("CHI", "class", "G")
+for (G in G.crp) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.crp[[G]]$pprob[, 1:2], G = G))
+}
+
+alluvial.df$CHI <- as.character(alluvial.df$CHI)
+alluvial.df$class <- as.factor(alluvial.df$class)
+
+
+alluvial.df <- reLabel(3, alluvial.df, type = "crp") |>
+  reLabel(4, alluvial.df = _, type = "crp") |>
+  reLabel(5, alluvial.df = _, type = "crp")
+#alluvial.df <- reLabel(6, alluvial.df, type = "crp")
+#alluvial.df <- reLabel(7, alluvial.df, type = "crp")
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = CHI,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  ggtitle(
+    "Alluvial plot of cluster membership across G",
+    "CRP"
+  ) +
+  scale_fill_manual(values = rainbow(6)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
+
+p <- p + ggtitle("", "")
+ggsave("paper/alluvial-CRP-all.png", p, width = 8, height = 4.5, units = "in")
+ggsave("paper/alluvial-CRP-all.pdf", p, width = 8, height = 4.5, units = "in")
+```
+
+#### Posterior classifications
+
+:::{.column-page}
+::: {.panel-tabset}
+
+```{R CRP postprob}
+#| results: "asis"
+for (G in G.crp) {
+  cat(paste0("##### G = ", G, "\n"))
+  output <- postprob_quiet(models.crp[[G]])$result
+  cat(pander::pander(output[[1]]))
+  cat(pander::pander(output[[2]], split.table = Inf))
+  cat(pander::pander(output[[3]], split.table = Inf))
+}
+rm(output)
+```
+
+:::
+:::
+
+#### Residual plots
+
+::: {.panel-tabset}
+
+```{R CRP residuals}
+#| results: "asis"
+for (G in G.crp) {
+  cat(paste0("##### G = ", G, "\n"))
+  plot(models.crp[[G]], shades = TRUE)
+}
+```
+
+:::
+
+#### Model metrics
+
+```{R CRP metrics}
+crp.metrics <- makeMetrics(G.crp, models.crp)
+buildDT(crp.metrics,
+        caption = "Fit Metrics for the CRP Models")
+```
+
+#### Spaghetti plots per cluster
+
+::: {.panel-tabset}
+
+```{R CRP spaghetti plots}
+#| results: "asis"
+for (G in G.crp) {
+  cat(paste0("##### For G = ", G, "\n\n"))
+  cat("###### Log-scale, all subjects \n\n")
+  grid::grid.newpage()
+  
+  if (G == 2 | G == 3 | G == 4) {
+    spaghettiPlot(crp,
+    models.crp,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = TRUE,
+    #knot.type = "equal",
+    var.time = "time"
+  )
+    
+  } else {
+    spaghettiPlot(crp,
+      models.crp,
+      G = G,
+      log = TRUE,
+      tmax = 7,
+      sizes = TRUE,
+      knots = TRUE,
+      var.time = "time"
+    )
+  }
+}
+```
+
+:::
+
+### Comparison of FCAL-CRP clustering. 
+
+```{R}
+intersect <- unique(subset(fcal, ids %in% unique(crp$CHI))$ids)
+```
+
+Of the `r length(unique(c(fcal$ids, crp$CHI)))` subjects included in the FCAL
+and/or CRP modelling, `r length(intersect)` subjects were included in both. 
+
+```{R}
+align <- function(G, intersect, models.fcal, models.crp) {
+  assignments <- mergeAssignments(G, intersect, models.fcal, models.crp)
+  
+  crp.cands <- 1:G
+  
+  # Order FCAL cluster assignment by sizes
+  fcal.sizes <- sort(table(assignments$fcal.cluster), decreasing = TRUE)
+  
+  for (g in 1:G) {
+    fcal.sub <- subset(assignments, fcal.cluster == as.numeric(
+      names(
+        sort(
+          table(assignments$fcal.cluster),
+          decreasing = TRUE)))[g])
+    # Remove any crp clusters already assigned
+    fcal.sub <- subset(fcal.sub, crp.cluster %in% crp.cands)
+  }
+
+}
+
+mergeAssignments <- function(G, intersect, models.fcal, models.crp) {
+  # Make DF of columns: ID, FCAL cluster assignment, CRP cluster assignment
+  fcal.cluster <- subset(models.fcal[[G]]$pprob, ids %in% intersect)[, 1:2]
+  colnames(fcal.cluster)[2] <- "fcal.cluster"
+  crp.cluster <- subset(models.crp[[G]]$pprob, CHI %in% intersect)[, 1:2]
+  colnames(crp.cluster)[2] <- "crp.cluster"
+  colnames(crp.cluster)[1] <- "ids"
+  merge(fcal.cluster, crp.cluster, by = "ids")
+}
+```
+
+```{R}
+
+```
+

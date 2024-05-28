@@ -1,0 +1,68 @@
+#### LCMM
+
+```{R LCMM code}
+#| eval: false
+#| echo: true
+#| code-fold: false
+
+## Modelling ##
+library(lcmm)
+library(splines)
+
+args <- commandArgs(trailingOnly = TRUE)
+fcal <- readRDS("fcal.RDS")
+if(!dir.exists("cache")) dir.create("cache")
+
+rep <- 50
+# set the maximum number of iterations
+maxiter <- 10
+
+if(file.exists("m1.RDS")) {
+  m1 <- readRDS("m1.RDS")
+  ng <- as.numeric(args[1])
+  # create a cluster
+  cl <- parallel::makeForkCluster(parallel::detectCores())
+  # export the number of groups to the cluster
+  parallel::clusterExport(cl, "ng")
+  # run gridsearch
+  hlme.fit <- gridsearch(
+    rep = rep,
+    maxiter = maxiter,
+    minit = m1,
+    cl = cl,
+    hlme(calpro_result ~ ns(calpro_time,
+                            df = 4,
+                            knots = seq(from = 7/4,
+                            to = 21/4,
+                            by = 7/4),
+                            Boundary.knots = c(0, 7)),
+         mixture = ~ ns(calpro_time,
+                        df = 4,
+                        knots = seq(from = 7/4,
+                        to = 21/4,
+                        by = 7/4),
+                        Boundary.knots = c(0, 7)),
+         random = ~  1,
+         subject = "ids",
+         classmb = ~ 1 + diagnosis,
+         ng = ng,
+         data = fcal,
+         maxiter = 24000,
+         verbose = TRUE,
+         partialH = FALSE)
+  )
+  # stop the cluster
+  parallel::stopCluster(cl)
+
+  if (hlme.fit$conv == 1) {
+    message("Convergence achieved for ", ng, " subgroups ✅ \n")
+  } else {
+    stop("Convergence NOT achieved for ", ng, " subgroups ⚠️ \n")
+  }
+  saveRDS(hlme.fit, paste0("cache/fcal-", ng, ".RDS"))
+} else {
+  stop("m1 not found!")
+}
+
+
+```
