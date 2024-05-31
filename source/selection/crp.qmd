@@ -284,7 +284,6 @@ for (G in G.crp) {
 
 :::
 
-
 ##### IBD Association
 
 ```{R}
@@ -530,6 +529,7 @@ buildDT(crp.metrics)
 ```{R Processed CRP spaghetti plots}
 #| results: "asis"
 for (G in G.crp) {
+  cat("\n\n")
   cat(paste0("##### G = ", G, "\n\n"))
   cat("###### Processed CRP \n\n")
   grid::grid.newpage()
@@ -542,6 +542,7 @@ for (G in G.crp) {
     knots = TRUE,
     ylim = "data"
   )
+  cat("\n\n")
   cat("###### Unprocessed CRP \n\n")
   grid::grid.newpage()
   spaghettiPlot(crp,

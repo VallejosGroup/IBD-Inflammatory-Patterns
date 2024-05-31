@@ -181,11 +181,11 @@ to adjust the clustering.
 
 There are multiple potential sources for date of diagnosis and IBD type: the
 CD outcomes dataset (maintained by **PWJ**), a demographics dataset maintained
-by the Lees group, and a raw TRAK extraction. For every subject listed in at least one of
-these datasets, we have tried to extract their date of diagnosis and diagnosis
-type. We have assumed a hierarchy of datasets where manually curated datasets
-are preferred for extracting data over a dataset generated with minimal
-human involvement. 
+by the Lees group, and a raw TRAK extraction. For every subject listed in at 
+least one of these datasets, we have tried to extract their date of diagnosis
+and diagnosis type. We have assumed a hierarchy of datasets where manually
+curated datasets are preferred for extracting data over a dataset generated with
+minimal human involvement. 
 
 ```{R Create subject dictionary}
 ids <- unique(c(outcomes$ids, fcal$ids, updated$ids))
