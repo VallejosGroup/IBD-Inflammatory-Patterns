@@ -14,33 +14,41 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xorg \
     openbox \
     && rm -rf /var/lib/apt/lists/*
-RUN install2.r \
-    shiny \
+RUN install2.r -n -1 \
     tidyverse \
-    htmltools \
-    remotes \
-    renv \
-    knitr \
     rmarkdown \
-    quarto \
-    pander \
+    knitr \
+    tibble \
     ComplexHeatmap \
+    doParallel
+RUN install2.r -n -1\
+    foreach \
     viridis \
-    downlit \
-    xml2 \
     plyr \
     lcmm \
-    patchwork \
+    gameR
+RUN install2.r -n -1 \
     ggalluvial \
-    datefixR \
+    DT \
     lme4 \
     optimx \
-    foreach \
-    doParallel \
-    gameR \
-    qqplotr \
-    reshape2 \
-    mice
+    ggdist
+RUN install2.r -n -1 \
+    kml \
+    mice \
+    pander \
+    patchwork \
+    qqplotr
+RUN install2.r -n -1 \
+    datefixR \
+    stringr \
+    lubridate \
+    colorspace \
+    reshape2
+
+COPY libdr libdr
+RUN install2.r \"libdr\"
+
 RUN curl -LO https://quarto.org/download/latest/quarto-linux-amd64.deb
 RUN gdebi --non-interactive quarto-linux-amd64.deb
 
