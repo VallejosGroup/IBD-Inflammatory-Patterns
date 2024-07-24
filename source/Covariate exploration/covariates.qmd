@@ -54,6 +54,7 @@ library(ggdist)
 library(ggalluvial)
 library(pander)
 library(qqplotr)
+library(table1)
 
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
@@ -475,3 +476,16 @@ for (g in 1:6) {
 }
 ```
 :::
+
+# Demographics table
+
+```{R}
+dict.fc$model <- "FC"
+dict.crp$model <- "CRP"
+combined <- rbind(dict.fc, dict.crp)
+```
+
+```{R}
+table1(~ age + sex + diagnosis | model,
+       data = combined)
+```

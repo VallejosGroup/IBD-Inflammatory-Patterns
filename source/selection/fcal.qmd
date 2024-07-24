@@ -63,71 +63,6 @@ library(qqplotr)
 
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
-
-###########################################
-#-- Create directories and readme files --#
-###########################################
-
-if (!dir.exists("plots")) {
-  dir.create("plots")
-}
-
-fileConn <- file("plots/README.md")
-
-# write lines to the file connection
-writeLines(
-  c(
-    "# README",
-    "",
-    paste(
-      "This directory contains plots created by the analysis",
-      "but are not provided as figures (supplementary or",
-      "otherwise) in the paper"
-    )
-  ),
-  fileConn
-)
-# close the file connection
-close(fileConn)
-rm(fileConn)
-
-if (!dir.exists("cache")) dir.create("cache")
-fileConn <- file("cache/README.md")
-writeLines(
-  c(
-    "# README",
-    "",
-    paste(
-      "This directory stores cached versions of R objects which",
-      "take a long time to create (such as LCMM fit objects)."
-    )
-  ),
-  fileConn
-)
-close(fileConn)
-rm(fileConn)
-
-if (!dir.exists("paper")) dir.create("paper")
-fileConn <- file("paper/README.md")
-writeLines(
-  c(
-    "# README",
-    "",
-    paste(
-      "This directory contains all figures used in the paper.",
-      "The sup subdirectory contains supplementary figures"
-    )
-  ),
-  fileConn
-)
-close(fileConn)
-rm(fileConn)
-
-if (!dir.exists("paper/sup")) dir.create("paper/sup")
-
-if (!dir.exists("plots/residuals")) {
-  dir.create("plots/residuals")
-}
 ```
 
 This report describes how the latent class mixed models (LCMMs) were fitted.
@@ -541,6 +476,7 @@ ggsave("paper/alluvial-FCAL-all.pdf",
        width = 12,
        height = 6.75,
        units = "in")
+saveRDS(p, paste0(prefix, "processed/plots/fc-alluvial.RDS"))
 ```
 
 #### Posterior classifications
@@ -697,7 +633,23 @@ for (G in G.fcal) {
 }
 ```
 
+```{R}
+#| include: false
+grid::grid.newpage()
+ spaghettiPlot(fcal,
+               models.fcal,
+               G = 6,
+               log = TRUE,
+               tmax = 7,
+               sizes = TRUE,
+               knots = FALSE,
+               knot.type = "equal",
+               var.time = "calpro_time")
+```
+
 :::
+
+
 
 #### IBD Association
 

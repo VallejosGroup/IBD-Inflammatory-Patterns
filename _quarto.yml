@@ -1,6 +1,7 @@
 project:
   type: website
   output-dir: docs
+  pre-render: init.R
   resources:
     - "apple-touch-icon-precomposed.png"
     - "apple-touch-icon.png"
@@ -13,7 +14,7 @@ project:
     - "source/preprocessing/*"
     - "source/selection/fcal.qmd"
     - "source/selection/crp.qmd"
-    - "source/other/Variation.qmd"
+    - "source/other/variation.qmd"
     - "source/other/FCALvsCRP.qmd"
     - "404.qmd"
   execute-dir: project
@@ -60,7 +61,7 @@ website:
         menu:
         - href: source/other/FCALvsCRP.qmd
           text: "Comparison between FCAL and CRP"
-        - href: source/other/Variation.qmd
+        - href: source/other/variation.qmd
           text: "Variation between LCMM runs"
       - icon: github
         href: "#Link"

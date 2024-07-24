@@ -136,9 +136,22 @@ for (G in 2:8) { # No G = 8 for FCAL
                   left_annotation = row.ha
   )
   # Save heatmaps to file
-
+  png(paste0("plots/cluster-comp/G=", G, ".png"),
+      width = 10.82,
+      height = 8,
+      units = "in",
+      res = 300
+  )
   draw(heat)
+  invisible(dev.off())
 
+  pdf(paste0("plots/cluster-comp/G=", G, ".pdf"),
+      width = 10.82,
+      height = 8
+  )
+  draw(heat)
+  invisible(dev.off())
+  draw(heat)
 }
 ```
 
