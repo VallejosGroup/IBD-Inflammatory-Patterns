@@ -1,9 +1,9 @@
-FROM eddelbuettel/r2u:22.04
+FROM rocker/rstudio:4.4.0
 
-LABEL "org.opencontainers.image.source"="https://git.ecdf.ed.ac.uk/s1961592/libdr" \
+LABEL "org.opencontainers.image.source"="https://github.com/VallejosGroup/Lothian-IBDR" \
     "org.opencontainers.image.authors"="Nathan Constantine-Cooke <nathan.constantine-cooke@ed.ac.uk>" \
-    "org.opencontainers.image.base.name"="eddelbuettel/r2u:22.04" \
-    "org.opencontainers.image.description"="Docker image for the LIBDR repository" \
+    "org.opencontainers.image.base.name"="rocker/rstudio:4.4.0" \
+    "org.opencontainers.image.description"="Docker image for the LIBDR LCMM analysis" \
     "org.opencontainers.image.vendor"="University of Edinburgh"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -13,13 +13,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdebi-core \
     xorg \
     openbox \
+    libxml2-dev \
+    libfontconfig1-dev \
+    zlib1g-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 RUN install2.r -n -1 \
     tidyverse \
     rmarkdown \
     knitr \
     tibble \
-    ComplexHeatmap \
     doParallel
 RUN install2.r -n -1\
     foreach \
@@ -45,12 +54,27 @@ RUN install2.r -n -1 \
     lubridate \
     colorspace \
     reshape2
+RUN install2.r -n -1 \
+    downlit \
+    xml2
+
+# Install dependencies for installing bioconductor packages
+RUN install2.r --error \
+    --ncpus -1 \
+    --repos https://ropensci.r-universe.dev --repos getOption \
+    --skipinstalled \
+    BiocManager littler
+
+# Install packages from Bioconductor (will compile from source)
+RUN /usr/local/lib/R/site-library/littler/examples/installBioc.r ComplexHeatmap
 
 COPY libdr libdr
 RUN install2.r \"libdr\"
 
-RUN curl -LO https://quarto.org/download/latest/quarto-linux-amd64.deb
-RUN gdebi --non-interactive quarto-linux-amd64.deb
+
+ARG TARGETARCH
+RUN curl -LO https://quarto.org/download/latest/quarto-linux-$TARGETARCH.deb
+RUN gdebi --non-interactive quarto-linux-$TARGETARCH.deb
 
 RUN mkdir analysis
 COPY . analysis
