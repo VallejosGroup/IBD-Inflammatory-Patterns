@@ -23,6 +23,7 @@ spaghettiPlot(
   n.knots = 3,
   grbf = FALSE,
   l = 1,
+  color = NULL,
   var.time = "calpro_time"
 )
 }
@@ -76,6 +77,10 @@ natural cubic splines instead).}
 
 \item{l}{Numeric. Length scale constant for the Gaussian radial basis
 functions (not used if \code{GRBF = FALSE})}
+
+\item{color}{Character. Name of variable in \code{data} to use to colour
+lines and points corresponding to subjects. If NULL then lines and points
+will be grey.}
 
 \item{var.time}{Character. Name of variable used for time. Either
 "calpro_time" or "crp_time" Also used to determine if the LCMM has been

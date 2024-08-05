@@ -31,6 +31,9 @@
 #'   natural cubic splines instead).
 #' @param l Numeric. Length scale constant for the Gaussian radial basis
 #'   functions (not used if \code{GRBF = FALSE})
+#' @param color Character. Name of variable in \code{data} to use to colour
+#'  lines and points corresponding to subjects. If NULL then lines and points
+#'  will be grey.
 #' @param var.time Character. Name of variable used for time. Either
 #'   "calpro_time" or "crp_time" Also used to determine if the LCMM has been
 #'   fitted for FCAL or CRP.
@@ -53,10 +56,11 @@ spaghettiPlot <- function(data,
                           n.knots = 3,
                           grbf = FALSE,
                           l = 1,
+                          color = NULL,
                           var.time = "calpro_time") {
   data <- cutPostProb(data, models, G, pprob.cutoff)
 
-  if (!is.null(ylim)){
+  if (!is.null(ylim)) {
     if (!(ylim %in% c("data", "pred", "conf"))) {
       stop("`ylim` should be either 'data', 'pred', or 'conf'")
     }
@@ -79,6 +83,7 @@ spaghettiPlot <- function(data,
       n.knots = n.knots,
       grbf = grbf,
       l = l,
+      color = color,
       var.time = var.time
     )
   }
@@ -100,6 +105,7 @@ spaghettiPlot <- function(data,
       n.knots = n.knots,
       grbf = grbf,
       l = l,
+      color = color,
       var.time = var.time
     )
   }
@@ -140,6 +146,7 @@ spaghetti_plot_sub <- function(data,
                                n.knots,
                                grbf = grbf,
                                l = l,
+                               color,
                                var.time) {
   # Global vars
   layout <- ids <- .data <- calpro_result <- crp_result <- time <- NULL
@@ -170,26 +177,50 @@ spaghetti_plot_sub <- function(data,
     if (!log) {
       if (var.time == "calpro_time") {
         # FCAL
-        p[[g]] <- ggplot(
-          data = subset(data, ids %in% id.group),
-          aes(
-            x = .data[[var.time]],
-            y = exp(calpro_result)
-          )
-        ) +
-          geom_line(aes(group = ids), alpha = 0.1) +
+
+        if (is.null(color)) {
+          p[[g]] <- ggplot(
+            data = subset(data, ids %in% id.group),
+            aes(
+              x = .data[[var.time]],
+              y = exp(calpro_result)
+            )
+          ) + geom_line(aes(group = ids), alpha = 0.1)
+        } else {
+          p[[g]] <- ggplot(
+            data = subset(data, ids %in% id.group),
+            aes(
+              x = .data[[var.time]],
+              y = exp(calpro_result),
+              color = .data[[color]]
+            )
+          ) + geom_line(aes(group = ids), alpha = 0.2)
+        }
+
+        p[[g]] <- p[[g]] +
           xlab("Time (years)") +
           ylab("FCAL (\u03BCg/g)")
       } else if (var.time == "crp_time") {
         # CRP
-        p[[g]] <- ggplot(
-          data = subset(data, ids %in% id.group),
-          aes(
-            x = .data[[var.time]],
-            y = exp(crp_result)
-          )
-        ) +
-          geom_line(aes(group = ids), alpha = 0.1) +
+        if (is.null(color)) {
+          p[[g]] <- ggplot(
+            data = subset(data, ids %in% id.group),
+            aes(
+              x = .data[[var.time]],
+              y = exp(crp_result)
+            )
+          ) + geom_line(aes(group = ids), alpha = 0.1)
+        } else {
+          p[[g]] <- ggplot(
+            data = subset(data, ids %in% id.group),
+            aes(
+              x = .data[[var.time]],
+              y = exp(crp_result),
+              color = .data[[color]]
+            )
+          ) + geom_line(aes(group = ids), alpha = 0.2)
+        }
+        p[[g]] <- p[[g]] +
           xlab("Time (years)") +
           ylab("CRP (\u03BCg/mL)")
       }
@@ -249,14 +280,26 @@ spaghetti_plot_sub <- function(data,
       }
     } else { # Logged plots
       if (var.time == "calpro_time") {
-        p[[g]] <- ggplot(
-          data = subset(data, ids %in% id.group),
-          aes(
-            x = .data[[var.time]],
-            y = calpro_result
-          )
-        ) +
-          geom_line(aes(group = ids), alpha = 0.1) +
+        if (is.null(color)) {
+          p[[g]] <- ggplot(
+            data = subset(data, ids %in% id.group),
+            aes(
+              x = .data[[var.time]],
+              y = calpro_result
+            )
+          ) + geom_line(aes(group = ids), alpha = 0.1)
+        } else {
+          p[[g]] <- ggplot(
+            data = subset(data, ids %in% id.group),
+            aes(
+              x = .data[[var.time]],
+              y = calpro_result,
+              color = .data[[color]]
+            )
+          ) + geom_line(aes(group = ids), alpha = 0.2)
+        }
+
+        p[[g]] <- p[[g]] +
           geom_hline(
             yintercept = log(250),
             color = "#007add",
@@ -266,14 +309,26 @@ spaghetti_plot_sub <- function(data,
           xlab("Time (years)") +
           ylab("Log (FCAL (\u03BCg/g))")
       } else if (var.time == "crp_time") {
-        p[[g]] <- ggplot(
-          data = subset(data, ids %in% id.group),
-          aes(
-            x = .data[[var.time]],
-            y = crp_result
-          )
-        ) +
-          geom_line(aes(group = ids), alpha = 0.1) +
+        if (is.null(color)) {
+          p[[g]] <- ggplot(
+            data = subset(data, ids %in% id.group),
+            aes(
+              x = .data[[var.time]],
+              y = crp_result
+            )
+          ) + geom_line(aes(group = ids), alpha = 0.1)
+        } else {
+          p[[g]] <- ggplot(
+            data = subset(data, ids %in% id.group),
+            aes(
+              x = .data[[var.time]],
+              y = crp_result,
+              color = .data[[color]]
+            )
+          ) + geom_line(aes(group = ids), alpha = 0.2)
+        }
+
+        p[[g]] <- p[[g]] +
           geom_hline(
             yintercept = log(5),
             color = "#007add",
@@ -391,6 +446,8 @@ spaghetti_plot_sub <- function(data,
       data = data,
       lcmm_uit = lcmm_uit
     )
+
+    p[[g]] <- p[[g]] + theme(legend.position = "none")
 
     printLcmm(g = g, p = p, matchidx = matchidx, multi = multi, save = save)
   }

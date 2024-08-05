@@ -1,0 +1,151 @@
+---
+title: "Cluster by diagnosis"
+author:
+  - name: "Nathan Contantine-Cooke" 
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    corresponding: true
+format:
+  html:
+    theme:
+      light: [default]
+      dark: [darkly]
+    code-fold: true
+    code-link: true
+    toc: true
+    code-tools:
+      source: true
+      toggle: true
+    html-math-method: katex
+    embed-resources: true
+    mainfont: "Mulish"
+    monofont: "Noto Sans Mono"
+---
+
+
+```{R Setup}
+#| message: false
+set.seed(123)
+if (file.exists("/.dockerenv")) { # Check if running in Docker
+  # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
+  prefix <- "data/"
+} else {
+  # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
+  # mounted at /Volumes
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+}
+
+
+##########################
+#--     Packages       --#
+##########################
+
+library(tidyverse)
+# Support package (source found in libdr/)
+library(libdr)
+## Modelling ##
+library(lcmm)
+library(kml) # K-means
+library(mice) # Imputation
+## Presentation ##
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+library(table1)
+
+dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
+fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
+model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-6.RDS"))
+crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
+crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
+model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
+
+dict.fc <- subset(dict, ids %in% model.fc$pprob$ids)
+dict.fc <- merge(dict.fc, model.fc$pprob[, c("ids", "class")])
+fcal <- merge(fcal,
+  dict.fc[, c("ids", "class", "diagnosis")],
+  all.x = TRUE,
+  all.y = FALSE
+)
+
+dict.crp <- subset(dict, ids %in% model.crp$pprob$ids)
+dict.crp <- merge(dict.crp, model.crp$pprob[, c("ids", "class")])
+crp.median <- merge(crp.median,
+  dict.crp[, c("ids", "class", "diagnosis")],
+  all.x = TRUE,
+  all.y = FALSE
+)
+```
+
+```{R}
+fc.model.list <- list()
+fc.model.list[[6]] <- model.fc
+png("paper/fc-by-diag.png", width = 8, height = 7, units = "in", res = 300)
+grid::grid.newpage()
+spaghettiPlot(fcal,
+  fc.model.list ,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  color = "diagnosis",
+  var.time = "calpro_time"
+)
+dev.off()
+
+cairo_pdf("paper/fc-by-diag.png", width = 8, height = 7)
+grid::grid.newpage()
+spaghettiPlot(fcal,
+  fc.model.list ,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  color = "diagnosis",
+  var.time = "calpro_time"
+)
+dev.off()
+
+grid::grid.newpage()
+spaghettiPlot(fcal,
+  fc.model.list ,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  color = "diagnosis",
+  var.time = "calpro_time"
+)
+```
+
+```{R}
+crp.model.list <- list()
+crp.model.list[[8]] <- model.crp
+png("paper/crp-by-diag.png", width = 8, height = 9, units = "in", res = 300)
+grid::grid.newpage()
+spaghettiPlot(crp.median,
+              crp.model.list,
+              8, 
+              color = "diagnosis", 
+              var.time = "crp_time", 
+              tmax = 7)
+dev.off()
+
+cairo_pdf("paper/crp-by-diag.png", width = 8, height = 9)
+grid::grid.newpage()
+spaghettiPlot(crp.median,
+              crp.model.list,
+              8, 
+              color = "diagnosis", 
+              var.time = "crp_time", 
+              tmax = 7)
+dev.off()
+
+grid::grid.newpage()
+spaghettiPlot(crp.median,
+              crp.model.list,
+              8, 
+              color = "diagnosis", 
+              var.time = "crp_time", 
+              tmax = 7)
+
+
+```

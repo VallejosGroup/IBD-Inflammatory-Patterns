@@ -111,6 +111,7 @@ compareClustering <- function(G,
                               models.crp,
                               cutoff = FALSE,
                               threshold = 0.8) {
+  ids <- NULL
   # Extract posterior probabilities
   fcal.pprob <- models.fcal[[G]]$pprob
   crp.pprob <- models.crp[[G]]$pprob
