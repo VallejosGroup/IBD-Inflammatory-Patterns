@@ -35,7 +35,7 @@ set.seed(123)
 prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
 
 ########################
-### Load FCAL models ###
+### Load FC models ###
 ########################
 # set the number of groups
 G.fcal <- numeric()
@@ -106,8 +106,8 @@ for (G in 2:8) { # No G = 8 for FCAL
 
   column_ha <- HeatmapAnnotation(
     "CRP cluster" = models.crp[[G]]$pprob$class[models.crp[[G]]$pprob$ids %in% ids.common],
-    "FCAL cluster" = models.fcal[[G]]$pprob$class[models.fcal[[G]]$pprob$ids %in% ids.common],
-    col = list("FCAL cluster" = col.vec, "CRP cluster" = col.vec)
+    "FC cluster" = models.fcal[[G]]$pprob$class[models.fcal[[G]]$pprob$ids %in% ids.common],
+    col = list("FC cluster" = col.vec, "CRP cluster" = col.vec)
   )
 
   row.ha <- HeatmapAnnotation(
@@ -126,9 +126,9 @@ for (G in 2:8) { # No G = 8 for FCAL
                   cluster_columns = TRUE,
                   heatmap_legend_param = list(
                     labels = c(
-                      "Shares cluster for both FCAL and CRP",
+                      "Shares cluster for both FC and CRP",
                       "Shares cluster for only CRP",
-                      "Shares cluster for only FCAL",
+                      "Shares cluster for only FC",
                       "Never clustered together"
                     )
                   ),
@@ -190,8 +190,8 @@ for (G in 2:8) {
 
   column_ha <- HeatmapAnnotation(
     "CRP cluster" = models.crp[[G]]$pprob$class[models.crp[[G]]$pprob$ids %in% ids.common],
-    "FCAL cluster" = models.fcal[[G]]$pprob$class[models.fcal[[G]]$pprob$ids %in% ids.common],
-    col = list("FCAL cluster" = col.vec, "CRP cluster" = col.vec)
+    "FC cluster" = models.fcal[[G]]$pprob$class[models.fcal[[G]]$pprob$ids %in% ids.common],
+    col = list("FC cluster" = col.vec, "CRP cluster" = col.vec)
   )
 
   row.ha <- HeatmapAnnotation(
@@ -211,9 +211,9 @@ for (G in 2:8) {
                   cluster_columns = TRUE,
                   heatmap_legend_param = list(
                     labels = c(
-                      "Shares cluster for both FCAL and CRP",
+                      "Shares cluster for both FC and CRP",
                       "Shares cluster for only CRP",
-                      "Shares cluster for only FCAL",
+                      "Shares cluster for only FC",
                       "Never clustered together"
                     )
                   ),

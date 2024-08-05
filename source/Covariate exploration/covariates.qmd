@@ -61,17 +61,13 @@ fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
 model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-6.RDS"))
 crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
-model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-6.RDS"))
+model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
 ```
 
 To-date, the clustering of faecal calprotectin (FC) and CRP profiles have only
 considered the biomarker trajectories and IBD type. This report explores
 potential evidence for the need to incorporate sex and/or age at diagnosis into 
 the models by stratifying cluster profiles by either sex or age. 
-
-In all comparisons, six-cluster models will be considered due to a balance of 
-providing multiple unique cluster profiles whilst remaining manageable when
-visualising. 
 
 ::: {.callout-note}
 Sex and age (at recruitment) was found to be significantly associated with
@@ -327,7 +323,7 @@ if (!dir.exists("../../plots/sex-comparison/crp/original")) {
   dir.create("../../plots/sex-comparison/crp/original")
 }
 
-for (g in 1:6) {
+for (g in 1:8) {
   p <- crp.median %>%
     filter(class == g) %>%
     ggplot(aes(x = crp_time, y = crp_result, color = as.factor(ids))) +
@@ -355,7 +351,7 @@ for (g in 1:6) {
 #| column: "body-outset"
 #| fig-width: 10.6667
 #| fig-height: 6
-for (g in 1:6) {
+for (g in 1:8) {
   p <- crp.median %>%
     filter(class == g) %>%
     ggplot(aes(x = crp_time, y = exp(crp_result), color = as.factor(ids))) +
@@ -401,6 +397,23 @@ aov(class ~ age, data = dict.crp) %>%
   pander()
 ```
 
+
+```{R}
+#| label: fig-crp-age-dist
+#| fig-cap: "Distribution of age at diagnosis by CRP cluster assignment."
+#| fig-height: 12
+crp.median %>%
+  ggplot(aes(x = age)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 30,
+                 fill = "#6DD3CE",
+                 color = "#3AA8A3") +
+  geom_density(color = "#D90368") +
+  facet_grid(rows = vars(class), axis.labels = "all_y") +
+  theme_minimal() +
+  labs(x = "Age at diagnosis", y = "Density")
+```
+
 ::: {.panel-tabset group="scale"}
 
 #### Log-scale
@@ -423,7 +436,7 @@ if (!dir.exists("../../plots/age-comparison/crp/original")) {
   dir.create("../../plots/age-comparison/crp/original")
 }
 
-for (g in 1:6) {
+for (g in 1:8) {
   p <- crp.median %>%
     filter(class == g) %>%
     ggplot(aes(x = crp_time, y = crp_result, color = as.factor(ids))) +
@@ -451,7 +464,7 @@ for (g in 1:6) {
 #| column: "body-outset"
 #| fig-width: 10.6667
 #| fig-height: 6
-for (g in 1:6) {
+for (g in 1:8) {
   p <- crp.median %>%
     filter(class == g) %>%
     ggplot(aes(

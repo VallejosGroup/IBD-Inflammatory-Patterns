@@ -85,25 +85,25 @@ model.fc.sex[[6]] <- readRDS(paste0(
 
 model.crp.original <- list()
 
-model.crp.original[[6]] <- readRDS(paste0(prefix, "cache/crp-ma/crp-6.RDS"))
+model.crp.original[[8]] <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
 
 model.crp.age.sex <- list()
-model.crp.age.sex[[6]] <- readRDS(paste0(
+model.crp.age.sex[[8]] <- readRDS(paste0(
   prefix,
   "/staging/sex+age/crp/",
-  "age+sex/cache/crp-6.RDS"
+  "age+sex/cache/crp-8.RDS"
 ))
 model.crp.age <- list()
-model.crp.age[[6]] <- readRDS(paste0(
+model.crp.age[[8]] <- readRDS(paste0(
   prefix,
   "/staging/sex+age/crp/",
-  "age/cache/crp-6.RDS"
+  "age/cache/crp-8.RDS"
 ))
 model.crp.sex <- list()
-model.crp.sex[[6]] <- readRDS(paste0(
+model.crp.sex[[8]] <- readRDS(paste0(
   prefix,
   "/staging/sex+age/crp/",
-  "sex/cache/crp-6.RDS"
+  "sex/cache/crp-8.RDS"
 ))
 
 forest.plot <- function(forest.data) {
@@ -260,14 +260,14 @@ knitr::kable(perf)
 ```{R}
 libdr::spaghettiPlot(crp.median,
   model.crp.original,
-  G = 6,
+  G = 8,
   tmax = 7,
   var.time = "crp_time"
 )
 ```
 
 ```{R}
-forest.data <- summary(model.crp.original[[6]])
+forest.data <- summary(model.crp.original[[8]])
 ```
 
 ```{R}
@@ -275,7 +275,7 @@ forest.plot(forest.data)
 ```
 
 ```{R}
-plot(model.crp.original[[6]])
+plot(model.crp.original[[8]])
 ```
 
 ### Sex model
@@ -283,7 +283,7 @@ plot(model.crp.original[[6]])
 Sex was only significant in one class. (Class 1)
 
 ```{R}
-forest.data <- summary(model.crp.sex[[6]])
+forest.data <- summary(model.crp.sex[[8]])
 ```
 
 ```{R}
@@ -291,7 +291,7 @@ forest.plot(forest.data)
 ```
 
 ```{R}
-plot(model.crp.sex[[6]])
+plot(model.crp.sex[[8]])
 ```
 
 
@@ -300,7 +300,7 @@ plot(model.crp.sex[[6]])
 Age was significant across all six classes. 
 
 ```{R}
-forest.data <- summary(model.crp.age[[6]])
+forest.data <- summary(model.crp.age[[8]])
 ```
 
 ```{R}
@@ -308,15 +308,14 @@ forest.plot(forest.data)
 ```
 
 ```{R}
-plot(model.crp.age[[6]])
+plot(model.crp.age[[8]])
 ```
 
 ### Age + sex model
 
-Age is significant in 5/6 classes. Sex is significant in two classes. 
 
 ```{R}
-forest.data <- summary(model.crp.age.sex[[6]])
+forest.data <- summary(model.crp.age.sex[[8]])
 ```
 
 ```{R}
@@ -324,7 +323,7 @@ forest.plot(forest.data)
 ```
 
 ```{R}
-plot(model.crp.age[[6]])
+plot(model.crp.age[[8]])
 ```
 
 ### Comparison
@@ -332,18 +331,18 @@ plot(model.crp.age[[6]])
 ```{R}
 perf <- data.frame(
   Model = "Original",
-  AIC = model.crp.original[[6]]$AIC,
-  BIC = model.crp.original[[6]]$BIC,
-  loglik = model.crp.original[[6]]$loglik
+  AIC = model.crp.original[[8]]$AIC,
+  BIC = model.crp.original[[8]]$BIC,
+  loglik = model.crp.original[[8]]$loglik
 )
 
 perf <- rbind(
   perf,
   data.frame(
     Model = "Age",
-    AIC = model.crp.age[[6]]$AIC,
-    BIC = model.crp.age[[6]]$BIC,
-    loglik = model.crp.age[[6]]$loglik
+    AIC = model.crp.age[[8]]$AIC,
+    BIC = model.crp.age[[8]]$BIC,
+    loglik = model.crp.age[[8]]$loglik
   )
 )
 
@@ -352,9 +351,9 @@ perf <- rbind(
   perf,
   data.frame(
     Model = "Sex",
-    AIC = model.crp.sex[[6]]$AIC,
-    BIC = model.crp.sex[[6]]$BIC,
-    loglik = model.crp.sex[[6]]$loglik
+    AIC = model.crp.sex[[8]]$AIC,
+    BIC = model.crp.sex[[8]]$BIC,
+    loglik = model.crp.sex[[8]]$loglik
   )
 )
 
@@ -362,9 +361,9 @@ perf <- rbind(
   perf,
   data.frame(
     Model = "Age & Sex",
-    AIC = model.crp.age.sex[[6]]$AIC,
-    BIC = model.crp.age.sex[[6]]$BIC,
-    loglik = model.crp.age.sex[[6]]$loglik
+    AIC = model.crp.age.sex[[8]]$AIC,
+    BIC = model.crp.age.sex[[8]]$BIC,
+    loglik = model.crp.age.sex[[8]]$loglik
   )
 )
 knitr::kable(perf)

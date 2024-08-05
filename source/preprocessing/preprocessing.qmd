@@ -919,11 +919,10 @@ crp <- crp[, c("CHI", "COLLECTION_DATE", "TEST_DATA")] %>%
   subset(CHI %in% dict$ids)
 
 # Collection dates include collection times which are not required. Discarding.
-crp$COLLECTION_DATE <- fix_date_char(
-  stringr::str_split_fixed(crp$COLLECTION_DATE, " ", n = 2)[, 1]
+crp$COLLECTION_DATE <- readr::parse_date(
+  stringr::str_split_fixed(crp$COLLECTION_DATE, " ", n = 2)[, 1],
+  format = "%d-%b-%Y"
 )
-
-
 
 colnames(crp) <- c("ids", "crp_date", "crp_result")
 
@@ -1412,7 +1411,7 @@ ggsave("plots/fcal-for-crp0var.png", p, width = 10, height = 5, units = "in")
 print(p)
 crp.ma <- subset(crp.ma, !(ids %in% var0.ids))
 ```
-cd G
+
 ```{R}
 p1 <- crp.ma %>%
   ggplot(aes(x = exp(crp_result))) +
@@ -1445,10 +1444,12 @@ print(p1 + p2)
 ggsave("plots/crp-dist-ma.pdf", p1 + p2, width = 8, height = 4.5, units = "in")
 ```
 
-There are `r nrow(crp.ma$crp_result)` total data points after the additional
-preprocessing. 
+There are `r nrow(crp.ma)` total data points after the additional
+preprocessing describing `r length(unique(crp.ma$ids))` subjects. 
 
 ```{R}
+#| label: tbl-crp-ma-freq
+#| tbl-cap: "Quantiles for number of CRP observations per subject after additional preprocessing."
 crp.ma %>%
   select(ids) %>%
   table() %>%

@@ -2,6 +2,7 @@ library(libdr)
 library(ComplexHeatmap)
 library(ggalluvial)
 library(lcmm)
+library(patchwork)
 
 set.seed(123)
 
@@ -14,7 +15,7 @@ G.fcal <- numeric()
 models.fcal <- list()
 G.cands <- seq(2, 10)
 for (G.cand in G.cands) {
-  file.name <- paste0(prefix, "/cache/fcal-", G.cand, ".RDS")
+  file.name <- paste0(prefix, "/cache/fcal/ncs/fcal-", G.cand, ".RDS")
   if (file.exists(file.name)) {
     G.fcal <- c(G.fcal, G.cand)
     models.fcal[[G.cand]] <- readRDS(file.name)
@@ -27,12 +28,12 @@ dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 ####################################################################
 ### Load CRP moving average (no autocorrelation struture) models ###
 ####################################################################
-prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/cache/crp-ma-nocor"
+prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/cache/crp-ma/"
 G.crp <- numeric()
 models.crp <- list()
 G.cands <- seq(2, 10)
 for (G.cand in G.cands) {
-  file.name <- paste0(prefix, "/crp-", G.cand, ".RDS")
+  file.name <- paste0(prefix, "crp-", G.cand, ".RDS")
   if (file.exists(file.name)) {
     G.crp <- c(G.crp, G.cand)
     models.crp[[G.cand]] <- readRDS(file.name)
@@ -324,8 +325,10 @@ fcal.pprob <- subset(fcal.pprob, ids %in% ids.comb)
 crp.pprob <- subset(crp.pprob, ids %in% ids.comb)
 
 
-classes <- rbind(data.frame(fcal.pprob[, c(1,2)], type = "FCAL" ), data.frame(crp.pprob[, c(1,2)], type = "CRP"))
+classes <- rbind(data.frame(fcal.pprob[, c(1,2)], type = "FC" ), data.frame(crp.pprob[, c(1,2)], type = "CRP"))
 classes$class <- as.factor(classes$class)
+classes$type <- as.factor(classes$type)
+classes$type <- relevel(classes$type, "FC")
 
 p1 <- ggplot(classes, aes(x = type,
            stratum = class,
@@ -335,7 +338,8 @@ p1 <- ggplot(classes, aes(x = type,
   geom_flow()  +
   geom_stratum()  + geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
-  theme(axis.line = element_line(colour = "gray"))
+  theme(axis.line = element_line(colour = "gray")) +
+  xlab("Biomarker")
 
 
 calpro_time <- seq(0,7, by = 0.1)
@@ -355,7 +359,7 @@ p2 <- ggplot(plot.fcal, aes(x = time, y = pred, color = class)) +
   geom_line(size = 0.7) +
   theme_minimal() +
   xlab("Time (years)") +
-  ylab("Log(FCAL (µg/g))") +
+  ylab("Log(FC (µg/g))") +
   ylim(0, 7) +
   xlim(0, 7) +
   theme(axis.line = element_line(colour = "gray"))
@@ -384,12 +388,12 @@ p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
   theme(axis.line = element_line(colour = "gray"))
 
 
-p <- p1 + (p3/p2) +
+p <- p1 + (p2/p3) +
   plot_annotation(tag_levels = "A") +
   plot_layout(guides = "collect") & theme(legend.position='bottom')
 
 p
 
-ggsave("plots/big-comp.png", p, width = 10, height = 6.75)
-ggsave("plots/big-comp.pdf", p, width = 10, height = 6.75)
+ggsave("paper/big-comp.png", p, width = 10, height = 6.75)
+ggsave("paper/big-comp.pdf", p, width = 10, height = 6.75)
 

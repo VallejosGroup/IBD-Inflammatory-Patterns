@@ -128,27 +128,30 @@ knots.2 <- readRDS(paste0(prefix, "cache/fcal/ncs/2-knots.RDS"))
 knots.2.list <- list()
 knots.2.list[[6]] <- knots.2
 cairo_pdf("paper/2-knots.pdf",
-          width = 9,
-          height = 9)
+  width = 9,
+  height = 9
+)
 spaghettiPlot(fcal,
-              knots.2.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              n.knots = 2,
-              var.time = "calpro_time")
+  knots.2.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  n.knots = 2,
+  var.time = "calpro_time"
+)
 invisible(dev.off())
 spaghettiPlot(fcal,
-              knots.2.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              n.knots = 2,
-              var.time = "calpro_time")
+  knots.2.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  n.knots = 2,
+  var.time = "calpro_time"
+)
 ```
 
 #### 3 knots
@@ -164,27 +167,30 @@ knots.3 <- readRDS(paste0(prefix, "cache/fcal/ncs/fcal-6.RDS"))
 knots.3.list <- list()
 knots.3.list[[6]] <- knots.3
 cairo_pdf("paper/3-knots.pdf",
-          width = 9,
-          height = 9)
+  width = 9,
+  height = 9
+)
 spaghettiPlot(fcal,
-              knots.3.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              n.knots = 3,
-              var.time = "calpro_time")
+  knots.3.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  n.knots = 3,
+  var.time = "calpro_time"
+)
 invisible(dev.off())
 spaghettiPlot(fcal,
-              knots.3.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              n.knots = 3,
-              var.time = "calpro_time")
+  knots.3.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  n.knots = 3,
+  var.time = "calpro_time"
+)
 ```
 
 #### 4 knots
@@ -200,27 +206,30 @@ knots.4 <- readRDS(paste0(prefix, "/cache/fcal/ncs/4-knots.RDS"))
 knots.4.list <- list()
 knots.4.list[[6]] <- knots.4
 cairo_pdf("paper/4-knots.pdf",
-          width = 9,
-          height = 9)
+  width = 9,
+  height = 9
+)
 spaghettiPlot(fcal,
-              knots.4.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              n.knots = 4,
-              var.time = "calpro_time")
+  knots.4.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  n.knots = 4,
+  var.time = "calpro_time"
+)
 invisible(dev.off())
 spaghettiPlot(fcal,
-              knots.4.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              n.knots = 4,
-              var.time = "calpro_time")
+  knots.4.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  n.knots = 4,
+  var.time = "calpro_time"
+)
 ```
 
 #### 2 GRBFs 
@@ -228,35 +237,37 @@ spaghettiPlot(fcal,
 ```{R}
 #| label: fig-grbf-k-2
 #| fig-cap: "Cluster profiles for the six-cluster model assuming two knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
-knots.grbf <- readRDS(paste0(prefix, "cache/fcal/grbf/k=2/grbf-1.2.RDS"))
-knots.grbf.list <- list()
-knots.grbf.list[[6]] <- knots.grbf
-png("paper/grbf-plots.png", width = 8, height = 7, units = "in", res = 300)
+knots.grbf.2 <- readRDS(paste0(prefix, "cache/fcal/grbf/k=2/grbf-1.2.RDS"))
+knots.grbf.2.list <- list()
+knots.grbf.2.list[[6]] <- knots.grbf.2
+png("paper/grbf-plots-2.png", width = 8, height = 7, units = "in", res = 300)
 spaghettiPlot(fcal,
-              knots.grbf.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              knot.type = "equal",
-              n.knots = 2,
-              grbf = TRUE,
-              l = 1.2,
-              var.time = "calpro_time")
+  knots.grbf.2.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  knot.type = "equal",
+  n.knots = 2,
+  grbf = TRUE,
+  l = 1.2,
+  var.time = "calpro_time"
+)
 invisible(dev.off())
 spaghettiPlot(fcal,
-              knots.grbf.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              knot.type = "equal",
-              n.knots = 2,
-              grbf = TRUE,
-              l = 1.2,
-              var.time = "calpro_time")
+  knots.grbf.2.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  knot.type = "equal",
+  n.knots = 2,
+  grbf = TRUE,
+  l = 1.2,
+  var.time = "calpro_time"
+)
 ```
 
 #### 3 GRBFs 
@@ -264,35 +275,37 @@ spaghettiPlot(fcal,
 ```{R}
 #| label: fig-grbf-spec-k-3
 #| fig-cap: "Cluster profiles for the six-cluster model assuming three knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
-knots.grbf <- readRDS(paste0(prefix, "/cache/fcal/grbf/k=3/grbf-1.2.RDS"))
-knots.grbf.list <- list()
-knots.grbf.list[[6]] <- knots.grbf
-png("paper/grbf-plots.png", width = 8, height = 7, units = "in", res = 300)
+knots.grbf.3 <- readRDS(paste0(prefix, "/cache/fcal/grbf/k=3/grbf-1.2.RDS"))
+knots.grbf.3.list <- list()
+knots.grbf.3.list[[6]] <- knots.grbf.3
+png("paper/grbf-plots-3.png", width = 8, height = 7, units = "in", res = 300)
 spaghettiPlot(fcal,
-              knots.grbf.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              knot.type = "equal",
-              n.knots = 3,
-              grbf = TRUE,
-              l = 1.2,
-              var.time = "calpro_time")
+  knots.grbf.3.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  knot.type = "equal",
+  n.knots = 3,
+  grbf = TRUE,
+  l = 1.2,
+  var.time = "calpro_time"
+)
 invisible(dev.off())
 spaghettiPlot(fcal,
-              knots.grbf.list,
-              G = 6,
-              log = TRUE,
-              tmax = 7,
-              sizes = FALSE,
-              knots = TRUE,
-              knot.type = "equal",
-              n.knots = 3,
-              grbf = TRUE,
-              l = 1.2,
-              var.time = "calpro_time")
+  knots.grbf.3.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  knot.type = "equal",
+  n.knots = 3,
+  grbf = TRUE,
+  l = 1.2,
+  var.time = "calpro_time"
+)
 ```
 
 :::
@@ -303,26 +316,46 @@ spaghettiPlot(fcal,
 #| results: "hold"
 #| label: tbl-knot-stats
 #| tbl-cap: Model statistics for differing numbers of knots for natural cubic splines
-knots.df <- tibble(Knots = c(2, 3, 4, "GRBF"),
-                   loglik = c(knots.2$loglik,
-                              knots.3$loglik,
-                              knots.4$loglik,
-                              knots.grbf$loglik),
-                   AIC = c(knots.2$AIC,
-                           knots.3$AIC,
-                           knots.4$AIC,
-                           knots.grbf$AIC),
-                   BIC = c(knots.2$BIC,
-                           knots.3$BIC,
-                           knots.4$BIC,
-                           knots.grbf$BIC))
+knots.df <- tibble(
+  Knots = c("2 knots", "3 knots", "4 knots", "2 GRBFs", "3 GRBFs"),
+  loglik = c(
+    knots.2$loglik,
+    knots.3$loglik,
+    knots.4$loglik,
+    knots.grbf.2$loglik,
+    knots.grbf.3$loglik
+  ),
+  AIC = c(
+    knots.2$AIC,
+    knots.3$AIC,
+    knots.4$AIC,
+    knots.grbf.2$AIC,
+    knots.grbf.3$AIC
+  ),
+  BIC = c(
+    knots.2$BIC,
+    knots.3$BIC,
+    knots.4$BIC,
+    knots.grbf.2$BIC,
+    knots.grbf.3$BIC
+  )
+)
 knitr::kable(knots.df,
-             col.names = c("Knots",
-                           "Maxmum log likelihood",
-                           "AIC",
-                           "BIC")
-             )
-rm(knots.3, knots.3.list, knots.4, knots.4.list, knots.grbf.list)
+  col.names = c(
+    "Knots",
+    "Maxmum log likelihood",
+    "AIC",
+    "BIC"
+  )
+)
+rm(
+  knots.3,
+  knots.3.list,
+  knots.4,
+  knots.4.list,
+  knots.grbf.2.list,
+  knots.grbf.3.list
+)
 ```
 
 AIC and BIC both suggest a 4-knot specification to be optimal (@tbl-knot-stats). 
@@ -413,35 +446,41 @@ alluvial.df$class <- as.factor(alluvial.df$class)
 
 # eliminate label switching
 
-alluvial.df[alluvial.df[, "G"] == 3, "class" ] <-
+alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
-                  from = c(seq(1, 3)),
-                  to = c(3, 2, 1))
+    from = c(seq(1, 3)),
+    to = c(3, 2, 1)
+  )
 
-alluvial.df[alluvial.df[, "G"] == 4, "class" ] <-
+alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
-                  from = c(seq(1, 4)),
-                  to = c(4, 2, 1, 3))
+    from = c(seq(1, 4)),
+    to = c(4, 2, 1, 3)
+  )
 
-alluvial.df[alluvial.df[, "G"] == 5, "class" ] <-
+alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
-                  from = c(seq(1, 5)),
-                  to = c(3, 4, 5, 1, 2))
+    from = c(seq(1, 5)),
+    to = c(3, 4, 5, 1, 2)
+  )
 
-alluvial.df[alluvial.df[, "G"] == 6, "class" ] <-
+alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
-                  from = c(seq(1, 6)),
-                  to = c(1, 4, 3, 5, 6, 2))
+    from = c(seq(1, 6)),
+    to = c(1, 4, 3, 5, 6, 2)
+  )
 
-alluvial.df[alluvial.df[, "G"] == 7, "class" ] <-
+alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
-                  from = c(seq(1, 7)),
-                  to = c(3, 1, 5, 4, 2, 7, 6))
+    from = c(seq(1, 7)),
+    to = c(3, 1, 5, 4, 2, 7, 6)
+  )
 
-alluvial.df[alluvial.df[, "G"] == 8, "class" ] <-
+alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
-                  from = c(seq(1, 8)),
-                  to = c(8, 1, 7, 4, 5, 2, 6, 3))
+    from = c(seq(1, 8)),
+    to = c(8, 1, 7, 4, 5, 2, 6, 3)
+  )
 
 
 p <- ggplot(
@@ -467,15 +506,17 @@ print(p)
 
 p <- p + ggtitle("", "")
 ggsave("paper/alluvial-FCAL-all.png",
-       p,
-       width = 12,
-       height = 6.75,
-       units = "in")
+  p,
+  width = 12,
+  height = 6.75,
+  units = "in"
+)
 ggsave("paper/alluvial-FCAL-all.pdf",
-       p,
-       width = 12,
-       height = 6.75,
-       units = "in")
+  p,
+  width = 12,
+  height = 6.75,
+  units = "in"
+)
 saveRDS(p, paste0(prefix, "processed/plots/fc-alluvial.RDS"))
 ```
 
@@ -525,9 +566,10 @@ for (G in G.fcal) {
 p1 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
   ggplot(aes(x = residuals)) +
   geom_histogram(aes(y = after_stat(density)),
-                 fill = "#D8829D",
-                 color = "#AF6A80",
-                 bins = 30) +
+    fill = "#D8829D",
+    color = "#AF6A80",
+    bins = 30
+  ) +
   geom_density(color = "#023777", size = 1.2) +
   theme_classic() +
   theme(axis.line = element_line(colour = "gray")) +
@@ -537,19 +579,20 @@ p1 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
 
 p2 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
   ggplot(aes(sample = residuals)) +
-    stat_qq_band() +
-    stat_qq_line(color = "#D8829D") +
-    stat_qq_point(color = "#023777")  +
-    theme_classic() +
-    theme(axis.line = element_line(colour = "gray")) + 
-    ylab("Theoretical Quantiles") +
-    xlab("Sample Quantiles") +
+  stat_qq_band() +
+  stat_qq_line(color = "#D8829D") +
+  stat_qq_point(color = "#023777") +
+  theme_classic() +
+  theme(axis.line = element_line(colour = "gray")) +
+  ylab("Theoretical Quantiles") +
+  xlab("Sample Quantiles") +
   ggtitle("B")
 ggsave("paper/Residual-plot-fcal-ncs.pdf",
-       plot = p1 / p2,
-       width = 8,
-       height = 8,
-       units = "in")
+  plot = p1 / p2,
+  width = 8,
+  height = 8,
+  units = "in"
+)
 print(p1 / p2)
 ```
 
@@ -566,21 +609,22 @@ for (i in 1:6) {
     ggplot(aes(sample = resid_ss)) +
     stat_qq_band() +
     stat_qq_line(color = "#D8829D") +
-    stat_qq_point(color = "#023777")  +
+    stat_qq_point(color = "#023777") +
     theme_classic() +
-    theme(axis.line = element_line(colour = "gray")) + 
+    theme(axis.line = element_line(colour = "gray")) +
     ylab("Theoretical Quantiles") +
     xlab("Sample Quantiles") +
-  ggtitle(labels[i])
+    ggtitle(labels[i])
 }
 
-ArrangedPlot <-  (p[[1]] + p[[2]]) / (p[[3]] + p[[4]]) / (p[[5]] + p[[6]])
+ArrangedPlot <- (p[[1]] + p[[2]]) / (p[[3]] + p[[4]]) / (p[[5]] + p[[6]])
 
 ggsave("paper/cluster-resids-ncs.pdf",
-       ArrangedPlot,
-       width = 8,
-       height = 8,
-       units = "in")
+  ArrangedPlot,
+  width = 8,
+  height = 8,
+  units = "in"
+)
 print(ArrangedPlot)
 ```
 :::
@@ -591,13 +635,14 @@ print(ArrangedPlot)
 #| label: fig-fcal-metrics
 #| fig-cap: "Model metrics for FCAL for G = 4-8"
 summaryplot(models.fcal[[4]],
-            models.fcal[[5]],
-            models.fcal[[6]],
-            models.fcal[[7]],
-            models.fcal[[8]], 
-            which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
-            mfrow = c(2,3),
-            axis = "Class")
+  models.fcal[[5]],
+  models.fcal[[6]],
+  models.fcal[[7]],
+  models.fcal[[8]],
+  which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
+  mfrow = c(2, 3),
+  axis = "Class"
+)
 ```
 
 ```{R FCAL metrics table}
@@ -622,29 +667,31 @@ for (G in G.fcal) {
   cat("###### Log-scale, all subjects \n\n")
   grid::grid.newpage()
   spaghettiPlot(fcal,
-                models.fcal,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = TRUE,
-                knot.type = "equal",
-                var.time = "calpro_time")
+    models.fcal,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = TRUE,
+    knot.type = "equal",
+    var.time = "calpro_time"
+  )
 }
 ```
 
 ```{R}
 #| include: false
 grid::grid.newpage()
- spaghettiPlot(fcal,
-               models.fcal,
-               G = 6,
-               log = TRUE,
-               tmax = 7,
-               sizes = TRUE,
-               knots = FALSE,
-               knot.type = "equal",
-               var.time = "calpro_time")
+spaghettiPlot(fcal,
+  models.fcal,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = TRUE,
+  knots = FALSE,
+  knot.type = "equal",
+  var.time = "calpro_time"
+)
 ```
 
 :::
@@ -665,13 +712,15 @@ cluster <- numeric()
 
 dict.fcal <- subset(dict, ids %in% unique(fcal$ids))
 
-for (id in dict.fcal$ids) { 
-  cluster <- c(cluster,
-               subset(models.fcal[[6]]$pprob, ids == id)$class)
+for (id in dict.fcal$ids) {
+  cluster <- c(
+    cluster,
+    subset(models.fcal[[6]]$pprob, ids == id)$class
+  )
 }
 
 
-dict.fcal$diagnosis <- as.factor(dict.fcal$diagnosis )
+dict.fcal$diagnosis <- as.factor(dict.fcal$diagnosis)
 dict.fcal$cluster <- as.factor(cluster)
 rm(cluster)
 ```
@@ -725,9 +774,10 @@ describe_cat("diagnosis", subset(dict.fcal, cluster == 6))
 
 ```{R}
 fisher.test(dict.fcal$diagnosis,
-            dict.fcal$cluster,
-            simulate.p.value = TRUE, # calculate p-values using Monte Carlo
-            B = 1e5) # replicates for Monte Carlo test 
+  dict.fcal$cluster,
+  simulate.p.value = TRUE, # calculate p-values using Monte Carlo
+  B = 1e5
+) # replicates for Monte Carlo test
 ```
 
 ### Gaussian radial basis functions
@@ -761,35 +811,41 @@ alluvial.df$class <- as.factor(alluvial.df$class)
 
 # eliminate label switching
 
- alluvial.df[alluvial.df[, "G"] == 3, "class" ] <-
-   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
-                   from = c(seq(1, 3)),
-                   to = c(3, 1, 2))
-# 
- alluvial.df[alluvial.df[, "G"] == 4, "class" ] <-
-   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
-                   from = c(seq(1, 4)),
-                   to = c(2, 3, 1, 4))
- 
- alluvial.df[alluvial.df[, "G"] == 5, "class" ] <-
-   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
-                   from = c(seq(1, 5)),
-                   to = c(1, 4, 5, 2, 3))
- 
- alluvial.df[alluvial.df[, "G"] == 6, "class" ] <-
-   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
-                   from = c(seq(1, 6)),
-                   to = c(3, 5, 1, 6, 2, 4))
- 
- alluvial.df[alluvial.df[, "G"] == 7, "class" ] <-
-   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
-                   from = c(seq(1, 7)),
-                   to = c(6, 3, 2, 4, 5, 7, 1))
-# 
- alluvial.df[alluvial.df[, "G"] == 8, "class" ] <-
-   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
-                   from = c(seq(1, 8)),
-                   to = c(1, 5, 3, 8, 6, 2, 4, 7))
+alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
+    from = c(seq(1, 3)),
+    to = c(3, 1, 2)
+  )
+#
+alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
+    from = c(seq(1, 4)),
+    to = c(2, 3, 1, 4)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
+    from = c(seq(1, 5)),
+    to = c(1, 4, 5, 2, 3)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
+    from = c(seq(1, 6)),
+    to = c(3, 5, 1, 6, 2, 4)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
+    from = c(seq(1, 7)),
+    to = c(6, 3, 2, 4, 5, 7, 1)
+  )
+#
+alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
+    from = c(seq(1, 8)),
+    to = c(1, 5, 3, 8, 6, 2, 4, 7)
+  )
 
 
 p <- ggplot(
@@ -815,15 +871,17 @@ print(p)
 
 p <- p + ggtitle("", "")
 ggsave("paper/alluvial-FCAL-grbf.png",
-       p,
-       width = 12,
-       height = 6.75,
-       units = "in")
+  p,
+  width = 12,
+  height = 6.75,
+  units = "in"
+)
 ggsave("paper/alluvial-FCAL-grbf.pdf",
-       p,
-       width = 12,
-       height = 6.75,
-       units = "in")
+  p,
+  width = 12,
+  height = 6.75,
+  units = "in"
+)
 ```
 
 #### Posterior classifications
@@ -873,9 +931,10 @@ for (G in G.grbf) {
 p1 <- data.frame(residuals = resid(models.grbf[[6]])) %>%
   ggplot(aes(x = residuals)) +
   geom_histogram(aes(y = after_stat(density)),
-                 fill = "#D8829D",
-                 color = "#AF6A80",
-                 bins = 30) +
+    fill = "#D8829D",
+    color = "#AF6A80",
+    bins = 30
+  ) +
   geom_density(color = "#023777", size = 1.2) +
   theme_classic() +
   theme(axis.line = element_line(colour = "gray")) +
@@ -885,19 +944,20 @@ p1 <- data.frame(residuals = resid(models.grbf[[6]])) %>%
 
 p2 <- data.frame(residuals = resid(models.grbf[[6]])) %>%
   ggplot(aes(sample = residuals)) +
-    stat_qq_band() +
-    stat_qq_line(color = "#D8829D") +
-    stat_qq_point(color = "#023777")  +
-    theme_classic() +
-    theme(axis.line = element_line(colour = "gray")) + 
-    ylab("Theoretical Quantiles") +
-    xlab("Sample Quantiles") +
+  stat_qq_band() +
+  stat_qq_line(color = "#D8829D") +
+  stat_qq_point(color = "#023777") +
+  theme_classic() +
+  theme(axis.line = element_line(colour = "gray")) +
+  ylab("Theoretical Quantiles") +
+  xlab("Sample Quantiles") +
   ggtitle("B")
 ggsave("paper/Residual-plot-fcal-grbf.pdf",
-       plot = p1 / p2,
-       width = 8,
-       height = 8,
-       units = "in")
+  plot = p1 / p2,
+  width = 8,
+  height = 8,
+  units = "in"
+)
 print(p1 / p2)
 ```
 
@@ -914,21 +974,22 @@ for (i in 1:6) {
     ggplot(aes(sample = resid_ss)) +
     stat_qq_band() +
     stat_qq_line(color = "#D8829D") +
-    stat_qq_point(color = "#023777")  +
+    stat_qq_point(color = "#023777") +
     theme_classic() +
-    theme(axis.line = element_line(colour = "gray")) + 
+    theme(axis.line = element_line(colour = "gray")) +
     ylab("Theoretical Quantiles") +
     xlab("Sample Quantiles") +
-  ggtitle(labels[i])
+    ggtitle(labels[i])
 }
 
-ArrangedPlot <-  (p[[1]] + p[[2]]) / (p[[3]] + p[[4]]) / (p[[5]] + p[[6]])
+ArrangedPlot <- (p[[1]] + p[[2]]) / (p[[3]] + p[[4]]) / (p[[5]] + p[[6]])
 
 ggsave("paper/cluster-resids-grbf.pdf",
-       ArrangedPlot,
-       width = 8,
-       height = 8,
-       units = "in")
+  ArrangedPlot,
+  width = 8,
+  height = 8,
+  units = "in"
+)
 print(ArrangedPlot)
 ```
 
@@ -939,15 +1000,16 @@ print(ArrangedPlot)
 #| label: fig-grbf-metrics
 #| fig-cap: "Model metrics for FCAL for G = 2-8"
 summaryplot(models.grbf[[2]],
-            models.grbf[[3]],
-            models.grbf[[4]],
-            models.grbf[[5]],
-            models.grbf[[6]],
-            models.grbf[[7]],
-            models.grbf[[8]], 
-            which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
-            mfrow = c(2,3),
-            axis = "Class")
+  models.grbf[[3]],
+  models.grbf[[4]],
+  models.grbf[[5]],
+  models.grbf[[6]],
+  models.grbf[[7]],
+  models.grbf[[8]],
+  which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
+  mfrow = c(2, 3),
+  axis = "Class"
+)
 ```
 
 ```{R grbf metrics table}
@@ -973,15 +1035,16 @@ for (G in G.grbf) {
   cat("###### Log-scale, all subjects \n\n")
   grid::grid.newpage()
   spaghettiPlot(fcal,
-                models.grbf,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = TRUE,
-                knot.type = "equal",
-                grbf = TRUE,
-                var.time = "calpro_time")
+    models.grbf,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = TRUE,
+    knot.type = "equal",
+    grbf = TRUE,
+    var.time = "calpro_time"
+  )
 }
 ```
 
@@ -990,18 +1053,19 @@ for (G in G.grbf) {
 #### IBD Associations
 
 ```{R}
-
 cluster <- numeric()
 
 dict.grbf <- subset(dict, ids %in% unique(fcal$ids))
 
-for (id in dict.grbf$ids) { 
-  cluster <- c(cluster,
-               subset(models.grbf[[6]]$pprob, ids == id)$class)
+for (id in dict.grbf$ids) {
+  cluster <- c(
+    cluster,
+    subset(models.grbf[[6]]$pprob, ids == id)$class
+  )
 }
 
 
-dict.grbf$diagnosis <- as.factor(dict.grbf$diagnosis )
+dict.grbf$diagnosis <- as.factor(dict.grbf$diagnosis)
 dict.grbf$cluster <- as.factor(cluster)
 rm(cluster)
 ```
@@ -1055,22 +1119,33 @@ describe_cat("diagnosis", subset(dict.grbf, cluster == 6))
 
 ```{R}
 fisher.test(dict.grbf$diagnosis,
-            dict.grbf$cluster,
-            simulate.p.value = TRUE, # calculate p-values using Monte Carlo
-            B = 1e5) # replicates for Monte Carlo test 
+  dict.grbf$cluster,
+  simulate.p.value = TRUE, # calculate p-values using Monte Carlo
+  B = 1e5
+) # replicates for Monte Carlo test
 ```
 
 ### NCS vs GRBF comparison
 
 ```{R}
-pred.df <- data.frame(calpro_time = seq(0, 7, by = 0.01),
-                      diagnosis = "Crohn's Disease")
-pred.df <- rbind(pred.df,
-                 data.frame(calpro_time = seq(0, 7, by = 0.01),
-                            diagnosis = "Ulcerative colitis"))
-pred.df <- rbind(pred.df,
-                 data.frame(calpro_time = seq(0, 7, by = 0.01),
-                            diagnosis = "IBDU"))
+pred.df <- data.frame(
+  calpro_time = seq(0, 7, by = 0.01),
+  diagnosis = "Crohn's Disease"
+)
+pred.df <- rbind(
+  pred.df,
+  data.frame(
+    calpro_time = seq(0, 7, by = 0.01),
+    diagnosis = "Ulcerative colitis"
+  )
+)
+pred.df <- rbind(
+  pred.df,
+  data.frame(
+    calpro_time = seq(0, 7, by = 0.01),
+    diagnosis = "IBDU"
+  )
+)
 
 p.list <- list()
 
@@ -1086,45 +1161,56 @@ GRBF.pred <- predictY(models.grbf[[6]], pred.df, "calpro_time", draws = TRUE)$pr
 NCS.switch <- c(3, 5, 1, 2, 6, 4)
 
 for (g in 1:6) {
-  plot.df <- data.frame(time = pred.df$calpro_time,
-                        pred = NCS.pred[, NCS.switch[g]],
-                        upper  = NCS.pred[, NCS.switch[g] + 6],
-                        lower = NCS.pred[, NCS.switch[g] + 12],
-                        Model = "NCS")
-  plot.df <- rbind(plot.df, 
-                   data.frame(time = pred.df$calpro_time,
-                        pred = GRBF.pred[, g],
-                        upper  = GRBF.pred[, g + 6],
-                        lower = GRBF.pred[, g + 12],
-                        Model = "GRBF"))
-  
+  plot.df <- data.frame(
+    time = pred.df$calpro_time,
+    pred = NCS.pred[, NCS.switch[g]],
+    upper = NCS.pred[, NCS.switch[g] + 6],
+    lower = NCS.pred[, NCS.switch[g] + 12],
+    Model = "NCS"
+  )
+  plot.df <- rbind(
+    plot.df,
+    data.frame(
+      time = pred.df$calpro_time,
+      pred = GRBF.pred[, g],
+      upper = GRBF.pred[, g + 6],
+      lower = GRBF.pred[, g + 12],
+      Model = "GRBF"
+    )
+  )
+
   p <- plot.df %>%
-    ggplot(aes(x = time, color = Model)) + 
+    ggplot(aes(x = time, color = Model)) +
     geom_line(aes(y = pred)) +
     geom_line(aes(y = upper), lty = 2) +
-    geom_line(aes(y = lower), lty = 2) + 
-    xlab ("Time") +
+    geom_line(aes(y = lower), lty = 2) +
+    xlab("Time") +
     ylab("Predicted cluster mean") +
-    ylim (3 , 8) + 
-    theme_minimal() + scale_color_manual(values = c("#0E6BA8", "#EF6461"))
+    ylim(3, 8) +
+    theme_minimal() +
+    scale_color_manual(values = c("#0E6BA8", "#EF6461"))
   p.list[[g]] <- p
-} 
+}
 
 final.plot <- (p.list[[1]] + p.list[[2]]) /
-  (p.list[[3]] + p.list[[4]]) / 
-  (p.list[[5]] + p.list[[6]])  +
+  (p.list[[3]] + p.list[[4]]) /
+  (p.list[[5]] + p.list[[6]]) +
   plot_annotation(tag_levels = "A") +
   plot_layout(guides = "collect") & theme(legend.position = "bottom")
 
 
 ggsave("paper/comparison.pdf",
-       final.plot, width = 8.3,
-       height = 11.7,
-       units = "in")
+  final.plot,
+  width = 8.3,
+  height = 11.7,
+  units = "in"
+)
 ggsave("paper/comparison.png",
-       final.plot, width = 8.3,
-       height = 11.7,
-       units = "in")
+  final.plot,
+  width = 8.3,
+  height = 11.7,
+  units = "in"
+)
 print(final.plot)
 ```
 

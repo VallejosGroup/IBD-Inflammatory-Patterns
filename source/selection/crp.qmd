@@ -469,8 +469,22 @@ for (G in G.crp) {
   cat("\n\n")
   cat(paste0("##### G = ", G, "\n\n"))
   cat("###### Processed CRP \n\n")
-  grid::grid.newpage()
   
+  if (G == 8) {
+    cairo_pdf("paper/crp-trajectories.pdf", width = 8, height = 12)
+    grid::grid.newpage()
+    spaghettiPlot(crp_median,
+              models.crp.ma,
+              G,
+              var.time = "crp_time",
+              tmax = 7,
+              knots = FALSE,
+              ylim = "data",
+              sizes = TRUE)
+    dev.off()
+  }
+  
+  grid::grid.newpage()
   spaghettiPlot(crp_median,
     models.crp.ma,
     G,
