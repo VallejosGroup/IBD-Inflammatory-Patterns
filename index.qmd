@@ -1,5 +1,5 @@
 ---
-title: "Analysis for Characterising heterogeneity in inflammatory bowel disease via routinely collected inflammatory longitudinal biomarker profiles in the Lothian IBD Registry"
+title: "Analysis for Large-scale clustering of longitudinal faecal calprotectin and CRP profiles in inflammatory bowel disease: Findings from the Lothian IBD Registry"
 format:
   html:
     code-tools: false
@@ -14,6 +14,16 @@ author:
     affiliations:
       - ref: CGEM
       - ref: HGU
+  - name: "Charlie W. Lees"
+    url: https://scholar.google.com/citations?user=rHc0qf0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: CGEM
+      - ref: IBD
+  - name: "Catalina A. Vallejos"
+    url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: HGU
+      - ref: Turing
 ---
 
 ```{R}
@@ -23,45 +33,44 @@ x <- 1 # If there's no code block then inline R code below won't work.
 
 ## About
 
-This website presents the analytical reports developed for
-*Characterising heterogeneity in inflammatory bowel disease via routinely collected inflammatory longitudinal biomarker profiles in the Lothian IBD Registry*
+This website presents the analyses carried out for
+*Large-scale clustering of longitudinal faecal calprotectin and CRP profiles in inflammatory bowel disease*
 by Constantine-Cooke et al. In this work, we expand upon our previous research
 which clustered faecal calprotectin profiles for a subset of Crohn's disease
-patients [@constantine-cooke2023]. This work explores clustering faecal
-calprotectin and CRP profiles across all IBD patients treated by the NHS Lothian
-health board. 
+patients [@constantine-cooke2023] by clustering faecal
+calprotectin (FC) and CRP profiles across all both Crohn's disease and
+ulcerative colitis patients treated by the NHS Lothian health board. 
 
 This analysis is designed to be run either inside or outside of a Docker
 container. File paths will be adjusted based on the detected environment. 
 
-The analysis pipeline for this project consists of two stages:
+The analysis pipeline for this project consists of three stages:
 
 1. [Preprocessing](source/preprocessing/preprocessing.qmd) where data obtained from clinicians are
    reformatted and any data quality issues are dealt with.
 2. Model selection, where latent class mixed models are fitted with differing
    numbers of assumed clusters and the most appropriate model is selected.
-   Separate reports are generated for
+   Separate pages are available for
    [faecal calprotectin](source/selection/fcal.qmd) and
    [CRP](source/selection/crp.qmd).
+3. Post hoc analyses.
    
 ## Using this website
 
 The navigation menu at the top of the page will allow you to navigate through
 the steps of the analysis pipeline.  The code button at the top of each page can
 be used to show all code blocks instead of clicking on the code buttons for each
-individual block of code. Moving the mouse pointer over any citations in a
-report will produce a pop up box with reference details. Clicking on the
-citation will link to the bibliography at the bottom of the page. 
+individual block of code. Moving the mouse pointer over any citations will
+produce a pop up box with reference details. Clicking on the citation will link
+to the bibliography at the bottom of the page. 
 
-## Software versions
+## Software
 
 All analyses have been generated using
 [`r strsplit(R.version$version.string, " (", fixed = TRUE)[[1]][1]`](https://www.r-project.org).
 
-See the Session Information sections at the bottom of each report to see the R
-packages used for that particular report and respective versions. 
-
-## {.appendix}
+Please see the *Session Information* sections at the end of each page for the
+R packages and the respective versions used. 
 
 This website has been generated using the [Quarto](https://quarto.org)
 scientific publishing system built on top of [pandoc](https://pandoc.org). A

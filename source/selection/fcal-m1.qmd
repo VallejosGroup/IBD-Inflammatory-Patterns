@@ -9,6 +9,7 @@
 library(lcmm)
 library(splines)
 
+
 fcal <- readRDS("fcal.RDS")
 fcal$calpro_result <- log(fcal$calpro_result)
 
@@ -17,9 +18,6 @@ if(!dir.exists("cache")) dir.create("cache")
 if(!file.exists("m1.RDS")) {
   m1 <-  hlme(fixed =  calpro_result ~ ns(calpro_time,
                                           df = 4,
-                                          knots = seq(from = 7/4,
-                                             to = 21/4,
-                                             by = 7/4),
                                           Boundary.knots = c(0, 7)),
               random = ~  1,
               subject = "ids",

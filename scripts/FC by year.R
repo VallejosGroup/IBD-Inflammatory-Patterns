@@ -40,8 +40,17 @@ fcal <- fcal %>% distinct(ids,
 p1 <- fcal %>%
   ggplot(aes(x = year(calpro_date))) +
   geom_bar(color = "#70ABAF", fill = "#99E1D9") +
-  theme_minimal() +
+  theme_bw() +
   labs(x = "Year", y = "Faecal calprotectin test count")
+
+
+ggsave("plots/fcal-by-year.png",
+       p1,
+       width = 14 * 2/3,
+       height = 5.5,
+       units = "in",
+       dpi = 300)
+
 
 crp <- subset(labs, TEST == "C-Reactive Prot")
 crp$COLLECTION_DATE <- readr::parse_date(

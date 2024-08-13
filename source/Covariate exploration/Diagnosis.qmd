@@ -93,7 +93,7 @@ spaghettiPlot(fcal,
 )
 dev.off()
 
-cairo_pdf("paper/fc-by-diag.png", width = 8, height = 7)
+cairo_pdf("paper/fc-by-diag.pdf", width = 8, height = 7)
 grid::grid.newpage()
 spaghettiPlot(fcal,
   fc.model.list ,
@@ -101,7 +101,8 @@ spaghettiPlot(fcal,
   log = TRUE,
   tmax = 7,
   color = "diagnosis",
-  var.time = "calpro_time"
+  var.time = "calpro_time",
+  sizes = TRUE
 )
 dev.off()
 
@@ -117,6 +118,32 @@ spaghettiPlot(fcal,
 ```
 
 ```{R}
+library(ggmosaic)
+
+dict.fc$diagnosis <- factor(dict.fc$diagnosis,
+                            levels = c("Crohn's Disease",
+                                       "Ulcerative Colitis",
+                                       "IBDU"))
+p1 <- dict.fc %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(class), fill = diagnosis), show.legend = FALSE ) +
+  theme_minimal() +
+  labs(x = "Cluster",
+       y =  "IBD type") +
+  ggtitle("IBD type",
+          "Faecal calprotectin clustering")
+
+ggsave("plots/mosaic/fc-by-diag.png",
+       p1,
+       width = 7.5,
+       height = 5,
+       units = "in",
+       dpi = 300,
+       create.dir = TRUE)
+ggsave("plots/mosaic/fc-by-diag.pdf", p1, width = 7.5, height = 5)
+```
+
+```{R}
 crp.model.list <- list()
 crp.model.list[[8]] <- model.crp
 png("paper/crp-by-diag.png", width = 8, height = 9, units = "in", res = 300)
@@ -129,7 +156,7 @@ spaghettiPlot(crp.median,
               tmax = 7)
 dev.off()
 
-cairo_pdf("paper/crp-by-diag.png", width = 8, height = 9)
+cairo_pdf("paper/crp-by-diag.pdf", width = 8, height = 9)
 grid::grid.newpage()
 spaghettiPlot(crp.median,
               crp.model.list,
@@ -146,6 +173,109 @@ spaghettiPlot(crp.median,
               color = "diagnosis", 
               var.time = "crp_time", 
               tmax = 7)
-
-
 ```
+
+```{R}
+
+dict.crp$diagnosis <- factor(dict.crp$diagnosis,
+                            levels = c("Crohn's Disease",
+                                       "Ulcerative Colitis",
+                                       "IBDU"))
+p2 <- dict.crp %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(class), fill = diagnosis), show.legend = FALSE ) +
+  theme_minimal() +
+  labs(x = "Cluster",
+       y =  "IBD type") +
+  ggtitle("IBD type",
+          "CRP clustering")
+
+
+
+ggsave("plots/mosaic/crp-by-diag.png",
+       p2,
+       width = 7.5,
+       height = 5,
+       units = "in",
+       dpi = 300,
+       create.dir = TRUE)
+ggsave("plots/mosaic/crp-by-diag.pdf", p2, width = 7.5, height = 5)
+```
+
+
+```{R}
+tab <- table(model.fc$pprob$class)
+cluster.count <- data.frame(Cluster = names(tab), Count = as.numeric(tab))
+
+pred.fc.df <- data.frame(calpro_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+                         diagnosis = c(rep("Crohn's Disease", 701),
+                                       rep("Ulcerative Colitis", 701)))
+pred.fc.df.update <- predictY(model.fc, pred.fc.df,
+                              var.time = "calpro_time",
+                              draws = TRUE)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:6) {
+  temp <- rbind(temp,
+                data.frame(Time = seq(0, 7, 0.01),
+                           Cluster = g, 
+                           Value = pred.fc.df.update[, g]))
+}
+
+temp <- merge(temp, cluster.count, by = "Cluster")
+
+p3 <- temp %>%
+  ggplot(aes(x = Time,
+             y = Value,
+             color = as.factor(Cluster),
+             linewidth = Count)) +
+  geom_line() +
+  theme_minimal() +
+  labs(y = "Log (FC (μg/g))",
+       x = "Time (years)",
+       color = "Cluster") +
+  theme(legend.position = "bottom")
+```
+
+
+```{R}
+tab <- table(model.crp$pprob$class)
+cluster.count <- data.frame(Cluster = names(tab), Count = as.numeric(tab))
+
+pred.crp.df <- data.frame(crp_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+                         diagnosis = c(rep("Crohn's Disease", 701),
+                                       rep("Ulcerative Colitis", 701)))
+pred.crp.df.update <- predictY(model.crp,
+                               pred.crp.df,
+                               var.time = "crp_time",
+                               draws = TRUE)$pred
+
+temp2 <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:8) {
+  temp2 <- rbind(temp2, data.frame(Time = seq(0, 7, 0.01),
+                                  Cluster = g,
+                                  Value = pred.crp.df.update[, g]))
+}
+
+temp2 <- merge(temp2, cluster.count, by = "Cluster")
+
+p4 <- temp2 %>%
+  ggplot(aes(x = Time,
+             y = Value,
+             color = as.factor(Cluster),
+             linewidth = Count)) +
+  geom_line() +
+  theme_minimal() +
+  labs(y = "Log (CRP (mg/L))",
+       x = "Time (years)",
+       color = "Cluster") +
+  theme(legend.position = "bottom")
+```
+
+```{R}
+p <- (p1 + p2) / (p3 + p4) 
+ggsave("plots/mosaic/all-comp.png", p, width = 14, height = 10)
+```
+

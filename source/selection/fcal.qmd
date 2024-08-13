@@ -673,7 +673,6 @@ for (G in G.fcal) {
     tmax = 7,
     sizes = TRUE,
     knots = TRUE,
-    knot.type = "equal",
     var.time = "calpro_time"
   )
 }
@@ -689,9 +688,21 @@ spaghettiPlot(fcal,
   tmax = 7,
   sizes = TRUE,
   knots = FALSE,
-  knot.type = "equal",
   var.time = "calpro_time"
 )
+
+cairo_pdf("paper/NCS-8-cluster.pdf", width = 8, height = 14)
+grid::grid.newpage()
+spaghettiPlot(fcal,
+  models.fcal,
+  G = 8,
+  log = TRUE,
+  tmax = 7,
+  sizes = TRUE,
+  knots = FALSE,
+  var.time = "calpro_time"
+)
+invisible(dev.off())
 ```
 
 :::

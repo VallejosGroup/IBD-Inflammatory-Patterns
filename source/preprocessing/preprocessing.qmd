@@ -20,9 +20,6 @@ author:
     url: https://scholar.google.com/citations?user=I9vcMcQAAAAJ&hl=en&oi=ao
     affiliations:
       - ref: IBD
-  - name: "Phillip W. Jenkinson"
-    affiliations:
-      - ref: IBD
   - name: "Charlie W. Lees"
     url: https://scholar.google.com/citations?user=rHc0qf0AAAAJ&hl=en&oi=ao
     affiliations:
@@ -60,10 +57,10 @@ This page details preprocessing steps undertaken prior to model fitting.
 These steps include examining data quality, performing data cleaning, and
 deriving the study cohort. 
 
-The data used in this pipeline have been primarily obtained from TRAK, a system
-used by NHS Lothian for the electronic ordering of laboratory tests. However, we
-also use additional data which have been manually curated by the Lees group for
-previous studies (see @Jenkinson2020).
+The biomarker (FC and CRP) data used in this pipeline have been primarily
+obtained from TRAK, a system used by NHS Lothian for the electronic ordering of
+laboratory tests. However, we also use phenotyping data manually curated by the
+Lees group for previous studies (see @Jenkinson2020).
 
 Prior to this report, all subject CHI (community health index) numbers, which 
 uniquely identifies a patient when they interact with NHS Scotland services, 
@@ -76,9 +73,9 @@ classifications: baseline and longitudinal. Baseline criteria can be applied
 using information known at diagnosis whilst longitudinal criteria are based on 
 biomarker measurements taken over time.
 
-The longitudinal criteria for each biomarker (FCAL and CRP) are considered
-independently. If a subject meets the below criteria for FCAL but not CRP, then
-only the FCAL for the subject will be modelled and vice versa. 
+The longitudinal criteria for each biomarker (FC and CRP) are considered
+independently. If a subject meets the below criteria for FC but not CRP, then
+only the FC for the subject will be modelled and vice versa. 
 
 ::: {.panel-tabset}
 
@@ -93,11 +90,11 @@ ulcerative colitis, or inflammatory bowel disease unclassified.
 ##### Diagnosis date
 
 Study subjects are required to have been diagnosed with IBD between October 2004
-and December 2017. The lower bound is required as FCAL tests were not introduced
-until 2005 and we require study subjects to have a FCAL available close to
+and December 2017. The lower bound is required as FC tests were not introduced
+until 2005 and we require study subjects to have a FC available close to
 diagnosis (see the longitudinal tab). The upper bound is required to ensure
 subjects have the opportunity to have at least five years of follow-up. The most
-recent FCAL observation in this dataset is January 2023 which informed when
+recent FC observation in this dataset is January 2023 which informed when
 deciding upon this cut-off.
 
 #### Longitudinal
@@ -144,22 +141,22 @@ Multiple datasets are used in this report with varying degrees of previous
 curation.
 
 * `labs.csv` is a January 2023 extraction from TRAK describing
-  `r nrow(labs)` test results (FCAL: `r nrow(labs.fcal)`; CRP:
+  `r nrow(labs)` test results (FC: `r nrow(labs.fcal)`; CRP:
   `r nrow(crp)`). Each row represents a test result with columns indicating the
-  corresponding subject ID, the test type (FCAL or CRP), the time of the test,
+  corresponding subject ID, the test type (FC or CRP), the time of the test,
   and the test result. This dataset contains the most recent data out of the
   other datasets. However, there has been no manual curation of these data, and
   no information about the patient's  characteristics are available (other than
   their ID). 
 * `fcal-cleaned.csv` does not describe CRP data. However, these data have been 
-  curated by the Lees group (primarily by **ML**) and includes additional FCAL
-  results. These are likely from other studies which involved FCAL data, such
+  curated by the Lees group and includes additional FC
+  results. These are likely from other studies which involved FC data, such
   as [PREdiCCt](https://www.predicct.co.uk). In addition to `r nrow(fcal)`
-  FCAL test results, each row also provides the sex, IBD type, date of
+  FC test results, each row also provides the sex, IBD type, date of
   diagnosis, and date of death (if applicable) for the corresponding subject. 
 * `allPatientsNathanCleaned.csv` provides sex, IBD type, and diagnosis date for
   most (but not all) subjects in `labs.csv` not described by `fcal-cleaned.csv`. 
-* `cd-cleaned.csv`, curated and maintained by **PWJ**, describes CD patient
+* `cd-cleaned.csv` describes CD patient
   data (n = `r nrow(outcomes)`). In addition to the same basic patient
   characteristic variables in other datasets, this dataset also describes
   surgical outcomes and biologic treatments prescribed to the subject. 
@@ -180,12 +177,12 @@ IBD types are used to test if clusters are enriched by IBD type and may be used
 to adjust the clustering. 
 
 There are multiple potential sources for date of diagnosis and IBD type: the
-CD outcomes dataset (maintained by **PWJ**), a demographics dataset maintained
-by the Lees group, and a raw TRAK extraction. For every subject listed in at 
-least one of these datasets, we have tried to extract their date of diagnosis
-and diagnosis type. We have assumed a hierarchy of datasets where manually
-curated datasets are preferred for extracting data over a dataset generated with
-minimal human involvement. 
+CD outcomes dataset, a demographics dataset maintained by the Lees group, and a
+raw TRAK extraction. For every subject listed in at  least one of these
+datasets, we have tried to extract their date of diagnosis and diagnosis type.
+We have assumed a hierarchy of datasets where manually curated datasets are
+preferred for extracting data over a dataset generated with minimal human
+involvement. 
 
 ```{R Create subject dictionary}
 ids <- unique(c(outcomes$ids, fcal$ids, updated$ids))
@@ -228,9 +225,7 @@ dict <- data.frame(
 
 rm(id, ids, diagnosis, date.of.diag) # clean up
 dict <- fix_date_df(dict, "date.of.diag")
-```
 
-```{R}
 dict <- fcal[,c("ids", "sex")] %>%
   distinct(ids,
            .keep_all = TRUE) %>%
@@ -412,7 +407,7 @@ dict %>%
 
 ## Faecal calprotectin
 
-Faecal calprotectin (FCAL), a marker of intestinal inflammation, has been
+Faecal calprotectin (FC), a marker of intestinal inflammation, has been
 obtained from two datasets. The first dataset has been curated by members of the
 Lees group whilst the second dataset is a direct extract from TRAK, a patient
 monitoring system used by NHS Lothian. 
@@ -421,7 +416,7 @@ monitoring system used by NHS Lothian.
 
 Data from these datasets has been merged and duplicates of data (same
 subject ID, measurement date, and recorded value) were removed. We also
-reduced the FCAL dataset to only describe subjects for whom IBD type and date of
+reduced the FC dataset to only describe subjects for whom IBD type and date of
 diagnosis are available for.
 
 For the TRAK extract, times for test results are given in datetime format (where
@@ -434,9 +429,12 @@ labs.fcal <- labs.fcal[, c("CHI", "COLLECTION_DATE", "TEST_DATA")] %>%
   subset(CHI %in% dict$ids)
 
 # Collection dates include collection times which are not required. Discarding.
-labs.fcal$COLLECTION_DATE <- fix_date_char(
-  stringr::str_split_fixed(labs.fcal$COLLECTION_DATE, " ", n = 2)[, 1]
+
+labs.fcal$COLLECTION_DATE <- readr::parse_date(
+  stringr::str_split_fixed(labs.fcal$COLLECTION_DATE, " ", n = 2)[, 1],
+  format = "%d-%b-%Y"
 )
+
 colnames(labs.fcal) <- c("ids", "calpro_date", "calpro_result")
 fcal <- rbind(fcal, labs.fcal)
 fcal <- fix_date_df(fcal, "calpro_date")
@@ -454,21 +452,21 @@ fcal <- merge(fcal,
 
 ### Test results
 
-FCAL data can be both left and right censored. FCAL recorded as "<20" were
-mapped to "20". FCAL recorded as ">1250", ">2500", or ">6000" were all mapped to
-"1250". Any FCAL tests given an error code by the laboratory have been removed. 
+FC data can be both left and right censored. FC recorded as "<20" were
+mapped to "20". FC recorded as ">1250", ">2500", or ">6000" were all mapped to
+"1250". Any FC tests given an error code by the laboratory have been removed. 
 
 ::: {.callout-note collapse="true"}
-#### More information on FCAL censoring
+#### More information on FC censoring
 
 The lower limit of detection is
 $<20 \mu g/g$ ($20 \mu g$ of calprotectin per $g$ of stool). By reducing the
 upper limit, it is possible to run more tests in parallel. As a higher
 throughput has been required over time, the upper threshold for tests has
 become lower. Initially test results over $6000 \mu g/g$ were censored, then
-$2500 \mu g/g$ and now $1250 \mu g /g$ is the upper limit for FCAL tests.  This
+$2500 \mu g/g$ and now $1250 \mu g /g$ is the upper limit for FC tests.  This
 change has resulted in minimal impact in clinics as $1250 \mu g/g$ is still
-considered a high FCAL result. However, this change has potential
+considered a high result. However, this change has potential
 implications for research. 
 ::: 
 
@@ -514,7 +512,7 @@ fcal %>%
   ylab("Density")
 ```
 
-FCAL test results on the original measurement scale are heavily right-skewed
+FC test results on the original measurement scale are heavily right-skewed
 towards $100 \mu g/g$. These data will be log
 transformed- resulting in the multi-modal distribution seen in @fig-logfcal-meas. 
 
@@ -538,19 +536,19 @@ fcal %>%
 ### Observations per subject
 
 Although we explore the number of observations per subject in this section, we
-will not yet apply the inclusion criteria of having at least three FCAL
+will not yet apply the inclusion criteria of having at least three FC
 measurements. This is because
 [we later](#at-least-three-measurements-maximum-followup) reduce the maximum
 follow-up which will impact the number of observations per subject. 
 
-The number of FCAL measurements per subject is right-skewed (@fig-fcal-dist).
-However, there are also subjects with many FCAL observations. These subjects
+The number of FC measurements per subject is right-skewed (@fig-fcal-dist).
+However, there are also subjects with many FC observations. These subjects
 were investigated and found to often have a complex disease course, such as
 acute severe ulcerative colitis, and required close monitoring as a result. 
 
 ```{R Number of FCAL observations per subject}
 #| label: fig-fcal-dist
-#| fig-cap: "Distribution of number of FCAL measurements per subject. The red line indicates the required minimum number of observations for inclusion"
+#| fig-cap: "Distribution of number of FC measurements per subject. The red line indicates the required minimum number of observations for inclusion"
 
 FCcounts <- as.vector(table(fcal$ids))
 FCcountsdf <- tibble(ids = names(table(fcal$ids)), counts = FCcounts)
@@ -565,12 +563,12 @@ FCcountsdf %>%
 
 ### Retiming 
 
-Time of FCAL measurements were retimed and scaled to be the number of years
+Time of FC measurements were retimed and scaled to be the number of years
 since IBD diagnosis.
 
 ```{R FCAL time mapping}
 #| label: fig-fcal-spag-pre
-#| fig-cap: "Spaghetti plot of FCAL trajectories (preprocessed)"
+#| fig-cap: "Spaghetti plot of FC trajectories (preprocessed)"
 
 diagnosis_date <- as.Date(NULL)
 for (i in 1:nrow(fcal)) {
@@ -598,24 +596,24 @@ fcal %>%
   ggtitle("")
 ```
 
-After retiming, it is clear some FCAL observations are earlier than diagnosis
+After retiming, it is clear some FC observations are earlier than diagnosis
 and in some cases substantially earlier (@fig-fcal-spag-pre). Tests taken
 close to reported date of diagnosis are likely "early" as a result of diagnostic
 delay whereas tests from much earlier were likely requested due to other
 conditions. 
 
-As such, FCAL results earlier than 90 days prior to diagnosis will be discarded.
+As such, FC results earlier than 90 days prior to diagnosis will be discarded.
 If a subject has an FCAL within 90 days before diagnosis, then all of their
-FCAL tests will be retimed such that their earliest FCAL within this period is 
+FCAL tests will be retimed such that their earliest FC within this period is 
 equal to 0 and all later measurements are shifted accordingly to maintain the 
 same differences between measurement times. 
 
-We also reduce the dataset to only subjects with a diagnostic FCAL which equates
+We also reduce the dataset to only subjects with a diagnostic FC which equates
 to subjects with a FCAL measurement within 3 months of diagnosis $t \leq 0.25$
 
 ```{R FCAL retiming}
 #| label: fig-fcal-spag-post
-#| fig-cap: "Spaghetti plot of FCAL trajectories (processed)"
+#| fig-cap: "Spaghetti plot of FC trajectories (processed)"
 fcal <- subset(fcal, calpro_time >= -0.25)
 
 
@@ -655,7 +653,7 @@ There are `r length(diagnostic)` subjects with a diagnostic FCAL available.
 
 We do not require a minimum follow-up for a subject as this may bias our
 findings. For example, UC patients who undergo a proctocolectomy (surgical
-removal of the colon and rectum) are less likely to have FCAL measurements after
+removal of the colon and rectum) are less likely to have FC measurements after
 their surgery than patients who did not require surgery. By applying criteria
 based on follow-up, we could indirectly exclude subjects based on disease
 outcomes. 
@@ -680,7 +678,7 @@ tab |>
   xlab("Followup (years)")
 ```
 
-We have also plotted number of FCAL measurements for each subject against their
+We have also plotted number of FC measurements for each subject against their
 follow-up to explore the relationship between these two attributes (@fig-n-fcal).
 
 ```{R}
@@ -712,10 +710,10 @@ fcal <- subset(
 )
 ```
 
-We require a subject has at least three FCAL measurements across the follow-up
+We require a subject has at least three FC measurements across the follow-up
 period to meet our inclusion criteria.
 
-There are `r length(unique(fcal$ids))` subjects who have at least three FCAL 
+There are `r length(unique(fcal$ids))` subjects who have at least three FC 
 measurements available (before
 [reducing the maximum followup](#maximum-followup)).
 
@@ -724,7 +722,7 @@ measurements available (before
 A maximum follow-up should be specified in the interest of constructing robust
 models which are not heavily influenced by observations at the end of follow-up
 where observations are more sparse. We also ensure a subject is only included if
-they have at least three FCAL measurements during the restricted follow-up. 
+they have at least three FC measurements during the restricted follow-up. 
 
 The decision for a specific cut-off is based upon two tables. @tbl-follow-up
 explores how increasing the follow-up changes the mean, median, and interquartile
@@ -772,7 +770,7 @@ knitr::kable(
 
 ```{R}
 #| label: tbl-count-fcal
-#| tbl-cap: "How many subjects have an FCAL available after a given number of years?"
+#| tbl-cap: "How many subjects have an FC available after a given number of years?"
 count <- numeric()
 for (year in years) {
   count <- c(count, length(unique(subset(fcal, calpro_time > year)$ids)))
@@ -828,9 +826,9 @@ countsDF <- tibble(
 )
 ```
 
-We now explore censored FCAL observations and begin by considering FCAL results
+We now explore censored FC observations and begin by considering FC results
 which have been left-censored ($\leq 20 \mu g/g$). From @fig-left-censor-fcal,
-we can clearly see there are subjects with entirely left-censored FCAL
+we can clearly see there are subjects with entirely left-censored FC
 observations (n = `r nrow(subset(countsDF, censored.left/count ==1))`). 
 
 ```{R}
@@ -881,7 +879,7 @@ This results in a cohort size of `r length(unique(fcal$ids))`
 
 ### Revisiting month of diagnosis
 
-After filtering by subjects who have a diagnostic FCAL available, January is
+After filtering by subjects who have a diagnostic FC available, January is
 no longer over-represented for month of diagnosis as we hypothesised
 (@fig-diag-month-redux)
 
@@ -950,7 +948,7 @@ due to contamination or an insufficient sample being provided) are discarded.
 
 ```{R crp censor mapping}
 #| label: "fig-crp-meas"
-#| fig-cap: "Density plot of FCAL measurements by observed value"
+#| fig-cap: "Density plot of FC measurements by observed value"
 #| warning: false
 
 
@@ -1461,7 +1459,7 @@ crp.ma %>%
 
 After filtering by subjects who have a diagnostic CRP available, January is
 no longer over-represented for month of diagnosis. This is a comparable finding
-to FCAL (@fig-diag-month-redux).
+to FC (@fig-diag-month-redux).
 
 ```{R Month of diagnosis (postprocessed)}
 #| label: fig-diag-month-redux-crp
@@ -1482,7 +1480,7 @@ The following plots are updated versions of previous density plots
 
 ```{R Updated FCAL distribution}
 #| label: "fig-fcal-meas-update"
-#| fig-cap: "Updated density plot of FCAL measurements by observed value"
+#| fig-cap: "Updated density plot of FC measurements by observed value"
 #| warning: false
 
 p1 <- fcal %>%
@@ -1503,7 +1501,7 @@ print(p1)
 
 ```{R}
 #| label: "fig-logfcal-meas-update"
-#| fig-cap: "Updated density plot of logged FCAL test results"
+#| fig-cap: "Updated density plot of logged FC test results"
 p2 <- fcal %>%
   ggplot(aes(x = log(calpro_result))) +
   geom_density(
@@ -1615,7 +1613,7 @@ ggsave("plots/Sup-Figure-1.pdf",
 
 ## Updated trajectory plots
 
-### FCAL
+### FC
 
 ```{R}
 ids.sample <- sample(unique(fcal$ids), 15)
@@ -1746,7 +1744,7 @@ crp.plot.data %>%
 
 ## Data saving
 
-The processed subject dictionary and FCAL and CRP datasets have been saved to
+The processed subject dictionary and FC and CRP datasets have been saved to
 files, so they can be used for the primary analysis. 
 
 ```{R}
@@ -1769,9 +1767,9 @@ via a Precision Medicine PhD studentship (MR/N013166/1, to **NC-C**).
 
 ## Author contributions {.appendix}
 
-**NC-C** performed the processing and wrote the text. **NP**, **ML**, and
-**PWJ**, curated and provided datasets. **KM-G**, **CWL**, and **CAV** provided
-supervisory support and assisted with revisions. 
+**NC-C** performed the processing and wrote the text. **NP**, **ML**, curated
+and provided datasets. **KM-G**, **CWL**, and **CAV** provided supervisory
+support and assisted with revisions. 
 
 ## References {.appendix}
 

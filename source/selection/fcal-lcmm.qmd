@@ -11,6 +11,7 @@ library(splines)
 
 args <- commandArgs(trailingOnly = TRUE)
 fcal <- readRDS("fcal.RDS")
+fcal$calpro_result <- log(fcal$calpro_result)
 if(!dir.exists("cache")) dir.create("cache")
 
 rep <- 50
@@ -32,19 +33,13 @@ if(file.exists("m1.RDS")) {
     cl = cl,
     hlme(calpro_result ~ ns(calpro_time,
                             df = 4,
-                            knots = seq(from = 7/4,
-                            to = 21/4,
-                            by = 7/4),
                             Boundary.knots = c(0, 7)),
          mixture = ~ ns(calpro_time,
                         df = 4,
-                        knots = seq(from = 7/4,
-                        to = 21/4,
-                        by = 7/4),
                         Boundary.knots = c(0, 7)),
          random = ~  1,
          subject = "ids",
-         classmb = ~ 1 + diagnosis,
+	 classmb = ~ 1 + diagnosis,
          ng = ng,
          data = fcal,
          maxiter = 24000,
@@ -63,6 +58,4 @@ if(file.exists("m1.RDS")) {
 } else {
   stop("m1 not found!")
 }
-
-
 ```
