@@ -312,7 +312,7 @@ for (G in 2:7) {
 }
 
 fcal.pprob <- models.fcal[[6]]$pprob
-crp.pprob <- models.crp[[6]]$pprob
+crp.pprob <- models.crp[[8]]$pprob
 
 fcal.ids <- fcal.pprob$ids
 crp.ids <- crp.pprob$ids
@@ -325,7 +325,8 @@ fcal.pprob <- subset(fcal.pprob, ids %in% ids.comb)
 crp.pprob <- subset(crp.pprob, ids %in% ids.comb)
 
 
-classes <- rbind(data.frame(fcal.pprob[, c(1,2)], type = "FC" ), data.frame(crp.pprob[, c(1,2)], type = "CRP"))
+classes <- rbind(data.frame(fcal.pprob[, c(1,2)], type = "FC" ),
+                 data.frame(crp.pprob[, c(1,2)], type = "CRP"))
 classes$class <- as.factor(classes$class)
 classes$type <- as.factor(classes$type)
 classes$type <- relevel(classes$type, "FC")
@@ -342,7 +343,7 @@ p1 <- ggplot(classes, aes(x = type,
   xlab("Biomarker")
 
 
-calpro_time <- seq(0,7, by = 0.1)
+calpro_time <- seq(0, 7, by = 0.1)
 
 new.data <- cbind(calpro_time, ns(calpro_time, df = 4, Boundary.knots = c(0,7)))
 new.data <- rbind(data.frame(new.data, diagnosis = "Crohn's"), data.frame(new.data, diagnosis = "UC"))
@@ -369,13 +370,18 @@ p2 <- ggplot(plot.fcal, aes(x = time, y = pred, color = class)) +
 crp_time <- seq(0,7, by = 0.1)
 
 new.data <- cbind(crp_time, ns(crp_time, df = 4, Boundary.knots = c(0,7)))
-new.data <- rbind(data.frame(new.data, diagnosis = "Crohn's"), data.frame(new.data, diagnosis = "UC"))
+new.data <- rbind(data.frame(new.data, diagnosis = "Crohn's"),
+                  data.frame(new.data, diagnosis = "UC"))
 
-preds.crp <- predictY(models.crp[[6]], newdata = new.data, draws = TRUE)
+preds.crp <- predictY(models.crp[[8]], newdata = new.data, draws = TRUE)
 plot.crp <- data.frame(time = crp_time, pred = preds.crp$pred[, "Ypred_class1"], class = "1" )
-for (class in as.character(2:6)){
-  plot.crp <- rbind(plot.crp,
-                     data.frame(time = crp_time, pred = preds.crp$pred[, paste0("Ypred_class",class)], class = class))
+for (class in as.character(2:8)){
+  plot.crp <- rbind(
+    plot.crp,
+    data.frame(time = crp_time,
+               pred = preds.crp$pred[, paste0("Ypred_class",class)],
+               class = class)
+    )
 }
 
 p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
@@ -383,14 +389,16 @@ p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
   theme_minimal() +
   xlab("Time (years)") +
   ylab("Log(CRP (mg/L))") +
-  ylim(0,7) +
-  xlim(0,7) +
+  ylim(0, 7) +
+  xlim(0, 7) +
   theme(axis.line = element_line(colour = "gray"))
 
 
 p <- p1 + (p2/p3) +
   plot_annotation(tag_levels = "A") +
-  plot_layout(guides = "collect") & theme(legend.position='bottom')
+  plot_layout(guides = "collect") &
+  theme(legend.position='bottom') &
+  guides(fill = guide_legend(nrow = 1))
 
 p
 

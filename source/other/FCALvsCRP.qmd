@@ -243,7 +243,7 @@ for (G in 2:8) {
 
 ```{R}
 fcal.pprob <- models.fcal[[6]]$pprob
-crp.pprob <- models.crp[[6]]$pprob
+crp.pprob <- models.crp[[8]]$pprob
 
 fcal.ids <- fcal.pprob$ids
 crp.ids <- crp.pprob$ids
@@ -268,7 +268,7 @@ p1 <- ggplot(classes, aes(x = type,
   geom_flow()  +
   geom_stratum()  + geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
-  theme(axis.line = element_line(colour = "gray"))
+  theme(axis.line = element_line(colour = "gray"))  +  theme(legend.position='bottom')
 
 
 calpro_time <- seq(0,7, by = 0.1)
@@ -296,7 +296,7 @@ p2 <- ggplot(plot.fcal, aes(x = time, y = pred, color = class)) +
   ylab("Log(FCAL (µg/g))") +
   ylim(0, 7) +
   xlim(0, 7) +
-  theme(axis.line = element_line(colour = "gray"))
+  theme(axis.line = element_line(colour = "gray"), legend.position = "none") 
 
 crp_time <- seq(0,7, by = 0.1)
 
@@ -304,11 +304,11 @@ new.data <- cbind(crp_time, ns(crp_time, df = 4, Boundary.knots = c(0, 7)))
 new.data <- rbind(data.frame(new.data, diagnosis = "Crohn's"),
                   data.frame(new.data, diagnosis = "UC"))
 
-preds.crp <- predictY(models.crp[[6]], newdata = new.data, draws = TRUE)
+preds.crp <- predictY(models.crp[[8]], newdata = new.data, draws = TRUE)
 plot.crp <- data.frame(time = crp_time,
                        pred = preds.crp$pred[, "Ypred_class1"],
                        class = "1" )
-for (class in as.character(2:6)){
+for (class in as.character(2:8)){
   plot.crp <- rbind(plot.crp,
                     data.frame(time = crp_time,
                                pred = preds.crp$pred[, paste0("Ypred_class",class)],
@@ -322,11 +322,11 @@ p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
   ylab("Log(CRP (mg/L))") +
   ylim(0,7) +
   xlim(0,7) +
-  theme(axis.line = element_line(colour = "gray"))
+  theme(axis.line = element_line(colour = "gray")) +  theme(legend.position='none')
 
 p <- p1 + (p3/p2) +
   plot_annotation(tag_levels = "A") +
-  plot_layout(guides = "collect") & theme(legend.position='bottom')
+  plot_layout(guides = "collect")  &  theme(legend.position='bottom') & guides(fill = guide_legend(nrow = 1))
 
 ggsave("plots/big-comp.png", p, width = 10, height = 6.75)
 ggsave("plots/big-comp.pdf", p, width = 10, height = 6.75)
