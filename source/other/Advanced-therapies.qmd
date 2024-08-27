@@ -1,0 +1,278 @@
+---
+title: "Advanced therapies"
+subtitle: "Associations between cluster membership and advanced therapies"
+author:
+  - name: "Nathan Contantine-Cooke" 
+    corresponding: true
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
+---
+
+## Introduction
+
+```{R Setup}
+#| message: false
+set.seed(123)
+if (file.exists("/.dockerenv")) { # Check if running in Docker
+  # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
+  prefix <- "data/"
+} else {
+  # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
+  # mounted at /Volumes
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+}
+
+
+##########################
+#--     Packages       --#
+##########################
+
+library(tidyverse)
+# Support package (source found in libdr/)
+library(libdr)
+## Modelling ##
+library(lcmm)
+library(kml) # K-means
+library(mice) # Imputation
+## Presentation ##
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+library(table1)
+library(readxl)
+library(datefixR)
+library(ggmosaic)
+
+dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
+fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
+model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-6.RDS"))
+crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
+crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
+model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
+
+dict.fc <- subset(dict, ids %in% model.fc$pprob$ids)
+dict.fc <- merge(dict.fc, model.fc$pprob[, c("ids", "class")])
+fcal <- merge(fcal,
+  dict.fc[, c("ids", "class", "diagnosis")],
+  all.x = TRUE,
+  all.y = FALSE
+)
+
+dict.crp <- subset(dict, ids %in% model.crp$pprob$ids)
+dict.crp <- merge(dict.crp, model.crp$pprob[, c("ids", "class")])
+crp.median <- merge(crp.median,
+  dict.crp[, c("ids", "class", "diagnosis")],
+  all.x = TRUE,
+  all.y = FALSE
+)
+```
+
+This report details analyses involving advanced therapy prescribing (biologics
+and small molecules). These data were manually extracted from electronic
+healthcare data by a team within NHS Lothian. 
+
+The advanced therapy prescribing data are first explored using descriptive
+Statistics before being analysed in the context of faecal calprotectin (FC) and
+C-reactive protein (CRP) clustering. 
+
+Due to the substantial differences in prescribing trends between Crohn's disease
+(CD) and ulcerative colitis (UC), advanced therapy prescribing will be
+considered separately for these diseases. 
+
+## Crohn's disease
+
+
+```{R}
+#| warning: false
+cd.bio1 <- read_xlsx(paste0(prefix,
+                            "2024-07-30/cd-bio_to-do Master Copy (NathanNoID)",
+                            ".xlsx"))
+
+cd.bio1.all <- cd.bio1[, c(1, 2, 5, 8, 11, 14, 17, 20, 23)]
+
+cd.bio1 <- cd.bio1[, c(1, 4, 5, 6)]
+names(cd.bio1) <- c("ids", "advancedT", "Treatment", "startDate")
+cd.bio1$startDate <- plyr::mapvalues(cd.bio1$startDate, c("2017  00:00:00", "?2018"), c("2017", "2018"))
+
+
+ineligble <-  c("(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
+               "(Toculizamab for RA?)")
+
+
+cd.bio1$Treatment <- plyr::mapvalues(
+  cd.bio1$Treatment,
+  from = c("1",
+           "2",
+           "(Adalimumab for RA?)",
+           "2- adalimumab for both Crohn's and Ank spon",
+           "2- Adalimumab initiated for ank spond",
+           "2- Adalimumab started for Hidradinitis Supprativa",
+           "2- for ankylosing spondylitis",
+           "3",
+           "4",
+           "5",
+           "6",
+           "7",
+           "8",
+           "9"),
+  to = c("IFX",
+         "ADA",
+         "ADA",
+         "ADA",
+         "ADA",
+         "ADA",
+         "ADA",
+         "VDZ",
+         "UST",
+         "RIS",
+         "CET",
+         "GOL",
+         "UPA",
+         "TOF"),
+  warn_missing = FALSE)
+ 
+cd.bio1 <- fix_date_df(cd.bio1, "startDate", excel = TRUE)
+
+cd.bio2 <- read_xlsx(paste0(prefix,
+                            "2024-07-30/cd-bio-first-line (Phil's data-Nathan)",
+                            ".xlsx"))
+cd.bio2$advancedT <- 1
+
+cd.bio2 <- cd.bio2[, c(1, 4, 2, 3)]
+names(cd.bio2) <- c("ids", "advancedT", "Treatment", "startDate")
+cd.bio2 <- fix_date_df(cd.bio2, "startDate")
+
+cd.bio2$Treatment <- plyr::mapvalues(
+  cd.bio2$Treatment,
+  from = c(1, "A", "I", "U", "V"),
+  to = c("IFX", "ADA", "IFX", "UST", "VDZ"))
+
+cd.bio <- rbind(cd.bio1, cd.bio2)
+dict.fc.cd <- subset(dict.fc, diagnosis == "Crohn's Disease")
+dict.fc.cd <- merge(dict.fc.cd, cd.bio, all.x = TRUE, all.y = FALSE)
+dict.fc.cd <- dict.fc.cd %>%
+  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
+dict.fc.cd$firstY <- dict.fc.cd$advancedT
+
+for (i in 1:nrow(dict.fc.cd)) {
+  if (dict.fc.cd[i, "advancedT"] == 0) { # If been on AT
+    # If been on AT later than one year of diag
+    
+    if (is.na(dict.fc.cd[i, "startDate"])) {
+      dict.fc.cd[i, "firstY"] <- 1 
+    } else if (dict.fc.cd[i, "startDate"] - dict.fc.cd[i, "date.of.diag"] > 365.25) {
+      dict.fc.cd[i, "firstY"] <- 1 # Map to "No"
+    }
+  }
+}
+# Change to more interpretable value
+dict.fc.cd$firstY <- as.logical(plyr::mapvalues(dict.fc.cd$firstY,
+                                     from = c(0, 1),
+                                     to = c(TRUE, FALSE)))
+
+dict.fc.cd$class <- as.factor(paste0("FC", dict.fc.cd$class))
+```
+
+
+### Advanced therapy within first year of diagnosis
+
+Early advanced therapy in CD is particularly noteworthy given there is
+considerable evidence an early commencement of an advanced therapy in CD is
+associated with better disease outcomes [@Noor2024; @Dhaens2008].
+
+
+```{R}
+#| label: fig-first-year-cd-fc
+#| fig-cap: "First line therapy by year for Crohn's disease cohort."
+#| warning: false
+
+cols <- c(
+  "#E26D5C",
+  "#17C3B2",
+  "#FFCB77",
+  "#67AAF9"
+)
+dict.fc.cd$Treatment <- plyr::mapvalues(dict.fc.cd$Treatment,
+                                        from = "(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
+                                        to = NA)
+
+#dict.fc.cd <- dict.fc.cd %>%
+#  drop_na(Treatment)
+
+
+dict.fc.cd$Treatment <- factor(dict.fc.cd$Treatment,
+                               labels = c("Adalimumab",
+                                          "Infliximab",
+                                          "Ustekinumab",
+                                          "Vedolizumab"))
+
+p1 <- dict.fc.cd %>%
+  drop_na(Treatment) %>%
+  ggplot(aes(
+    color = Treatment,
+    fill = Treatment ,
+    x = year(startDate)
+  )) +
+  geom_bar(position = "stack") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45),
+    panel.grid.minor.x = element_blank()
+  ) +
+  labs(
+    x = "Year",
+    y = "Frequency",
+    fill = "First-line\nadvanced therapy",
+    color = "First-line\nadvanced therapy"
+  ) +
+  scale_x_continuous(breaks = seq(2004, 2024, by = 2)) +
+  scale_fill_manual(values = cols) +
+  scale_color_manual(values = cols)
+p1
+```
+
+
+```{R}
+#clust.1 <- dict.fc.cd %>%
+#  filter(class == "FC1")
+#cluster1.traj <- fcal %>%
+#  filter(ids %in%)
+```
+
+```{R}
+p <- dict.fc.cd %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(class), fill = firstY), show.legend = FALSE ) +
+  theme_minimal() +
+  labs(x = "Cluster",
+       y =  "Advanced therapy within first year of diagnosis") +
+  ggtitle("Crohn's disease subjects",
+          "Faecal calprotectin clustering")
+ggsave("plots/mosaic/fc-cd.png",
+       p,
+       width = 7.5,
+       height = 5,
+       units = "in",
+       dpi = 300,
+       create.dir = TRUE)
+ggsave("plots/mosaic/fc-cd.pdf", p, width = 7.5, height = 5)
+```
+
+## Ulcerative colitis
+
+```{R}
+uc.bio <- read_xlsx(paste0(prefix,
+                           "2024-07-30/",
+                           "UC biologics data update 11th July pre 2004 data removed IDs only",
+                           ".xlsx"))
+uc.bio <- uc.bio[, c(4, 24, 25)]
+names(uc.bio) <- c("ids", "Treatment", "startDate")
+uc.bio$Treatment <- plyr::mapvalues(
+  uc.bio$Treatment,
+  from = c("a", "A", "f", "F", "G", "i", "I", "t", "T", "u", "U", "v", "V"),
+  to = c("ADA", "ADA", "FIL", "FIL", "GOL", "IFX", "IFX", "TOF", "TOF", "UST", "UST", "VDZ", "VDZ"))
+```

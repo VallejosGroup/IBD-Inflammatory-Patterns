@@ -16,6 +16,10 @@ project:
     - "source/selection/crp.qmd"
     - "source/other/variation.qmd"
     - "source/other/FCALvsCRP.qmd"
+    - "source/other/Advanced-therapies.qmd"
+    - "source/Covariate\ exploration/covariates.qmd"
+    - "source/Covariate\ exploration/Diagnosis.qmd"
+    - "source/Covariate\ exploration/Model-comparison.qmd"
     - "404.qmd"
   execute-dir: project
 format:

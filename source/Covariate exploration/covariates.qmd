@@ -2,24 +2,12 @@
 title: "Additional explanatory variables"
 subtitle: "Sex and age"
 author:
-  - name: "Nathan Contantine-Cooke" 
-    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+  - name: "Nathan Constantine-Cooke"
     corresponding: true
-format:
-  html:
-    theme:
-      light: [default]
-      dark: [darkly]
-    code-fold: true
-    code-link: true
-    toc: true
-    code-tools:
-      source: true
-      toggle: true
-    html-math-method: katex
-    embed-resources: true
-    mainfont: "Mulish"
-    monofont: "Noto Sans Mono"
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
 ---
 
 ## Introduction
@@ -172,15 +160,16 @@ for (g in 1:6) {
 
 :::
 
-### Age at diagnosis
+### Age
 
 ```{R}
 ageLabels <- c("<18", "18-29", "30-49", "50-69", "\u226570")
 dict.fc$ageCat <- cut(dict.fc$age,
-                      breaks = c(0, 18, 30, 50, 70, Inf),
-                      labels = ageLabels,
-                      include.lowest = TRUE,
-                      right = FALSE) 
+  breaks = c(0, 18, 30, 50, 70, Inf),
+  labels = ageLabels,
+  include.lowest = TRUE,
+  right = FALSE
+)
 
 fcal <- merge(fcal,
   dict.fc[, c("ids", "ageCat")],
@@ -192,6 +181,22 @@ fcal <- merge(fcal,
 aov(class ~ age, data = dict.fc) %>%
   summary() %>%
   pander()
+```
+
+```{R}
+#| label: fig-fc-age-dist
+#| fig-cap: "Distribution of age at diagnosis by FC cluster assignment."
+#| fig-height: 4
+#| fig-width: 9.142857
+#| warning: false
+p1 <- dict.fc %>%
+  mutate(class = factor(class, labels = paste("FC", seq(1, 6)))) %>%
+  ggplot(aes(x = class, y = age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+print(p1)
 ```
 
 Age has been calculated by subtracting year of diagnosis from year of birth. Age
@@ -380,10 +385,11 @@ Age has been calculated by subtracting year of diagnosis from year of birth.
 
 ```{R}
 dict.crp$ageCat <- cut(dict.crp$age,
-                       breaks = c(0, 18, 30, 50, 70, Inf),
-                       labels = c("<18", "18-29", "30-49", "50-69", "\u226570"),
-                       include.lowest = TRUE,
-                       right = FALSE) 
+  breaks = c(0, 18, 30, 50, 70, Inf),
+  labels = c("<18", "18-29", "30-49", "50-69", "\u226570"),
+  include.lowest = TRUE,
+  right = FALSE
+)
 
 crp.median <- merge(crp.median,
   dict.crp[, c("ids", "ageCat")],
@@ -401,17 +407,23 @@ aov(class ~ age, data = dict.crp) %>%
 ```{R}
 #| label: fig-crp-age-dist
 #| fig-cap: "Distribution of age at diagnosis by CRP cluster assignment."
-#| fig-height: 12
-crp.median %>%
-  ggplot(aes(x = age)) +
-  geom_histogram(aes(y = after_stat(density)),
-                 bins = 30,
-                 fill = "#6DD3CE",
-                 color = "#3AA8A3") +
-  geom_density(color = "#D90368") +
-  facet_grid(rows = vars(class), axis.labels = "all_y") +
+#| fig-height: 4
+#| fig-width: 9.142857
+#| warning: false
+p2 <- dict.crp %>%
+  mutate(class = factor(class, labels = paste("CRP", seq(1, 8)))) %>%
+  ggplot(aes(x = class, y = age)) +
+  geom_violin(fill = "#D4CDF4", color = "#7A6F9B") +
   theme_minimal() +
-  labs(x = "Age at diagnosis", y = "Density")
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+p <- p1 / p2 + plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(size = 16, face = "bold"))
+
+ggsave("plots/age-dist.png", p, width = 16 * 4 / 7, height = 8)
+ggsave("plots/age-dist.pdf", p, width = 16 * 4 / 7, height = 8)
+print(p2)
 ```
 
 ::: {.panel-tabset group="scale"}
@@ -500,5 +512,6 @@ combined <- rbind(dict.fc, dict.crp)
 
 ```{R}
 table1(~ age + sex + diagnosis | model,
-       data = combined)
+  data = combined
+)
 ```

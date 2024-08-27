@@ -2,24 +2,12 @@
 title: "Spaghetti comparison"
 subtitle: "Sex and age"
 author:
-  - name: "Nathan Contantine-Cooke" 
-    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+  - name: "Nathan Constantine-Cooke"
     corresponding: true
-format:
-  html:
-    theme:
-      light: [default]
-      dark: [darkly]
-    code-fold: true
-    code-link: true
-    toc: true
-    code-tools:
-      source: true
-      toggle: true
-    html-math-method: katex
-    embed-resources: true
-    mainfont: "Mulish"
-    monofont: "Noto Sans Mono"
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
 ---
 
 ## Introduction
