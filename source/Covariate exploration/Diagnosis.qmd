@@ -349,7 +349,7 @@ ggsave("plots/mosaic/fc-by-diag-with-traj.png",
 
 
 ```{R}
-p <- p5 /
+p <- (p5  + theme(text =  element_text(size = 17))) /
   (traj.outlines[[1]] +
     traj.outlines[[2]] +
     traj.outlines[[3]] +
@@ -358,6 +358,7 @@ p <- p5 /
     traj.outlines[[6]] +
     plot_layout(ncol = 6, guides = "collect", widths = unit(3.9, "cm"))) +
   plot_layout(heights = c(4, 1))
+  
 ggsave("plots/percbar/fc-by-diag-with-traj.pdf",
   p,
   width = 7 * 1.65,
@@ -371,30 +372,6 @@ ggsave("plots/percbar/fc-by-diag-with-traj.png",
 )
 ```
 
-```{R}
-p <- p6 /
-  (traj.outlines[[1]] +
-    traj.outlines[[2]] +
-    traj.outlines[[3]] +
-    traj.outlines[[4]] +
-    traj.outlines[[5]] +
-    traj.outlines[[6]] +
-    traj.outlines[[7]] +
-    traj.outlines[[8]] +
-    plot_layout(ncol = 8, guides = "collect", widths = unit(2.82, "cm"))) +
-  plot_layout(heights = c(4, 1))
-ggsave("plots/percbar/crp-by-diag-with-traj.pdf",
-  p,
-  width = 7 * 1.65,
-  height = 5 * 1.65,
-  create.dir = TRUE
-)
-ggsave("plots/percbar/crp-by-diag-with-traj.png",
-  p,
-  width = 7 * 1.65,
-  height = 5 * 1.65
-)
-```
 
 ```{R}
 tab <- table(model.crp$pprob$class)
@@ -481,7 +458,7 @@ ggsave("plots/mosaic/crp-by-diag-with-traj.png",
 ```
 
 ```{R}
- p <- p6 /
+ p <- (p6  + theme(text =  element_text(size = 17))) /
   (traj.outlines[[1]] +
     traj.outlines[[2]] +
     traj.outlines[[3]] +
