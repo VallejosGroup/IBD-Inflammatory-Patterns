@@ -260,8 +260,14 @@ ggsave("plots/mosaic/fc-cd.png",
        dpi = 300,
        create.dir = TRUE)
 ggsave("plots/mosaic/fc-cd.pdf", p, width = 7.5, height = 5)
+p
 ```
 
+```{R}
+with(dict.fc.cd,
+     fisher.test(table(class, firstY), workspace = 2000000)
+     )
+```
 ## Ulcerative colitis
 
 ```{R}
