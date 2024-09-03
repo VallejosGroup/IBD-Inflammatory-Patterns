@@ -55,8 +55,6 @@ library(ggalluvial)
 library(pander)
 library(qqplotr)
 
-
-
 ##########################
 #--     Data read      --#
 ##########################
@@ -65,31 +63,17 @@ dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
 ```
 
-This report describes how the latent class mixed models (LCMMs) were fitted.
-Different models are explored to determine the most appropriate models for FCAL
-and CRP.
+This page describes how the latent class mixed models (LCMMs) were fitted to 
+faecal calprotectin (FC). [A separate page](crp.qmd) is dedicated to C-reactive
+protein.
 
 ## Model specification
 
 LCMMs are an extension of linear mixed effects models with an added
-cluster-specific fixed effect component.  We use LCMMs with a natural cubic
+cluster-specific fixed effect component. We use LCMMs with a natural cubic
 spline formulation for the fixed effects component. Random effects are specified
 as intercepts, and an autoregressive process is used to model correlation
 between observations. 
-
-Natural cubic splines have a few notable advantages [@Elhakeem2022]:
-
-1. Less parameters need to be estimated than either a Gaussian radial basis
-   function regression model or a polynomial regression model with the same
-   flexibility . This reduces the time complexity when fitting the model and in
-   the future may also make extensions more practically feasible. 
-2. Natural cubic splines enforce linearity between $t_0$ and the first knot and
-  between the last knot and $t_\text{max}$ which ensures the model does not
-  behave erratically in these sometimes problematic areas. 
-3. Natural cubics are not highly sensitive to a continuous parameter and instead
-  requires only $K$, the number of knots, to be tuned: being robust to where
-  the knots themselves are placed.
-
 
 For full formal definitions of the models and statistics we have used in the
 work, please refer to the supplementary material for our paper. 
@@ -374,13 +358,14 @@ quantiles.
 Fitting the LCMMs discussed in this report takes multiple days in some cases and
 uses 25 CPU cores per model. We have fitted these models using 
 [Eddie](https://www.ed.ac.uk/information-services/research-support/research-computing/ecdf/high-performance-computing),
-the University  of Edinburgh's High performance computing solution. The code in
+the University  of Edinburgh's high performance computing solution. The code in
 the dropdown box below was used to fit the models.
 
 As recommended by @Proust-Lima2017, a linear mixed effects model is first 
-itted to generate initial starting values, (the "Initial LME" tab) and then a
-grid search approach is used to converge the LCMMs towards a global maximum for
-each assumed number of clusters based on maximum likelihood (the "LCMM" tab). 
+fitted to generate initial starting values, (the "Initial LME" tab). A
+grid search approach is then used to converge the LCMMs towards a global maximum
+for each assumed number of clusters based on maximum likelihood (the "LCMM"
+tab). 
 
 ::: {.callout-note collapse="true" icon=false}
 
@@ -424,6 +409,19 @@ for (G.cand in G.cands) {
 }
 rm(G.cand)
 ```
+
+Natural cubic splines have a few notable advantages [@Elhakeem2022]:
+
+1. Less parameters need to be estimated than either a Gaussian radial basis
+   function regression model or a polynomial regression model with the same
+   flexibility . This reduces the time complexity when fitting the model and in
+   the future may also make extensions more practically feasible. 
+2. Natural cubic splines enforce linearity between $t_0$ and the first knot and
+  between the last knot and $t_\text{max}$ which ensures the model does not
+  behave erratically in these sometimes problematic areas. 
+3. Natural cubics are not highly sensitive to a continuous parameter and instead
+  requires only $K$, the number of knots, to be tuned: being robust to where
+  the knots themselves are placed.
 
 From the alluvial plot comparing FCAL models (@fig-fcal-alluvial), we can see
 newly formed clusters are quite robust- remaining consistent as the number of
@@ -789,6 +787,39 @@ fisher.test(dict.fcal$diagnosis,
   simulate.p.value = TRUE, # calculate p-values using Monte Carlo
   B = 1e5
 ) # replicates for Monte Carlo test
+```
+
+#### Number of observations by cluster 
+
+```{R}
+stats.by.clust <- data.frame(Cluster = character(),
+                              Median = numeric(),
+                              IQR = numeric())
+counts.by.clust <- data.frame(Cluster = character(),
+                              Count = numeric())
+
+
+
+for (G in sort(unique(dict.fcal$cluster))) {
+  cluster.subset <- subset(dict.fcal, cluster == G) 
+  fcal.subset <- subset(fcal, ids %in% cluster.subset$ids)
+  tab <- table(fcal.subset$ids)
+  stats.by.clust <- rbind(stats.by.clust,
+                           data.frame(Cluster = G,
+                                      Median = median(tab),
+                                      IQR = IQR(tab)))
+  
+  counts.by.clust <- rbind(counts.by.clust,
+                           data.frame(Cluster = G,
+                                      Count = as.numeric(tab)))
+}
+stats.by.clust %>% knitr::kable()
+```
+
+```{R}
+aov(Cluster ~ Count, data = counts.by.clust) %>%
+  summary() %>%
+  pander()
 ```
 
 ### Gaussian radial basis functions

@@ -577,6 +577,39 @@ fisher.test(dict.crp.median$diagnosis,
 ```
 
 
+#### Number of observations by cluster 
+
+```{R}
+stats.by.clust <- data.frame(Cluster = character(),
+                              Median = numeric(),
+                              IQR = numeric())
+counts.by.clust <- data.frame(Cluster = character(),
+                              Count = numeric())
+
+
+
+for (G in sort(unique(dict.crp.median$cluster))) {
+  cluster.subset <- subset(dict.crp.median, cluster == G) 
+  crp.subset <- subset(crp_median, ids %in% cluster.subset$ids)
+  tab <- table(crp.subset$ids)
+  stats.by.clust <- rbind(stats.by.clust,
+                           data.frame(Cluster = G,
+                                      Median = median(tab),
+                                      IQR = IQR(tab)))
+  
+  counts.by.clust <- rbind(counts.by.clust,
+                           data.frame(Cluster = G,
+                                      Count = as.numeric(tab)))
+}
+stats.by.clust %>% knitr::kable()
+```
+
+```{R}
+aov(Cluster ~ Count, data = counts.by.clust) %>%
+  summary() %>%
+  pander()
+```
+
 ## Acknowledgments {.appendix}
 
 This work is funded by the Medical Research Council & University of Edinburgh
