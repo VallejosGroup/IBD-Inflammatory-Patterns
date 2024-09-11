@@ -72,34 +72,101 @@ protein.
 LCMMs are an extension of linear mixed effects models with an added
 cluster-specific fixed effect component. We use LCMMs with a natural cubic
 spline formulation for the fixed effects component. Random effects are specified
-as intercepts, and an autoregressive process is used to model correlation
-between observations. 
+as intercepts and the multinomial logistic regression model which assigns
+cluster membership uses IBD type (CD, UC, or IBDU) as a covariate.
 
 For full formal definitions of the models and statistics we have used in the
 work, please refer to the supplementary material for our paper. 
 
+### Model statistics 
 
-## Knot choice
+## Model loading
 
-To determine the most appropiate number of knots for the natural cubic splines,
-we consider 3, 4, and 5 knots. We only use six-cluster models for this
-analysis as this reasonably captures heterogeneity without being too expensive
-computationally.
+Fitting the LCMMs discussed in this report takes multiple days in some cases and
+uses 25 CPU cores per model. We have fitted these models using 
+[Eddie](https://www.ed.ac.uk/information-services/research-support/research-computing/ecdf/high-performance-computing),
+the University  of Edinburgh's high performance computing solution. The code in
+the dropdown box below was used to fit the models.
 
-Our previous work used 3 knots across a 5-year period. As we are now modelling
-across a 7-year period, we may need to increase the number of knots to 4 to
-ensure the model remains flexible. We also consider 2 knots in case a more
-smoooth model is required.
+::: {.callout-note collapse="true" icon=false}
 
-We place the knots at their default location which is
-at quantiles. We note that the number of
-knots is reported by @harrell2015 to be much more important than knot location.
-
-### Model trajectories 
+### Code used to fit models
 
 ::: {.panel-tabset}
+{{< include fcal-m1.qmd >}}
 
-#### 2 knots
+{{< include fcal-lcmm.qmd >}}
+:::
+
+:::
+
+As recommended by @Proust-Lima2017, a linear mixed effects model is first 
+fitted to generate initial starting values, (the "Initial LME" tab). A
+grid search approach is then used to converge the LCMMs towards a global maximum
+for each assumed number of clusters based on maximum likelihood (the "LCMM"
+tab). 
+
+After the above code is run, the resultant models are saved in 
+`cvallejo-predicct/libdr/cache/` for use in this report. 
+
+When an LCMM is fitted, the assumed number of clusters (*or "classes"*) must be
+specified a priori. Here we consider 4-8 clusters as 4 clusters were already
+found in our previous work [@constantine-cooke2023], and we expect to find at
+least as many clusters given our inclusion criteria is more relaxed.
+
+A posteriori model statistics and visual investigations must be used to decide
+upon the optimum number of classes.
+
+## Fixed effects specified via Natural Cubic Splines
+
+```{R Load NCS FCAL models}
+# set the number of groups
+G.fcal <- numeric()
+models.fcal <- list()
+G.cands <- seq(2, 10)
+for (G.cand in G.cands) {
+  file.name <- paste0(prefix, "/cache/fcal/ncs/fcal-", G.cand, ".RDS")
+  if (file.exists(file.name)) {
+    G.fcal <- c(G.fcal, G.cand)
+    models.fcal[[G.cand]] <- readRDS(file.name)
+  }
+}
+rm(G.cand)
+```
+
+We firstly consider specifying fixed effects using NCS which have a few notable
+advantages [@Elhakeem2022]:
+
+1. Less parameters need to be estimated than either a GRBF
+   function regression model or a polynomial regression model with the same
+   flexibility. This reduces the time complexity when fitting the model and in
+   the future may also make extensions more practically feasible.
+2. NCS enforce linearity between $t_0$ and the first knot and
+   between the last knot and $t_\text{max}$ which ensures the model does not
+   behave erratically in these sometimes problematic areas.
+3. NCS are not highly sensitive to a continuous parameter and instead requires
+   only $K$, the number of knots to be tuned. NCS are typically robust to where
+   the knots themselves are placed.
+
+### Knot choice
+
+To determine the most appropriate number of knots for the natural cubic splines,
+we considered two, three, and four knots. We only use six-cluster models for
+this analysis as this reasonably captures heterogeneity without being too
+expensive computationally.
+
+Our previous work used three knots across a five-year period. As we are now
+modelling across a seven-year period, we may need to increase the number of
+knots to four to ensure the model remains flexible. We also considered two knots]
+in case a more smoooth model is required.
+
+We place the knots at their default location which is at quantiles. We note that
+the number of knots is reported by @harrell2015 to be much more important than
+knot location.
+
+#### Model trajectories 
+
+##### Two knots
 
 From @fig-2-knots, we can see specifying only two knots results in very smooth
 curves for the mean trajectory of each cluster. However, this model appears
@@ -138,7 +205,7 @@ spaghettiPlot(fcal,
 )
 ```
 
-#### 3 knots
+##### Three knots
 
 Three knots appears to be the most appropriate specification (@fig-3-knots).
 Whilst there is  perhaps some evidence of overfitting, this appears to be
@@ -177,11 +244,11 @@ spaghettiPlot(fcal,
 )
 ```
 
-#### 4 knots
+##### Four knots
 
 Four knots appears to be too many. @fig-4-knots presents a minor improvement to 
 model fit over the three knot specification, and there are signs of overfitting
-which is likely driven by the small distances between knots. 
+which is likely driven by the small distances between knots.  
 
 ```{R}
 #| label: fig-4-knots
@@ -216,112 +283,38 @@ spaghettiPlot(fcal,
 )
 ```
 
-#### 2 GRBFs 
+#### Model statistics 
 
-```{R}
-#| label: fig-grbf-k-2
-#| fig-cap: "Cluster profiles for the six-cluster model assuming two knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
-knots.grbf.2 <- readRDS(paste0(prefix, "cache/fcal/grbf/k=2/grbf-1.2.RDS"))
-knots.grbf.2.list <- list()
-knots.grbf.2.list[[6]] <- knots.grbf.2
-png("paper/grbf-plots-2.png", width = 8, height = 7, units = "in", res = 300)
-spaghettiPlot(fcal,
-  knots.grbf.2.list,
-  G = 6,
-  log = TRUE,
-  tmax = 7,
-  sizes = FALSE,
-  knots = TRUE,
-  knot.type = "equal",
-  n.knots = 2,
-  grbf = TRUE,
-  l = 1.2,
-  var.time = "calpro_time"
-)
-invisible(dev.off())
-spaghettiPlot(fcal,
-  knots.grbf.2.list,
-  G = 6,
-  log = TRUE,
-  tmax = 7,
-  sizes = FALSE,
-  knots = TRUE,
-  knot.type = "equal",
-  n.knots = 2,
-  grbf = TRUE,
-  l = 1.2,
-  var.time = "calpro_time"
-)
-```
+AIC and BIC both suggest a four-knot specification to be optimal
+(@tbl-knot-stats-ncs). However, visual inspection of the mean cluster
+trajectories ([see above](#model-trajectories)) suggests the four-knot approach
+results in overfitting, especially around knot locations. This will also become
+more of an issue as the number of clusters increase and additional sparsity is
+exhibited for some clusters.
 
-#### 3 GRBFs 
-
-```{R}
-#| label: fig-grbf-spec-k-3
-#| fig-cap: "Cluster profiles for the six-cluster model assuming three knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
-knots.grbf.3 <- readRDS(paste0(prefix, "/cache/fcal/grbf/k=3/grbf-1.2.RDS"))
-knots.grbf.3.list <- list()
-knots.grbf.3.list[[6]] <- knots.grbf.3
-png("paper/grbf-plots-3.png", width = 8, height = 7, units = "in", res = 300)
-spaghettiPlot(fcal,
-  knots.grbf.3.list,
-  G = 6,
-  log = TRUE,
-  tmax = 7,
-  sizes = FALSE,
-  knots = TRUE,
-  knot.type = "equal",
-  n.knots = 3,
-  grbf = TRUE,
-  l = 1.2,
-  var.time = "calpro_time"
-)
-invisible(dev.off())
-spaghettiPlot(fcal,
-  knots.grbf.3.list,
-  G = 6,
-  log = TRUE,
-  tmax = 7,
-  sizes = FALSE,
-  knots = TRUE,
-  knot.type = "equal",
-  n.knots = 3,
-  grbf = TRUE,
-  l = 1.2,
-  var.time = "calpro_time"
-)
-```
-
-:::
-
-### Model statistics 
+As such, we have elected to use natural cubic splines with three knots placed at 
+quantiles. 
 
 ```{R}
 #| results: "hold"
-#| label: tbl-knot-stats
+#| label: tbl-knot-stats-ncs
 #| tbl-cap: Model statistics for differing numbers of knots for natural cubic splines
 knots.df <- tibble(
-  Knots = c("2 knots", "3 knots", "4 knots", "2 GRBFs", "3 GRBFs"),
+  Knots = c("Two knots", "Three knots", "Four knots"),
   loglik = c(
     knots.2$loglik,
     knots.3$loglik,
-    knots.4$loglik,
-    knots.grbf.2$loglik,
-    knots.grbf.3$loglik
+    knots.4$loglik
   ),
   AIC = c(
     knots.2$AIC,
     knots.3$AIC,
-    knots.4$AIC,
-    knots.grbf.2$AIC,
-    knots.grbf.3$AIC
+    knots.4$AIC
   ),
   BIC = c(
     knots.2$BIC,
     knots.3$BIC,
-    knots.4$BIC,
-    knots.grbf.2$BIC,
-    knots.grbf.3$BIC
+    knots.4$BIC
   )
 )
 knitr::kable(knots.df,
@@ -336,102 +329,24 @@ rm(
   knots.3,
   knots.3.list,
   knots.4,
-  knots.4.list,
-  knots.grbf.2.list,
-  knots.grbf.3.list
+  knots.4.list
 )
 ```
 
-AIC and BIC both suggest a 4-knot specification to be optimal (@tbl-knot-stats). 
-However, visual inspection of the mean cluster trajectories
-([see above](#model-trajectories)) suggests the 4-knot approach results in
-overfitting- especially around knot locations. This will also become more of
-an issue as the number of clusters increase and additional sparsity is exhibited
-for some clusters.
+### Number of clusters
 
-As such, we have elected to use natural cubic splines with 3 knots placed at 
-quantiles. 
+After determining the most appriopate number of knots, we must now decide upon
+the most appropiate number of clusters.
 
-
-## Model loading
-
-Fitting the LCMMs discussed in this report takes multiple days in some cases and
-uses 25 CPU cores per model. We have fitted these models using 
-[Eddie](https://www.ed.ac.uk/information-services/research-support/research-computing/ecdf/high-performance-computing),
-the University  of Edinburgh's high performance computing solution. The code in
-the dropdown box below was used to fit the models.
-
-As recommended by @Proust-Lima2017, a linear mixed effects model is first 
-fitted to generate initial starting values, (the "Initial LME" tab). A
-grid search approach is then used to converge the LCMMs towards a global maximum
-for each assumed number of clusters based on maximum likelihood (the "LCMM"
-tab). 
-
-::: {.callout-note collapse="true" icon=false}
-
-### Code used to fit models
-
-::: {.panel-tabset}
-{{< include fcal-m1.qmd >}}
-
-{{< include fcal-lcmm.qmd >}}
-:::
-
-:::
-
-
-After the above code is run, the resultant models are saved in 
-`cvallejo-predicct/libdr/cache/` for use in this report. 
-
-When an LCMM is fitted, the assumed number of clusters (*or "classes"*) must be
-specified a priori. Here we consider 4-8 clusters as 4 clusters were already
-found in our previous work [@constantine-cooke2023], and we expect to find more
-clusters given our inclusion criteria is more relaxed.
-
-A posteriori model statistics and visual investigations must be used to decide
-upon the optimum number of classes.
-
-## FCAL
-
-### Natural Cubic Splines
-
-```{R Load NCS FCAL models}
-# set the number of groups
-G.fcal <- numeric()
-models.fcal <- list()
-G.cands <- seq(2, 10)
-for (G.cand in G.cands) {
-  file.name <- paste0(prefix, "/cache/fcal/ncs/fcal-", G.cand, ".RDS")
-  if (file.exists(file.name)) {
-    G.fcal <- c(G.fcal, G.cand)
-    models.fcal[[G.cand]] <- readRDS(file.name)
-  }
-}
-rm(G.cand)
-```
-
-Natural cubic splines have a few notable advantages [@Elhakeem2022]:
-
-1. Less parameters need to be estimated than either a Gaussian radial basis
-   function regression model or a polynomial regression model with the same
-   flexibility . This reduces the time complexity when fitting the model and in
-   the future may also make extensions more practically feasible. 
-2. Natural cubic splines enforce linearity between $t_0$ and the first knot and
-  between the last knot and $t_\text{max}$ which ensures the model does not
-  behave erratically in these sometimes problematic areas. 
-3. Natural cubics are not highly sensitive to a continuous parameter and instead
-  requires only $K$, the number of knots, to be tuned: being robust to where
-  the knots themselves are placed.
-
-From the alluvial plot comparing FCAL models (@fig-fcal-alluvial), we can see
+From the alluvial plot comparing FC models (@fig-fcal-alluvial), we can see
 newly formed clusters are quite robust- remaining consistent as the number of
-clusters increases.  However, new clusters are formed from multiple clusters
+clusters increases. However, new clusters are formed from multiple clusters
 which implies these clusters do not have a high degree of separation from one
-another. From  @fig-fcal-alluvial, 6 clusters appear to be a reasonable choice. 
+another. From  this figure, six clusters appear to be a reasonable choice. 
 
 ```{R FCAL alluvial}
 #| label: fig-fcal-alluvial
-#| fig-cap: Alluvial plot of cluster membership across G for FCAL
+#| fig-cap: Alluvial plot of cluster membership across G for FC
 alluvial.df <- matrix(nrow = 0, ncol = 3)
 colnames(alluvial.df) <- c("ids", "class", "G")
 for (G in G.fcal) {
@@ -521,10 +436,9 @@ saveRDS(p, paste0(prefix, "processed/plots/fc-alluvial.RDS"))
 #### Posterior classifications
 
 From the below data, we can see how posterior probabilities change as the number
-of assumed clusters increase
+of assumed clusters increase.
 
-
-:::{.column-page}
+::: {.column-page}
 ::: {.panel-tabset}
 
 ```{R FCAL postpro}
@@ -549,12 +463,15 @@ rm(output)
 ::: {.panel-tabset}
 
 ```{R FCAL residuals}
-#| results: "asis"
+#| output: "asis"
+#| results: "hold"
 for (G in G.fcal) {
-  cat(paste0("##### G = ", G, "\n"))
+  cat(paste0("\\", "##### G = ", G, "\\"))
   plot(models.fcal[[G]], shades = TRUE)
 }
 ```
+
+:::
 
 ##### Chosen model
 
@@ -568,7 +485,7 @@ p1 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
     color = "#AF6A80",
     bins = 30
   ) +
-  geom_density(color = "#023777", size = 1.2) +
+  geom_density(color = "#023777", linewidth = 1.2) +
   theme_classic() +
   theme(axis.line = element_line(colour = "gray")) +
   ylab("Density") +
@@ -822,7 +739,7 @@ aov(Cluster ~ Count, data = counts.by.clust) %>%
   pander()
 ```
 
-### Gaussian radial basis functions
+## Fixed effects specified via Gaussian radial basis functions
 
 ```{R}
 G.grbf <- numeric()
@@ -835,6 +752,84 @@ for (G.cand in G.cands) {
   }
 }
 rm(G.cand)
+```
+
+### Number of Gaussian radial basis functions
+
+#### Two GRBFs 
+
+```{R}
+#| label: fig-grbf-k-2
+#| fig-cap: "Cluster profiles for the six-cluster model assuming two knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves."
+knots.grbf.2 <- readRDS(paste0(prefix, "cache/fcal/grbf/k=2/grbf-1.2.RDS"))
+knots.grbf.2.list <- list()
+knots.grbf.2.list[[6]] <- knots.grbf.2
+png("paper/grbf-plots-2.png", width = 8, height = 7, units = "in", res = 300)
+spaghettiPlot(fcal,
+  knots.grbf.2.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  knot.type = "equal",
+  n.knots = 2,
+  grbf = TRUE,
+  l = 1.2,
+  var.time = "calpro_time"
+)
+invisible(dev.off())
+spaghettiPlot(fcal,
+  knots.grbf.2.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  knot.type = "equal",
+  n.knots = 2,
+  grbf = TRUE,
+  l = 1.2,
+  var.time = "calpro_time"
+)
+```
+
+#### Three GRBFs 
+
+```{R}
+#| label: fig-grbf-spec-k-3
+#| fig-cap: "Cluster profiles for the six-cluster model assuming three knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves."
+knots.grbf.3 <- readRDS(paste0(prefix, "/cache/fcal/grbf/k=3/grbf-1.2.RDS"))
+knots.grbf.3.list <- list()
+knots.grbf.3.list[[6]] <- knots.grbf.3
+png("paper/grbf-plots-3.png", width = 8, height = 7, units = "in", res = 300)
+spaghettiPlot(fcal,
+  knots.grbf.3.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  knot.type = "equal",
+  n.knots = 3,
+  grbf = TRUE,
+  l = 1.2,
+  var.time = "calpro_time"
+)
+invisible(dev.off())
+spaghettiPlot(fcal,
+  knots.grbf.3.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  knot.type = "equal",
+  n.knots = 3,
+  grbf = TRUE,
+  l = 1.2,
+  var.time = "calpro_time"
+)
 ```
 
 
@@ -925,6 +920,40 @@ ggsave("paper/alluvial-FCAL-grbf.pdf",
   units = "in"
 )
 ```
+
+```{R}
+#| results: "hold"
+#| label: tbl-knot-stats-grbf
+#| tbl-cap: Model statistics for differing numbers of knots for natural cubic splines
+knots.df <- tibble(
+  Knots = c("2 GRBFs", "3 GRBFs"),
+  loglik = c(
+    knots.grbf.2$loglik,
+    knots.grbf.3$loglik
+  ),
+  AIC = c(
+    knots.grbf.2$AIC,
+    knots.grbf.3$AIC
+  ),
+  BIC = c(
+    knots.grbf.2$BIC,
+    knots.grbf.3$BIC
+  )
+)
+knitr::kable(knots.df,
+  col.names = c(
+    "Knots",
+    "Maxmum log likelihood",
+    "AIC",
+    "BIC"
+  )
+)
+rm(knots.grbf.2.list,
+  knots.grbf.3.list
+)
+```
+
+### Number of clusters
 
 #### Posterior classifications
 
@@ -1167,7 +1196,7 @@ fisher.test(dict.grbf$diagnosis,
 ) # replicates for Monte Carlo test
 ```
 
-### NCS vs GRBF comparison
+## NCS vs GRBF comparison
 
 ```{R}
 pred.df <- data.frame(
