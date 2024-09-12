@@ -52,7 +52,6 @@ rm(G.cand, G.cands)
 
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 
-
 ####################################################################
 ### Load CRP moving average (no autocorrelation struture) models ###
 ####################################################################
@@ -331,6 +330,21 @@ p <- p1 + (p3/p2) +
 ggsave("plots/big-comp.png", p, width = 10, height = 6.75)
 ggsave("plots/big-comp.pdf", p, width = 10, height = 6.75)
 print(p)
+```
+
+```{R}
+#| include: false
+ids.shared <- intersect(models.fcal[[6]]$pprob$ids, models.crp[[8]]$pprob$ids)
+
+fc.df <- subset(models.fcal[[6]]$pprob, ids %in% ids.shared)[,c(1, 2)]
+colnames(fc.df) <- c("ids", "FCcluster")
+crp.df <- subset(models.crp[[8]]$pprob, ids %in% ids.shared)[,c(1, 2)]
+colnames(crp.df) <- c("ids", "CRPcluster")
+mapping <- merge(fc.df, crp.df, by = "ids")
+
+tab <- with(mapping, table(FCcluster, CRPcluster))
+rowSums(tab)
+colSums(tab)
 ```
 
 ## Reuse {.appendix}
