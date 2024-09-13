@@ -111,18 +111,18 @@ compareClustering <- function(G,
   for (i in seq_along(ids.comb)) { # Row i
     cluster <- fcal.prob[i, "class"]
     mat.fcal[i, ] <- ifelse(fcal.prob[, "class"] == cluster, 1, 0)
-    #for (j in seq_along(ids.comb)) { # Column j
+    # for (j in seq_along(ids.comb)) { # Column j
     #  if (fcal.prob[j, "class"] == cluster) mat.fcal[i, j] <- 1
-    #} # Else 0
+    # } # Else 0
   }
 
   # CRP
   for (i in seq_along(ids.comb)) { # Row i
     cluster <- crp.prob[i, "class"]
     mat.crp[i, ] <- ifelse(crp.prob[, "class"] == cluster, 1, 0)
-   # for (j in seq_along(ids.comb)) { # Column j
-   #   if (crp.prob[j, "class"] == cluster) mat.crp[i, j] <- 1
-   # } # Else 0
+    # for (j in seq_along(ids.comb)) { # Column j
+    #   if (crp.prob[j, "class"] == cluster) mat.crp[i, j] <- 1
+    # } # Else 0
   }
 
 
@@ -145,15 +145,18 @@ if (!dir.exists("plots/cluster-comp")) dir.create("plots/cluster-comp")
 ### No posterior prob cutoff ###
 ################################
 
+
 col.vec <- c(
-  "1" = "#EF3E36",
-  "2" = "#17BEBB",
-  "3" = "#F4AC45",
-  "4" = "#3E5622",
-  "5" = "#DDC3D0",
-  "6" = "#8FD744FF",
-  "7" = "#2A1E5C"
+  "1" = "#77AADD",
+  "2" = "#EE8866",
+  "3" = "#EEDD88",
+  "4" = "#FFAABB",
+  "5" = "#99DDFF",
+  "6" = "#44BB99",
+  "7" = "#BBCC33",
+  "8" = "#AAAA00"
 )
+
 
 col.vec.ibd <- c(
   "Crohn's Disease" = "#052F5F",
@@ -229,15 +232,6 @@ for (G in 2:7) { # No G = 8 for FCAL
 ### With posterior prob cutoff ###
 ##################################
 
-col.vec <- c(
-  "1" = "#EF3E36",
-  "2" = "#17BEBB",
-  "3" = "#F4AC45",
-  "4" = "#3E5622",
-  "5" = "#DDC3D0",
-  "6" = "#8FD744FF",
-  "7" = "#2A1E5C"
-)
 
 col.vec.ibd <- c(
   "Crohn's Disease" = "#052F5F",
@@ -248,8 +242,8 @@ col.vec.ibd <- c(
 for (G in 2:7) {
   comp.mat <- compareClustering(G, models.fcal, models.crp, cutoff = TRUE)
 
-  ids.fcal <- models.fcal[[G]]$pprob[apply(models.fcal[[G]]$pprob[,c(-1, -2)] > 0.8, 1, any),]$ids
-  ids.crp <- models.crp[[G]]$pprob[apply(models.crp[[G]]$pprob[,c(-1, -2)] > 0.8, 1, any),]$ids
+  ids.fcal <- models.fcal[[G]]$pprob[apply(models.fcal[[G]]$pprob[, c(-1, -2)] > 0.8, 1, any), ]$ids
+  ids.crp <- models.crp[[G]]$pprob[apply(models.crp[[G]]$pprob[, c(-1, -2)] > 0.8, 1, any), ]$ids
 
   ids.common <- intersect(ids.fcal, ids.crp)
 
@@ -325,35 +319,53 @@ fcal.pprob <- subset(fcal.pprob, ids %in% ids.comb)
 crp.pprob <- subset(crp.pprob, ids %in% ids.comb)
 
 
-classes <- rbind(data.frame(fcal.pprob[, c(1,2)], type = "FC" ),
-                 data.frame(crp.pprob[, c(1,2)], type = "CRP"))
+classes <- rbind(
+  data.frame(fcal.pprob[, c(1, 2)], type = "FC"),
+  data.frame(crp.pprob[, c(1, 2)], type = "CRP")
+)
 classes$class <- as.factor(classes$class)
 classes$type <- as.factor(classes$type)
 classes$type <- relevel(classes$type, "FC")
 
-p1 <- ggplot(classes, aes(x = type,
-           stratum = class,
-           alluvium = ids,
-           fill = class,
-           label = class)) +
-  geom_flow()  +
-  geom_stratum()  + geom_text(stat = "stratum", size = 3) +
+p1 <- ggplot(classes, aes(
+  x = type,
+  stratum = class,
+  alluvium = ids,
+  fill = class,
+  label = class
+)) +
+  geom_flow() +
+  geom_stratum() +
+  geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
   theme(axis.line = element_line(colour = "gray")) +
-  xlab("Biomarker")
+  xlab("Biomarker") +
+  scale_fill_manual(values = col.vec)
 
 
 calpro_time <- seq(0, 7, by = 0.1)
 
-new.data <- cbind(calpro_time, ns(calpro_time, df = 4, Boundary.knots = c(0,7)))
-new.data <- rbind(data.frame(new.data, diagnosis = "Crohn's"), data.frame(new.data, diagnosis = "UC"))
+new.data <- cbind(
+  calpro_time,
+  ns(calpro_time, df = 4, Boundary.knots = c(0, 7))
+)
+new.data <- rbind(
+  data.frame(new.data, diagnosis = "Crohn's"),
+  data.frame(new.data, diagnosis = "UC")
+)
 
 
 preds.fcal <- predictY(models.fcal[[6]], newdata = new.data, draws = TRUE)
-plot.fcal <- data.frame(time = calpro_time, pred = preds.fcal$pred[, "Ypred_class1"], class = "1" )
-for (class in as.character(2:6)){
-  plot.fcal <- rbind(plot.fcal,
-                     data.frame(time = calpro_time, pred = preds.fcal$pred[, paste0("Ypred_class",class)], class = class))
+plot.fcal <- data.frame(time = calpro_time, pred = preds.fcal$pred[, "Ypred_class1"], class = "1")
+for (class in as.character(2:6)) {
+  plot.fcal <- rbind(
+    plot.fcal,
+    data.frame(
+      time = calpro_time,
+      pred = preds.fcal$pred[, paste0("Ypred_class", class)],
+      class = class
+    )
+  )
 }
 
 p2 <- ggplot(plot.fcal, aes(x = time, y = pred, color = class)) +
@@ -363,25 +375,33 @@ p2 <- ggplot(plot.fcal, aes(x = time, y = pred, color = class)) +
   ylab("Log(FC (µg/g))") +
   ylim(0, 7) +
   xlim(0, 7) +
-  theme(axis.line = element_line(colour = "gray"))
+  theme(axis.line = element_line(colour = "gray")) +
+  scale_color_manual(values = col.vec)
 
 
 
-crp_time <- seq(0,7, by = 0.1)
+crp_time <- seq(0, 7, by = 0.1)
 
-new.data <- cbind(crp_time, ns(crp_time, df = 4, Boundary.knots = c(0,7)))
-new.data <- rbind(data.frame(new.data, diagnosis = "Crohn's"),
-                  data.frame(new.data, diagnosis = "UC"))
+new.data <- cbind(crp_time, ns(crp_time, df = 4, Boundary.knots = c(0, 7)))
+new.data <- rbind(
+  data.frame(new.data, diagnosis = "Crohn's"),
+  data.frame(new.data, diagnosis = "UC")
+)
 
 preds.crp <- predictY(models.crp[[8]], newdata = new.data, draws = TRUE)
-plot.crp <- data.frame(time = crp_time, pred = preds.crp$pred[, "Ypred_class1"], class = "1" )
-for (class in as.character(2:8)){
+plot.crp <- data.frame(
+  time = crp_time,
+  pred = preds.crp$pred[, "Ypred_class1"], class = "1"
+)
+for (class in as.character(2:8)) {
   plot.crp <- rbind(
     plot.crp,
-    data.frame(time = crp_time,
-               pred = preds.crp$pred[, paste0("Ypred_class",class)],
-               class = class)
+    data.frame(
+      time = crp_time,
+      pred = preds.crp$pred[, paste0("Ypred_class", class)],
+      class = class
     )
+  )
 }
 
 p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
@@ -391,17 +411,17 @@ p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
   ylab("Log(CRP (mg/L))") +
   ylim(0, 7) +
   xlim(0, 7) +
-  theme(axis.line = element_line(colour = "gray"))
+  theme(axis.line = element_line(colour = "gray")) +
+  scale_color_manual(values = col.vec)
 
 
-p <- p1 + (p2/p3) +
+p <- p1 + (p2 / p3) +
   plot_annotation(tag_levels = "A") +
   plot_layout(guides = "collect") &
-  theme(legend.position='bottom') &
+  theme(legend.position = "bottom") &
   guides(fill = guide_legend(nrow = 1))
 
 p
 
 ggsave("paper/big-comp.png", p, width = 10, height = 6.75)
 ggsave("paper/big-comp.pdf", p, width = 10, height = 6.75)
-
