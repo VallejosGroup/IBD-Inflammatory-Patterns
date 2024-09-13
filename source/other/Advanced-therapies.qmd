@@ -85,6 +85,7 @@ considered separately for these diseases.
 
 ## Crohn's disease
 
+### Faecal calprotectin
 
 ```{R}
 #| warning: false
@@ -177,9 +178,6 @@ dict.fc.cd$firstY <- as.logical(plyr::mapvalues(dict.fc.cd$firstY,
 dict.fc.cd$class <- as.factor(paste0("FC", dict.fc.cd$class))
 ```
 
-
-### Advanced therapy within first year of diagnosis
-
 Early advanced therapy in CD is particularly noteworthy given there is
 considerable evidence an early commencement of an advanced therapy in CD is
 associated with better disease outcomes [@Noor2024; @Dhaens2008].
@@ -235,6 +233,67 @@ p1 <- dict.fc.cd %>%
 p1
 ```
 
+```{R}
+
+pred.fc.df <- data.frame(
+  calpro_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  diagnosis = c(
+    rep("Crohn's Disease", 701),
+    rep("Ulcerative Colitis", 701)
+  )
+)
+pred.fc.df.update <- predictY(model.fc, pred.fc.df,
+  var.time = "calpro_time",
+  draws = TRUE
+)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:6) {
+  temp <- rbind(
+    temp,
+    data.frame(
+      Time = seq(0, 7, 0.01),
+      Cluster = g,
+      Value = pred.fc.df.update[, g]
+    )
+  )
+}
+
+
+dict.fc.cd$timeToTherapy <- with(dict.fc.cd, startDate - date.of.diag) /365.25
+
+for (g in 1:6) {
+  p1 <- temp %>%
+    filter(Cluster == g) %>%
+    ggplot(aes(x = Time, y = Value)) +
+    geom_line(color = "#558C8C") +
+    theme_minimal() +
+    ylim(3, 6.5) + 
+    xlab("") + 
+    ylab("Log (FCAL (\u03BCg/g))")
+  p2 <- dict.fc.cd %>%
+    filter(class == paste0("FC", g)) %>%
+    ggplot(aes(x = timeToTherapy)) +
+    geom_density(color = "#5D002F", fill = "#82204A") +
+    theme_minimal() + 
+    xlim(0, 7) +
+    ylim(0, 0.7) +
+    xlab("Time") + 
+    ylab("Density of time to first advanced therapy")
+  p <- p1/p2 + plot_annotation(title = paste("FC", g),
+                               subtitle = "Crohn's disease",
+                               tag_levels = "A")
+  ggsave(paste0("plots/at-density/g=", g, ".png"),
+         p,
+         width = 7,
+         height = 7,
+         units = "in",
+         create.dir = TRUE)
+  print(p)
+}
+```
+
 
 ```{R}
 #clust.1 <- dict.fc.cd %>%
@@ -244,7 +303,7 @@ p1
 ```
 
 ```{R}
-p <- dict.fc.cd %>%
+p1 <- dict.fc.cd %>%
   ggplot() +
   geom_mosaic(aes(x = product(class), fill = firstY), show.legend = FALSE ) +
   theme_minimal() +
@@ -253,32 +312,267 @@ p <- dict.fc.cd %>%
   ggtitle("Crohn's disease subjects",
           "Faecal calprotectin clustering")
 ggsave("plots/mosaic/fc-cd.png",
+       p1,
+       width = 7.5,
+       height = 5,
+       units = "in",
+       dpi = 300,
+       create.dir = TRUE)
+ggsave("plots/mosaic/fc-cd-AT.pdf", p, width = 7.5, height = 5)
+p
+```
+
+```{R}
+pred.fc.df <- data.frame(
+  calpro_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  diagnosis = c(
+    rep("Crohn's Disease", 701),
+    rep("Ulcerative Colitis", 701)
+  )
+)
+pred.fc.df.update <- predictY(model.fc, pred.fc.df,
+  var.time = "calpro_time",
+  draws = TRUE
+)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:6) {
+  temp <- rbind(
+    temp,
+    data.frame(
+      Time = seq(0, 7, 0.01),
+      Cluster = g,
+      Value = pred.fc.df.update[, g]
+    )
+  )
+}
+
+traj.outlines <- list()
+
+for (g in 1:6) {
+  traj.outlines[[g]] <- temp %>%
+    filter(Cluster == g) %>%
+    ggplot(aes(x = Time, y = Value)) +
+    geom_line(color = "#757575") +
+    theme_classic() +
+    theme(text = element_blank(),
+          axis.ticks = element_blank(),
+          axis.line = element_line(color = "#dfdfdf")) +
+    ylim(3, 6.5)
+}
+
+
+
+desc <- "Advanced therapy within first year of diagnosis for Crohn's disease"
+
+p1 <-  dict.fc.cd %>%
+  ggplot(aes(x = class,  fill = firstY, color = firstY)) +
+   geom_bar(position="fill") +
+  scale_fill_manual(values = c("#F8766D", "#619CFF")) +
+  scale_color_manual(values = c("#CF544B", "#417BD2")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Cluster",
+    y = "",
+    fill = desc,
+    color = desc
+  )
+
+
+
+p <- p1 /
+  (traj.outlines[[1]] +
+    traj.outlines[[2]] +
+    traj.outlines[[3]] +
+    traj.outlines[[4]] +
+    traj.outlines[[5]] +
+    traj.outlines[[6]] +
+    plot_layout(ncol = 6, guides = "collect", widths = unit(3.9, "cm"))) +
+  plot_layout(heights = c(4, 1))
+
+ggsave("plots/mosaic/fc-by-AT-with-traj.pdf",
+  p,
+  width = 7 * 1.65,
+  height = 5 * 1.65
+)
+ggsave("plots/mosaic/fc-by-AT-with-traj.png",
+  p,
+  width = 7 * 1.65,
+  height = 5 * 1.65
+)
+
+```
+
+```{R}
+sum(dict.fc.cd$firstY)
+prop.table(table(dict.fc.cd$class, dict.fc.cd$firstY), margin = 1)
+```
+
+```{R}
+with(dict.fc.cd,
+     fisher.test(table(class, firstY), workspace = 2000000))
+```
+
+### CRP
+
+```{R}
+dict.crp.cd <- subset(dict.crp, diagnosis == "Crohn's Disease")
+dict.crp.cd <- merge(dict.crp.cd, cd.bio, all.x = TRUE, all.y = FALSE)
+dict.crp.cd <- dict.crp.cd %>%
+  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
+dict.crp.cd$firstY <- dict.crp.cd$advancedT
+
+for (i in 1:nrow(dict.crp.cd)) {
+  if (dict.crp.cd[i, "advancedT"] == 0) { # If been on AT
+    # If been on AT later than one year of diag
+    
+    if (is.na(dict.crp.cd[i, "startDate"])) {
+      dict.crp.cd[i, "firstY"] <- 1 
+    } else if (dict.crp.cd[i, "startDate"] - dict.crp.cd[i, "date.of.diag"] > 365.25) {
+      dict.crp.cd[i, "firstY"] <- 1 # Map to "No"
+    }
+  }
+}
+# Change to more interpretable value
+dict.crp.cd$firstY <- as.logical(plyr::mapvalues(dict.crp.cd$firstY,
+                                     from = c(0, 1),
+                                     to = c(TRUE, FALSE)))
+
+dict.crp.cd$class <- as.factor(paste0("FC", dict.crp.cd$class))
+```
+
+
+```{R}
+dict.crp.cd$Treatment <- plyr::mapvalues(dict.crp.cd$Treatment,
+                                        from = "(Toculizamab for RA?)",
+                                        to = NA)
+
+#dict.fc.cd <- dict.fc.cd %>%
+#  drop_na(Treatment)
+
+
+dict.crp.cd$Treatment <- factor(dict.crp.cd$Treatment,
+                               labels = c("Adalimumab",
+                                          "Infliximab",
+                                          "Ustekinumab",
+                                          "Vedolizumab"))
+
+p1 <- dict.crp.cd %>%
+  drop_na(Treatment) %>%
+  ggplot(aes(
+    color = Treatment,
+    fill = Treatment ,
+    x = year(startDate)
+  )) +
+  geom_bar(position = "stack") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45),
+    panel.grid.minor.x = element_blank()
+  ) +
+  labs(
+    x = "Year",
+    y = "Frequency",
+    fill = "First-line\nadvanced therapy",
+    color = "First-line\nadvanced therapy"
+  ) +
+  scale_x_continuous(breaks = seq(2004, 2024, by = 2)) +
+  scale_fill_manual(values = cols) +
+  scale_color_manual(values = cols)
+p1
+```
+
+```{R}
+p <- dict.crp.cd %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(class), fill = firstY), show.legend = FALSE ) +
+  theme_minimal() +
+  labs(x = "Cluster",
+       y = "Advanced therapy within first year of diagnosis") +
+  ggtitle("Crohn's disease subjects",
+          "CRP clustering")
+ggsave("plots/mosaic/crp-cd.png",
        p,
        width = 7.5,
        height = 5,
        units = "in",
        dpi = 300,
        create.dir = TRUE)
-ggsave("plots/mosaic/fc-cd.pdf", p, width = 7.5, height = 5)
+ggsave("plots/mosaic/crp-cd.pdf", p, width = 7.5, height = 5)
 p
 ```
 
-```{R}
-with(dict.fc.cd,
-     fisher.test(table(class, firstY), workspace = 2000000)
-     )
-```
+
 ## Ulcerative colitis
 
 ```{R}
 uc.bio <- read_xlsx(paste0(prefix,
                            "2024-07-30/",
                            "UC biologics data update 11th July pre 2004 data removed IDs only",
-                           ".xlsx"))
+                           ".xlsx"),
+                    na = c("", "NA"),
+                    col_types = "text")
+uc.bio <- uc.bio %>%
+  filter(!is.na(ids))
 uc.bio <- uc.bio[, c(4, 24, 25)]
 names(uc.bio) <- c("ids", "Treatment", "startDate")
 uc.bio$Treatment <- plyr::mapvalues(
   uc.bio$Treatment,
   from = c("a", "A", "f", "F", "G", "i", "I", "t", "T", "u", "U", "v", "V"),
-  to = c("ADA", "ADA", "FIL", "FIL", "GOL", "IFX", "IFX", "TOF", "TOF", "UST", "UST", "VDZ", "VDZ"))
+  to = c("ADA",
+         "ADA",
+         "FIL",
+         "FIL",
+         "GOL",
+         "IFX",
+         "IFX",
+         "TOF",
+         "TOF",
+         "UST",
+         "UST",
+         "VDZ",
+         "VDZ"))
+```
+
+There are `r sum(is.na(uc.bio$startDate))` UC subjects with missing start dates
+who have been removed. 
+
+```{R}
+uc.bio <- uc.bio %>%
+  filter(!is.na(startDate)) %>%
+  fix_date_df("startDate", excel = TRUE)
+
+uc.bio$advancedT <- 1 # Everyone in list has been on advanced therapy
+
+dict.fc.uc <- subset(dict.fc, diagnosis == "Ulcerative Colitis") # UC FC cohort
+dict.fc.uc <- merge(dict.fc.uc,
+                    uc.bio,
+                    by = "ids",
+                    all.x = TRUE,
+                    all.y = FALSE) # Add advanced therapy data
+
+dict.fc.uc <- dict.fc.uc %>%
+  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
+dict.fc.uc$firstY <- dict.fc.uc$advancedT
+
+for (i in 1:nrow(dict.fc.uc)) {
+  if (dict.fc.uc[i, "advancedT"] == 0) { # If been on AT
+    # If been on AT later than one year of diag
+    
+    if (is.na(dict.fc.uc[i, "startDate"])) {
+      dict.fc.uc[i, "firstY"] <- 1 
+    } else if (dict.fc.uc[i, "startDate"] - dict.fc.uc[i, "date.of.diag"] > 365.25) {
+      dict.fc.uc[i, "firstY"] <- 1 # Map to "No"
+    }
+  }
+}
+# Change to more interpretable value
+dict.fc.uc$firstY <- as.logical(plyr::mapvalues(dict.fc.uc$firstY,
+                                     from = c(0, 1),
+                                     to = c(TRUE, FALSE)))
+
+dict.fc.uc$class <- as.factor(paste0("FC", dict.fc.uc$class))
 ```
