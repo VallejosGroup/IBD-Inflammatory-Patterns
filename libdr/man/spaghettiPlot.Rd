@@ -24,6 +24,7 @@ spaghettiPlot(
   grbf = FALSE,
   l = 1,
   color = NULL,
+  clusters = FALSE,
   var.time = "calpro_time"
 )
 }
@@ -81,6 +82,10 @@ functions (not used if \code{GRBF = FALSE})}
 \item{color}{Character. Name of variable in \code{data} to use to colour
 lines and points corresponding to subjects. If NULL then lines and points
 will be grey.}
+
+\item{clusters}{Logical. Are clusters given via a "class" column in
+\code{data}? Otherwise clusters are found from the \code{hlme} object in
+models[[G]]. Defaults to FALSE.}
 
 \item{var.time}{Character. Name of variable used for time. Either
 "calpro_time" or "crp_time" Also used to determine if the LCMM has been

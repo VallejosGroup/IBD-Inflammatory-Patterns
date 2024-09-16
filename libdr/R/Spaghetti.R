@@ -34,6 +34,9 @@
 #' @param color Character. Name of variable in \code{data} to use to colour
 #'  lines and points corresponding to subjects. If NULL then lines and points
 #'  will be grey.
+#' @param clusters Logical. Are clusters given via a "class" column in
+#'   \code{data}? Otherwise clusters are found from the \code{hlme} object in
+#'   models[[G]]. Defaults to FALSE.
 #' @param var.time Character. Name of variable used for time. Either
 #'   "calpro_time" or "crp_time" Also used to determine if the LCMM has been
 #'   fitted for FCAL or CRP.
@@ -57,6 +60,7 @@ spaghettiPlot <- function(data,
                           grbf = FALSE,
                           l = 1,
                           color = NULL,
+                          clusters = FALSE,
                           var.time = "calpro_time") {
   data <- cutPostProb(data, models, G, pprob.cutoff)
 
@@ -84,6 +88,7 @@ spaghettiPlot <- function(data,
       grbf = grbf,
       l = l,
       color = color,
+      clusters = clusters,
       var.time = var.time
     )
   }
@@ -106,6 +111,7 @@ spaghettiPlot <- function(data,
       grbf = grbf,
       l = l,
       color = color,
+      clusters = clusters,
       var.time = var.time
     )
   }
@@ -147,6 +153,7 @@ spaghetti_plot_sub <- function(data,
                                grbf = grbf,
                                l = l,
                                color,
+                               clusters,
                                var.time) {
   # Global vars
   layout <- ids <- .data <- calpro_result <- crp_result <- time <- NULL
@@ -173,14 +180,21 @@ spaghetti_plot_sub <- function(data,
 
   for (g in mapping) {
     matchidx <- as.data.frame(which(layout == g, arr.ind = TRUE))
-    id.group <- models[[G]]$pprob[models[[G]]$pprob[, 2] == mapping[g], 1]
+
+    if(clusters) {
+      data.sub <- subset(data, class == g)
+    } else {
+      id.group <- models[[G]]$pprob[models[[G]]$pprob[, 2] == mapping[g], 1]
+      data.sub <- subset(data, ids %in% id.group)
+    }
+
     if (!log) {
       if (var.time == "calpro_time") {
         # FCAL
 
         if (is.null(color)) {
           p[[g]] <- ggplot(
-            data = subset(data, ids %in% id.group),
+            data = data.sub,
             aes(
               x = .data[[var.time]],
               y = exp(calpro_result)
@@ -188,7 +202,7 @@ spaghetti_plot_sub <- function(data,
           ) + geom_line(aes(group = ids), alpha = 0.1)
         } else {
           p[[g]] <- ggplot(
-            data = subset(data, ids %in% id.group),
+            data = data.sub,
             aes(
               x = .data[[var.time]],
               y = exp(calpro_result),
@@ -204,7 +218,7 @@ spaghetti_plot_sub <- function(data,
         # CRP
         if (is.null(color)) {
           p[[g]] <- ggplot(
-            data = subset(data, ids %in% id.group),
+            data = data.sub,
             aes(
               x = .data[[var.time]],
               y = exp(crp_result)
@@ -212,7 +226,7 @@ spaghetti_plot_sub <- function(data,
           ) + geom_line(aes(group = ids), alpha = 0.1)
         } else {
           p[[g]] <- ggplot(
-            data = subset(data, ids %in% id.group),
+            data = data.sub,
             aes(
               x = .data[[var.time]],
               y = exp(crp_result),
@@ -282,7 +296,7 @@ spaghetti_plot_sub <- function(data,
       if (var.time == "calpro_time") {
         if (is.null(color)) {
           p[[g]] <- ggplot(
-            data = subset(data, ids %in% id.group),
+            data = data.sub,
             aes(
               x = .data[[var.time]],
               y = calpro_result
@@ -290,7 +304,7 @@ spaghetti_plot_sub <- function(data,
           ) + geom_line(aes(group = ids), alpha = 0.1)
         } else {
           p[[g]] <- ggplot(
-            data = subset(data, ids %in% id.group),
+            data = data.sub,
             aes(
               x = .data[[var.time]],
               y = calpro_result,
@@ -311,7 +325,7 @@ spaghetti_plot_sub <- function(data,
       } else if (var.time == "crp_time") {
         if (is.null(color)) {
           p[[g]] <- ggplot(
-            data = subset(data, ids %in% id.group),
+            data = data.sub,
             aes(
               x = .data[[var.time]],
               y = crp_result
@@ -319,7 +333,7 @@ spaghetti_plot_sub <- function(data,
           ) + geom_line(aes(group = ids), alpha = 0.1)
         } else {
           p[[g]] <- ggplot(
-            data = subset(data, ids %in% id.group),
+            data = data.sub,
             aes(
               x = .data[[var.time]],
               y = crp_result,

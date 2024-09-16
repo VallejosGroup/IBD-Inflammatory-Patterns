@@ -1343,8 +1343,6 @@ crp.ma  <- crp.ma[, c(2, 3, 1)]
 
 crp.ma$crp_time <- crp.ma$crp_time - 1
 
-
-
 # Take into account uneven spacing at start and end
 crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
   from = c(0, 6),
