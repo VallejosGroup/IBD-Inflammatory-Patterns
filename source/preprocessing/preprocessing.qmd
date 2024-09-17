@@ -624,7 +624,38 @@ for (id in unique(fcal$ids)) {
 }
 
 fcal <- subset(fcal, ids %in% diagnostic)
+```
 
+```{R}
+diag.time <- c()
+fc.ids <-  unique(fcal$ids)
+
+for (id in fc.ids) {
+  temp <- subset(fcal, ids == id)
+  temp <- temp[order(temp$calpro_time), ]
+  diag.time <- c(diag.time, temp[1, "calpro_time"])
+}
+
+
+fc.dist <- data.frame(ids = fc.ids, diagnostic = diag.time)
+saveRDS(fc.dist, paste0(prefix, "processed/fc-diag-dist.RDS"))
+
+
+p <- fc.dist %>%
+  ggplot(aes(x = diagnostic * 365.25)) +
+  geom_density(fill = "#20A39E", color = "#187370") +
+  theme_minimal() +
+  labs(y = "Density",
+       x = "Time from diagnosis to first faecal calprotectin (days)") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+ggsave("plots/fc-diagnostic-dist.png",
+       p,
+       width = 16 * 2/3,
+       height = 6,
+       units = "in")
+```
+
+```{R}
 # Retime so that t_0 = 0.
 for (id in unique(fcal$ids)) {
   temp <- subset(fcal, ids == id)
@@ -877,6 +908,26 @@ fcal <- subset(fcal, ids %in% keep$ids)
 This results in a cohort size of `r length(unique(fcal$ids))`
 (`r nrow(countsDF) - nrow(keep)` subjects removed).
 
+###
+
+```{R}
+diag.time <- c()
+fc.ids <-  unique(fcal$ids)
+
+for (id in fc.ids) {
+  temp <- subset(fcal, ids == id)
+  temp <- temp[order(temp$calpro_time), ]
+  diag.time <- c(diag.time, temp[1, "calpro_time"])
+}
+
+data.frame(ids = fc.ids, diagnostic = diag.time) %>%
+  ggplot(aes(x = diagnostic * 365.25)) +
+  geom_density(fill = "#20A39E", color = "#187370") +
+  theme_minimal() +
+  labs(y = "Density", x = "Time from diagnosis to first FC (days)") 
+
+```
+
 ### Revisiting month of diagnosis
 
 After filtering by subjects who have a diagnostic FC available, January is
@@ -1103,7 +1154,37 @@ for (id in unique(crp$ids)) {
 }
 
 crp <- subset(crp, ids %in% diagnostic)
+```
 
+
+```{R}
+diag.time <- c()
+crp.ids <-  unique(crp$ids)
+
+for (id in crp.ids) {
+  temp <- subset(crp, ids == id)
+  temp <- temp[order(temp$crp_time), ]
+  diag.time <- c(diag.time, temp[1, "crp_time"])
+}
+
+crp.dist <- data.frame(ids = crp.ids, diagnostic = diag.time)
+saveRDS(crp.dist, paste0(prefix, "processed/crp-diag-dist.RDS"))
+
+p <-  crp.dist %>%
+  ggplot(aes(x = diagnostic * 365.25)) +
+  geom_density(fill = "#415A77", color = "#1B263B") +
+  theme_minimal() +
+  labs(y = "Density",
+       x = "Time from diagnosis to first CRP (days)") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+ggsave("plots/crp-diagnostic-dist.png",
+       p,
+       width = 16 * 2/3,
+       height = 6,
+       units = "in")
+```
+
+```{R}
 # Retime so that t_0 = 0.
 for (id in unique(crp$ids)) {
   temp <- subset(crp, ids == id)
