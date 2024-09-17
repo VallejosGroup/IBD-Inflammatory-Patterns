@@ -739,7 +739,7 @@ aov(Cluster ~ Count, data = counts.by.clust) %>%
   pander()
 ```
 
-## Averaged FC
+## Five-individual median trends
 
 Subjects grouped into pseudo-subjects derived from five subjects. 
 

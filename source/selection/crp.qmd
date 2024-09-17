@@ -520,10 +520,10 @@ dict.crp.median <- subset(dict, ids %in% unique(crp_median$ids))
 
 for (id in dict.crp.median $ids) { 
   cluster <- c(cluster,
-               subset(models.crp[[5]]$pprob, ids == id)$class)
+               subset(models.crp.ma[[8]]$pprob, ids == id)$class)
 }
 
-dict.crp.median $diagnosis <- as.factor(dict.crp.median $diagnosis)
+dict.crp.median $diagnosis <- as.factor(dict.crp.median$diagnosis)
 dict.crp.median $cluster <- as.factor(cluster)
 rm(cluster)
 ```
@@ -561,10 +561,26 @@ describe_cat("diagnosis", subset(dict.crp.median, cluster == 4))
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 5))
 ```
 
-###### Cluster = 5
+###### Cluster = 6
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 6))
+```
+
+
+###### Cluster = 7
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp.median, cluster == 7))
+```
+
+
+
+
+###### Cluster = 8
+
+```{R}
+describe_cat("diagnosis", subset(dict.crp.median, cluster == 8))
 ```
 
 ###### Fisher’s exact test
@@ -609,6 +625,89 @@ aov(Cluster ~ Count, data = counts.by.clust) %>%
   summary() %>%
   pander()
 ```
+
+### Five-individual median trends
+
+Subjects grouped into pseudo-subjects derived from five subjects. 
+
+```{R}
+# Data frame to hold processed data
+new.crp <- data.frame(ids = numeric(),
+                     crp_result = numeric(),
+                     crp_time = numeric(),
+                     class = numeric())
+
+for (clust in 1:8) {
+  ids.clust <- subset(dict.crp.median, cluster == clust)$ids
+  n.clust <- length(ids.clust)
+  rand <- sample(n.clust, n.clust) # Randomise the order of the ids
+  iters <- floor(n.clust / 5) # How many groups of five are there? 
+  
+  # Matrix to hold the smoothed data
+  crp.ma <- matrix(NA, nrow = iters, ncol = 7) 
+  for (i in 0:(iters - 1)) {
+    # Find ids for group of five
+    ids.select <- ids.clust[rand[((i * 5) + 1):((i * 5) + 5)]]
+    crp.subset <- subset(crp_median, ids %in% ids.select)
+    # Median process as per CRP preprocessing
+    for (j in seq(0, 6)) {
+      if (j == 6) {
+        sub.obs <- subset(
+          crp.subset,
+          crp_time >= j - 0.5 & crp_time <= j + 1
+        )
+      } else {
+        sub.obs <- subset(
+          crp.subset,
+          crp_time >= j - 0.5 & crp_time < j + 0.5
+        )
+      }
+      if (nrow(sub.obs) > 0) {
+        crp.ma[i + 1, j + 1] <- median(sub.obs$crp_result)
+      }
+    }
+  }
+  
+  rownames(crp.ma) <- 1:iters
+  crp.ma <- reshape2::melt(t(crp.ma),
+                            id.vars = row.names(crp.ma),
+                            na.rm = TRUE)
+  colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
+  crp.ma  <- crp.ma[, c(2, 3, 1)] # Make ids first column
+  crp.ma$crp_time <- crp.ma$crp_time - 1
+  # Take into account uneven spacing at start and end
+  crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+                                     from = c(0, 6),
+                                     to = c(0.25, 6.25))
+  crp.ma$class <- clust # Identify cluster assignment
+  new.crp <- rbind(new.crp, crp.ma)
+}
+
+cairo_pdf("paper/CRP-8-cluster-smoothed.pdf", width = 9, height = 9)
+grid::grid.newpage()
+spaghettiPlot(new.crp, 
+              models.crp.ma,
+              8, 
+              clusters = TRUE,
+              tmax = 7,
+              var.time = "crp_time")
+invisible(dev.off())
+
+png("paper/CRP-8-cluster-smoothed.png",
+    width = 9,
+    height = 9,
+    units = "in",
+    res = 300)
+grid::grid.newpage()
+spaghettiPlot(new.crp, 
+              models.crp.ma,
+              8, 
+              clusters = TRUE,
+              tmax = 7,
+              var.time = "crp_time")
+invisible(dev.off())
+```
+
 
 ## Acknowledgments {.appendix}
 
