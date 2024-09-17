@@ -746,7 +746,7 @@ for (year in years) {
   counts <- table(temp$ids)
   mean.n <- c(mean.n, round(mean(counts), 2))
   median.n <- c(median.n, median(counts))
-  IQR.n <- c(IQR.n, IQR(counts))
+  IQR.n <- c(IQR.n, paste(quantile(counts)[c(2, 4)], collapse = "-"))
   freq <- c(freq, length(names(counts)))
 }
 
@@ -1224,7 +1224,7 @@ for (year in years) {
   counts <- table(temp$ids)
   mean.n <- c(mean.n, round(mean(counts), 2))
   median.n <- c(median.n, median(counts))
-  IQR.n <- c(IQR.n, IQR(counts))
+  IQR.n <- c(IQR.n, paste(quantile(counts)[c(2, 4)], collapse = "-"))
   freq <- c(freq, length(names(counts)))
 }
 

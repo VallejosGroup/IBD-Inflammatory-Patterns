@@ -184,6 +184,10 @@ aov(class ~ age, data = dict.fc) %>%
 ```
 
 ```{R}
+quantile(dict.fc$age, na.rm = TRUE)
+```
+
+```{R}
 #| label: fig-fc-age-dist
 #| fig-cap: "Distribution of age at diagnosis by FC cluster assignment."
 #| fig-height: 4
@@ -382,6 +386,11 @@ for (g in 1:8) {
 ### Age
 
 Age has been calculated by subtracting year of diagnosis from year of birth. 
+
+
+```{R}
+quantile(dict.crp$age, na.rm = TRUE)
+```
 
 ```{R}
 dict.crp$ageCat <- cut(dict.crp$age,
