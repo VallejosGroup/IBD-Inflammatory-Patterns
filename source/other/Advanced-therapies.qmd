@@ -47,6 +47,10 @@ library(readxl)
 library(datefixR)
 library(ggmosaic)
 
+## Survival analysis ##
+library(survival)
+library(survminer)
+
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
 model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-6.RDS"))
@@ -294,6 +298,36 @@ for (g in 1:6) {
 }
 ```
 
+```{R}
+# Population level density plot
+dict.fc.cd %>%
+    ggplot(aes(x = timeToTherapy)) +
+    geom_density(color = "#5D002F", fill = "#82204A") +
+    theme_minimal() + 
+    xlim(0, 7) +
+    ylim(0, 0.7) +
+    xlab("Time") + 
+    ylab("Density of time to first advanced therapy")
+ggsave(paste0("plots/at-density/all.png"),
+       width = 7,
+       height = 7,
+       units = "in",
+       create.dir = TRUE)
+```
+
+```{R}
+temp <- dict.fc.cd %>%
+  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
+  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
+  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
+   mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
+survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
+  ggsurvplot(pval = FALSE)
+
+survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
+  ggsurvplot(pval = TRUE)
+```
+
 
 ```{R}
 #clust.1 <- dict.fc.cd %>%
@@ -441,7 +475,8 @@ dict.crp.cd$firstY <- as.logical(plyr::mapvalues(dict.crp.cd$firstY,
                                      from = c(0, 1),
                                      to = c(TRUE, FALSE)))
 
-dict.crp.cd$class <- as.factor(paste0("FC", dict.crp.cd$class))
+dict.crp.cd$class <- as.factor(paste0("CRP", dict.crp.cd$class))
+dict.crp.cd$timeToTherapy <- with(dict.crp.cd, startDate - date.of.diag) /365.25
 ```
 
 
@@ -486,6 +521,82 @@ p1
 ```
 
 ```{R}
+temp <- dict.crp.cd %>%
+  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
+  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
+  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
+   mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
+survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
+  ggsurvplot(pval = FALSE)
+
+survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
+  ggsurvplot(pval = TRUE)
+```
+
+
+```{R}
+pred.crp.df <- data.frame(
+  crp_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  diagnosis = c(
+    rep("Crohn's Disease", 701),
+    rep("Ulcerative Colitis", 701)
+  )
+)
+pred.crp.df.update <- predictY(model.crp, pred.crp.df,
+  var.time = "crp_time",
+  draws = TRUE
+)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:8) {
+  temp <- rbind(
+    temp,
+    data.frame(
+      Time = seq(0, 7, 0.01),
+      Cluster = g,
+      Value = pred.crp.df.update[, g]
+    )
+  )
+}
+
+
+dict.crp.cd$timeToTherapy <- with(dict.crp.cd, startDate - date.of.diag) /365.25
+
+for (g in 1:8) {
+  p1 <- temp %>%
+    filter(Cluster == g) %>%
+    ggplot(aes(x = Time, y = Value)) +
+    geom_line(color = "#558C8C") +
+    theme_minimal() +
+    ylim(0, 6) + 
+    xlab("") + 
+    ylab("Log (CRP (\u03BCg/mL))")
+  p2 <- dict.crp.cd %>%
+    filter(class == paste0("CRP", g)) %>%
+    ggplot(aes(x = timeToTherapy)) +
+    geom_density(color = "#5D002F", fill = "#82204A") +
+    theme_minimal() + 
+    xlim(0, 7) +
+    ylim(0, 0.3) +
+    xlab("Time") + 
+    ylab("Density of time to first advanced therapy")
+  p <- p1/p2 + plot_annotation(title = paste("CRP", g),
+                               subtitle = "Crohn's disease",
+                               tag_levels = "A")
+  ggsave(paste0("plots/at-density-crp/g=", g, ".png"),
+         p,
+         width = 7,
+         height = 7,
+         units = "in",
+         create.dir = TRUE)
+  print(p)
+}
+```
+
+
+
+```{R}
 p <- dict.crp.cd %>%
   ggplot() +
   geom_mosaic(aes(x = product(class), fill = firstY), show.legend = FALSE ) +
@@ -505,14 +616,95 @@ ggsave("plots/mosaic/crp-cd.pdf", p, width = 7.5, height = 5)
 p
 ```
 
+```{R}
+pred.crp.df <- data.frame(
+  crp_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  diagnosis = c(
+    rep("Crohn's Disease", 701),
+    rep("Ulcerative Colitis", 701)
+  )
+)
+pred.crp.df.update <- predictY(model.crp, pred.crp.df,
+  var.time = "crp_time",
+  draws = TRUE
+)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:8) {
+  temp <- rbind(
+    temp,
+    data.frame(
+      Time = seq(0, 7, 0.01),
+      Cluster = g,
+      Value = pred.crp.df.update[, g]
+    )
+  )
+}
+
+traj.crp.outlines <- list()
+
+for (g in 1:8) {
+  traj.crp.outlines[[g]] <- temp %>%
+    filter(Cluster == g) %>%
+    ggplot(aes(x = Time, y = Value)) +
+    geom_line(color = "#757575") +
+    theme_classic() +
+    theme(text = element_blank(),
+          axis.ticks = element_blank(),
+          axis.line = element_line(color = "#dfdfdf")) +
+    ylim(0, 6)
+}
+
+
+p1 <-  dict.crp.cd %>%
+  ggplot(aes(x = class,  fill = firstY, color = firstY)) +
+   geom_bar(position="fill") +
+  scale_fill_manual(values = c("#F8766D", "#619CFF")) +
+  scale_color_manual(values = c("#CF544B", "#417BD2")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Cluster",
+    y = "",
+    fill = desc,
+    color = desc
+  )
+
+
+p <- (p1) /
+  (traj.crp.outlines[[1]] +
+    traj.crp.outlines[[2]] +
+    traj.crp.outlines[[3]] +
+    traj.crp.outlines[[4]] +
+    traj.crp.outlines[[5]] +
+    traj.crp.outlines[[6]] +
+    traj.crp.outlines[[7]] +
+    traj.crp.outlines[[8]] +
+    plot_layout(ncol = 8, guides = "collect", widths = unit(2.8, "cm") )) +
+  plot_layout(heights = c(4, 1), nrow = 2)
+
+ggsave("plots/mosaic/crp-by-AT-with-traj.pdf",
+  p,
+  width = 7 * 1.65,
+  height = 5 * 1.65
+)
+ggsave("plots/mosaic/crp-by-AT-with-traj.png",
+  p,
+  width = 7 * 1.65,
+  height = 5 * 1.65
+)
+
+```
 
 ## Ulcerative colitis
 
 ```{R}
 uc.bio <- read_xlsx(paste0(prefix,
                            "2024-07-30/",
-                           "UC biologics data update 11th July pre 2004 data removed IDs only",
-                           ".xlsx"),
+                           "UC biologics data update 11th July pre 2004 data ",
+                           "removed IDs only.xlsx"),
                     na = c("", "NA"),
                     col_types = "text")
 uc.bio <- uc.bio %>%
