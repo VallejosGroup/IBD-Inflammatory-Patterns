@@ -166,6 +166,41 @@ knot location.
 
 #### Model trajectories 
 
+##### One knot
+
+```{R}
+#| label: fig-1-knots
+#| fig-cap: "Cluster profiles for the six-cluster model assuming one knot. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+knots.1 <- readRDS(paste0(prefix, "/cache/fcal/ncs/1-knots.RDS"))
+knots.1.list <- list()
+knots.1.list[[6]] <- knots.1
+cairo_pdf("paper/1-knots.pdf",
+  width = 9,
+  height = 9
+)
+spaghettiPlot(fcal,
+  knots.1.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  n.knots = 1,
+  var.time = "calpro_time"
+)
+invisible(dev.off())
+spaghettiPlot(fcal,
+  knots.1.list,
+  G = 6,
+  log = TRUE,
+  tmax = 7,
+  sizes = FALSE,
+  knots = TRUE,
+  n.knots = 1,
+  var.time = "calpro_time"
+)
+```
+
 ##### Two knots
 
 From @fig-2-knots, we can see specifying only two knots results in very smooth
@@ -175,7 +210,7 @@ to be too smooth which results in a relatively poor fit.
 ```{R}
 #| label: fig-2-knots
 #| fig-cap: "Cluster profiles for the six-cluster model assuming two knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
-knots.2 <- readRDS(paste0(prefix, "cache/fcal/ncs/2-knots.RDS"))
+knots.2 <- readRDS(paste0(prefix, "/cache/fcal/ncs/2-knots.RDS"))
 knots.2.list <- list()
 knots.2.list[[6]] <- knots.2
 cairo_pdf("paper/2-knots.pdf",
@@ -300,18 +335,21 @@ quantiles.
 #| label: tbl-knot-stats-ncs
 #| tbl-cap: Model statistics for differing numbers of knots for natural cubic splines
 knots.df <- tibble(
-  Knots = c("Two knots", "Three knots", "Four knots"),
+  Knots = c("One knot", "Two knots", "Three knots", "Four knots"),
   loglik = c(
+    knots.1$loglik,
     knots.2$loglik,
     knots.3$loglik,
     knots.4$loglik
   ),
   AIC = c(
+    knots.1$AIC,
     knots.2$AIC,
     knots.3$AIC,
     knots.4$AIC
   ),
   BIC = c(
+    knots.1$BIC,
     knots.2$BIC,
     knots.3$BIC,
     knots.4$BIC
@@ -326,6 +364,8 @@ knitr::kable(knots.df,
   )
 )
 rm(
+  knots.1,
+  knots.1.list,
   knots.3,
   knots.3.list,
   knots.4,

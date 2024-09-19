@@ -476,7 +476,7 @@ dict.crp.cd$firstY <- as.logical(plyr::mapvalues(dict.crp.cd$firstY,
                                      to = c(TRUE, FALSE)))
 
 dict.crp.cd$class <- as.factor(paste0("CRP", dict.crp.cd$class))
-dict.crp.cd$timeToTherapy <- with(dict.crp.cd, startDate - date.of.diag) /365.25
+dict.crp.cd$timeToTherapy <- with(dict.crp.cd, startDate - date.of.diag) / 365.25
 ```
 
 
