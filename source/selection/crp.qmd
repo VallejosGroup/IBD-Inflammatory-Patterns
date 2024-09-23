@@ -683,19 +683,20 @@ for (clust in 1:8) {
   new.crp <- rbind(new.crp, crp.ma)
 }
 
-cairo_pdf("paper/CRP-8-cluster-smoothed.pdf", width = 9, height = 9)
+cairo_pdf("paper/CRP-8-cluster-smoothed.pdf", width = 8, height = 12)
 grid::grid.newpage()
 spaghettiPlot(new.crp, 
               models.crp.ma,
               8, 
               clusters = TRUE,
               tmax = 7,
-              var.time = "crp_time")
+              var.time = "crp_time",
+              ylim = "data")
 invisible(dev.off())
 
 png("paper/CRP-8-cluster-smoothed.png",
-    width = 9,
-    height = 9,
+    width = 8,
+    height = 12,
     units = "in",
     res = 300)
 grid::grid.newpage()
@@ -704,7 +705,8 @@ spaghettiPlot(new.crp,
               8, 
               clusters = TRUE,
               tmax = 7,
-              var.time = "crp_time")
+              var.time = "crp_time",
+              ylim = "data")
 invisible(dev.off())
 ```
 

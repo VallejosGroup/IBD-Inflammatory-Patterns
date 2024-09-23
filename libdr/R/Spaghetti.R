@@ -182,6 +182,7 @@ spaghetti_plot_sub <- function(data,
     matchidx <- as.data.frame(which(layout == g, arr.ind = TRUE))
 
     if(clusters) {
+      id.group <- models[[G]]$pprob[models[[G]]$pprob[, 2] == mapping[g], 1]
       data.sub <- subset(data, class == g)
     } else {
       id.group <- models[[G]]$pprob[models[[G]]$pprob[, 2] == mapping[g], 1]
