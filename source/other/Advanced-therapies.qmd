@@ -58,21 +58,46 @@ crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
 
+# Get year of diagnosis
+dict$year.of.diag <- year(dict$date.of.diag)
+
 dict.fc <- subset(dict, ids %in% model.fc$pprob$ids)
 dict.fc <- merge(dict.fc, model.fc$pprob[, c("ids", "class")])
 fcal <- merge(fcal,
-  dict.fc[, c("ids", "class", "diagnosis")],
+  dict.fc[, c("ids", "class", "diagnosis", "year.of.diag", "date.of.diag")],
   all.x = TRUE,
   all.y = FALSE
 )
 
+# Get diagnostic fcal
+aux.fcal <- fcal %>% 
+  select(ids, calpro_result, calpro_date) %>% 
+  group_by(ids) %>% 
+  filter(calpro_date == min(calpro_date)) %>% 
+  slice(1) %>% # takes the first occurrence if there is a tie
+  ungroup() %>% 
+  mutate(calpro_diag = calpro_result) %>%
+  select(ids, calpro_diag)
+fcal <- merge(fcal, aux.fcal, by = "ids")
+
 dict.crp <- subset(dict, ids %in% model.crp$pprob$ids)
 dict.crp <- merge(dict.crp, model.crp$pprob[, c("ids", "class")])
 crp.median <- merge(crp.median,
-  dict.crp[, c("ids", "class", "diagnosis")],
+  dict.crp[, c("ids", "class", "diagnosis", "year.of.diag", "date.of.diag")],
   all.x = TRUE,
   all.y = FALSE
 )
+
+# Get diagnostic crp
+aux.crp <- crp.median %>% 
+  select(ids, crp_result, crp_time) %>% 
+  group_by(ids) %>% 
+  filter(crp_time == min(crp_time)) %>% 
+  slice(1) %>% # takes the first occurrence if there is a tie
+  ungroup() %>%
+  mutate(crp_diag = crp_result) %>%
+  select(ids, crp_diag)
+crp.median <- merge(crp.median, aux.crp, by = "ids")
 ```
 
 This report details analyses involving advanced therapy prescribing (biologics
