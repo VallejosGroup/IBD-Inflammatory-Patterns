@@ -53,27 +53,31 @@ website:
     right:
       - href: index.qmd
         text: "About"
-      - href: source/preprocessing/preprocessing.qmd
-        text: "Preprocessing"
-      - text: "Model selection"
+      - text: "Prior to model fitting"
+        menu:
+        - href: "source/preprocessing/preprocessing.qmd"
+          text: "Preprocessing"
+        - href: "source/preprocessing/baseline.qmd"
+          text: "Baseline data"
+      - text: "Model fitting"
         menu:
         - href: source/selection/fcal.qmd
           text: "Faecal calprotectin"
         - href: source/selection/crp.qmd
           text: "C-reactive protein"
-      - text: "Post-hoc"
+      - text: "After model fitting"
         menu:
         - href: source/other/FCALvsCRP.qmd
           text: "Comparison between FCAL and CRP"
         - href: source/other/variation.qmd
           text: "Variation between LCMM runs"
       - icon: github
-        href: "#Link"
+        href: "https://github.com/VallejosGroup/Lothian-IBDR"
   page-footer:
     right:
       - icon: twitter
-        href: https://twitter.com/IBDNathan
-  repo-url: https://git.ecdf.ed.ac.uk/s1961592/libdr
+        href: https://x.com/IBDNathan
+  repo-url: https://github.com/VallejosGroup/Lothian-IBDR
   repo-actions: [issue]
   reader-mode: true
 

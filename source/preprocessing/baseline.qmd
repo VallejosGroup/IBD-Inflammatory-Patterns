@@ -1,0 +1,495 @@
+---
+title: "Baseline data"
+subtitle: "Cohort characteristics"
+author:
+  - name: "Nathan Contantine-Cooke" 
+    corresponding: true
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
+---
+
+## Introduction
+
+```{R setup}
+#| message: false
+#| warning: false
+set.seed(123)
+if (file.exists("/.dockerenv")) { # Check if running in Docker
+  # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
+  prefix <- "data/"
+} else {
+  # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
+  # mounted at /Volumes
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+}
+
+library(tidyverse)
+suppressPackageStartupMessages(library(patchwork))
+library(gt)
+suppressPackageStartupMessages(library(datefixR))
+suppressPackageStartupMessages(library(table1))
+```
+
+This page provides descriptive analyses of the cohort at baseline, the time of
+IBD diagnosis. Following clustering based on FC or CRP trajectories, associations
+will be explored between cluster membership and these data. 
+
+As FC and CRP are analysed independently, the data is split into subjects who
+met the criteria for FC and CRP analyses. The  colours used in the plot are
+specific to either the FC or the CROP cohorts which are also under seperate
+tabs. 
+
+
+## Descriptive analyses
+
+```{R}
+fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
+fcal.all <- read.csv(paste0(prefix, "2022-12-07/fcal-cleaned.csv"))
+crp <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
+dict <- readRDS(paste0(prefix, "processed/dict-initial.RDS"))
+dict <- dict %>% filter(ids %in% c(fcal$ids, crp$ids)) 
+updated <- read.csv(paste0(prefix, "2023-03-13/allPatientsNathanCleaned.csv"))
+```
+
+Categorical data is presented via barcharts and frequency tables whilst
+continuous data are presented via density plots and quantile tables. Missingness
+is not reported if there are no missing data. 
+
+### Age at diagnosis
+
+```{R}
+# Add age at IBD diagnosis
+updated <- fix_date_df(updated, "diagnosisDate")
+updated$age <- with(updated, year(diagnosisDate) - dateOfBirth)
+dict <- merge(dict,
+              updated[, c("ids", "age")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE)
+```
+
+
+For subjects in the LIBDR, only the year of birth was extracted (not the whole
+date) from NHS records to reduce the identifiability of subjects. This also
+follows the [GDPR practice](https://gdpr-info.eu/) of only requesting data which
+are strictly required.
+
+The age at time of diagnosis has been calculated by subtracting the year of
+birth from year of IBD diagnosis and is therefore not entirely accurate.
+However, an error of within one year for age is reasonable for this study and
+is expected to have a minimal impact on findings. 
+
+Details for how time of diagnosis was obtained is described in a
+[following section](#year-of-diagnosis).
+
+::: {.panel-tabset group="biomarker"}
+
+#### Faecal calprotectin
+
+```{R}
+dict.fc <- subset(dict, ids %in% fcal$ids)
+
+quants <- quantile(dict.fc$age, na.rm = TRUE, probs = c(0.25, 0.5, 0.75)) %>%
+  data.frame()
+
+quants <- cbind(rownames(quants), quants)
+colnames(quants) <- c("Quantile", "Age at diagnosis")
+```
+
+In @fig-age-fc, we see IBD incidence by age similar to characterisations by
+@Lewis2023, A bimodal distribution with a a large peak in the mid-20s and a
+smaller peak in middle age. 
+
+Age at diagnosis is missing for `r sum(is.na(dict.fc$age))`
+(`r round(sum(is.na(dict.fc$age) / nrow(dict.fc) * 100), 2)`%) subjects in the
+FC analysis. 
+
+```{R}
+#| label: fig-age-fc
+#| fig-cap: "Distribution of age at diagnosis for subjects in the FC analysis."
+dict.fc %>%
+  filter(!is.na(age)) %>%
+  ggplot(aes(x = age)) +
+  geom_density(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  ylab("Density") +
+  xlab("Age at diagnosis") +
+  wrap_table(gt(quants), space = "free_y")  
+```
+
+#### CRP
+
+```{R}
+dict.crp <- subset(dict, ids %in% crp$ids)
+
+quants <- quantile(dict.crp$age, na.rm = TRUE, probs = c(0.25, 0.5, 0.75)) %>%
+  data.frame()
+
+quants <- cbind(rownames(quants), quants)
+colnames(quants) <- c("Quantile", "Age at diagnosis")
+```
+
+
+Age at diagnosis is missing for `r sum(is.na(dict.crp$age))`
+(`r round(sum(is.na(dict.crp$age) / nrow(dict.crp) * 100), 2)`%) subjects 
+
+```{R}
+dict.crp %>%
+  ggplot(aes(x = age)) +
+  geom_density(fill = "#EF2D56", color =  "#BE2544") +
+  theme_minimal() +
+  ylab("Density") +
+  xlab("Age at diagnosis") +
+  wrap_table(gt(quants), space = "free_y") 
+```
+
+:::
+
+### Sex
+
+```{R}
+dict <- fcal.all[, c("ids", "sex")] %>%
+  distinct(ids,
+           .keep_all = TRUE) %>%
+  merge(x = dict, by = "ids", all.x = TRUE, all.y = FALSE)
+
+
+# Update NA sex if sex available from updated
+dict <- merge(dict,
+              updated[, c("ids", "sex")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) 
+
+for (i in 1:nrow(dict)){
+  if (is.na(dict[i, "sex.x"]) & !is.na(dict[i, "sex.y"])) {
+    dict[i, "sex.x"] <- dict[i, "sex.y"]
+  }
+}
+
+dict$sex <- dict$sex.x
+dict$sex.x <- dict$sex.y <- NULL
+
+dict$sex <- plyr::mapvalues(dict$sex,
+                            from = c("F", "M"),
+                            to = c("Female", "Male"))
+```
+
+Similar to age, sex was obtained directly from health records. 
+
+::: {.panel-tabset group="biomarker"}
+
+#### Faecal calprotectin
+
+Sex appears to be distributed evenly between females and males in the FC cohort.
+
+```{R}
+dict.fc <- subset(dict, ids %in% fcal$ids)
+counts <- data.frame(table(dict.fc$sex))
+colnames(counts) <- c("Sex", "Frequency")
+
+dict.fc %>%
+  ggplot(aes(x = sex)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Sex") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")  
+```
+
+#### CRP
+
+```{R}
+dict.crp <- subset(dict, ids %in% crp$ids)
+counts <- data.frame(table(dict.crp$sex))
+colnames(counts) <- c("Sex", "Frequency")
+
+dict.crp %>%
+  ggplot(aes(x = sex)) +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") + 
+  theme_minimal() +
+  xlab("Sex") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")  
+```
+
+:::
+
+### IBD type
+
+```{R}
+dict$diagnosis <- factor(dict$diagnosis,
+                            levels = c("Crohn's Disease",
+                                       "Ulcerative Colitis",
+                                       "IBDU")
+                            )
+```
+
+IBD type, defined as either either Crohn's disease, ulcerative colitis, or
+inflammatory bowel disease unclassified (IBDU), was identified using a
+methodology previously described for the Lothian IBD Registry [@Jones2019].
+
+::: {.panel-tabset group="biomarker"}
+
+#### Faecal calprotectin
+
+The majority of subjects in the FC analysis were diagnosed with Crohn's disease.
+
+```{R}
+dict.fc <- subset(dict, ids %in% fcal$ids)
+
+counts <- data.frame(table(dict.fc$diagnosis))
+colnames(counts) <- c("IBD type", "Frequency")
+
+dict.fc %>%
+    ggplot(aes(x = diagnosis)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("IBD type") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")  
+```
+
+#### CRP
+
+```{R}
+dict.crp <- subset(dict, ids %in% crp$ids)
+
+counts <- data.frame(table(dict.crp$diagnosis))
+colnames(counts) <- c("IBD type", "Frequency")
+
+dict.crp %>%
+    ggplot(aes(x = diagnosis)) +
+    geom_bar(fill = "#EF2D56", color = "#BE2544") +
+    theme_minimal() +
+    xlab("IBD type") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")  
+```
+
+:::
+
+### Year of diagnosis
+
+
+```{R}
+# Define eras
+# 2005-2009, 2010-2014, 2015-2017
+dict$era <- NA
+dict <- 
+  dict %>%
+  mutate(era = if_else(year(date.of.diag) < 2010, "2005-2009", era)) %>%
+  mutate(era = if_else(year(date.of.diag) > 2009 & year(date.of.diag) < 2015, "2010-2014", era)) %>%
+  mutate(era = if_else(year(date.of.diag) > 2014 , "2015-2017", era))
+```
+
+Where possible, full dates for IBD diagnosis were extracted which were used to
+determine if there were biomarker observations within ± 90 days of diagnosis for
+each subject in the LIBDR. Exact dates for some subjects were unavailable in
+which case either the first day of the month, if month was available, or middle
+of the year, if only year was available, was used. 
+
+In addition to exploring individual years, we have also grouped years of
+diagnosis into 'eras' to explore potential era effects. This will allow us to
+explore if changes in clinical practice over time could have influenced cluster
+trajectories. The following 'eras' are considered: 
+
+* 2005--2009
+* 2010--2014
+* 2015--2017
+
+::: {.panel-tabset group="biomarker"}
+
+#### Faecal calprotectin
+
+```{R}
+dict.fc <- subset(dict, ids %in% fcal$ids)
+dict.fc %>%
+  ggplot(aes(x = year(date.of.diag))) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Year of diagnosis") +
+  ylab("Frequency")
+```
+
+We can observe the majority of subjects in the FC analysis were diagnosed
+2010--2014 with relatively few subjects diagnosed 2005--2009. This may limit our
+statistical power to detect era effects and is likely driven by there being
+relatively few FC tests in this time. Indeed, this finding may reflect changes
+in how FC has been used in clinical practice over time, transitioning from
+being strictly used as a diagnostic tool to having a role in both diagnosis
+and disease monitoring. 
+
+```{R}
+counts <- data.frame(table(dict.fc$era))
+colnames(counts) <- c("Diagnosis era", "Frequency")
+
+dict.fc %>%
+    ggplot(aes(x = era)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Diagnosis era") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+#### CRP
+
+```{R}
+dict.crp <- subset(dict, ids %in% crp$ids)
+dict.crp %>%
+  ggplot(aes(x = year(date.of.diag))) +
+  geom_bar(fill = "#EF2D56", color =   "#BE2544") +
+  theme_minimal() +
+  xlab("Year of diagnosis") +
+  ylab("Frequency")
+```
+
+```{R}
+counts <- data.frame(table(dict.crp$era))
+colnames(counts) <- c("Diagnosis era", "Frequency")
+
+dict.crp %>%
+    ggplot(aes(x = era)) +
+    geom_bar(fill = "#EF2D56", color = "#BE2544") +
+    theme_minimal() +
+    xlab("Diagnosis era") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+:::
+
+### Biomarker at baseline
+
+As a diagnostic observation was required for inclusion in the study, all study
+subjects have a baseline biomarker observation available. After reducing the
+biomarkers to only those meeting the study criteria, the first observation
+with respect to time was used. Ties in first observation times, which may arise
+from high-intensity monitoring in an inpatient setting, are not explicitly
+handled. 
+
+```{R}
+temp <- fcal
+temp <- temp[order(temp$calpro_time), ]
+
+fc.ids <- unique(temp$ids)
+fc.result <- c()
+
+for (id in fc.ids) {
+  fc.result <- c(fc.result, subset(temp, ids == id)[1, "calpro_result"])
+} 
+
+dict <- merge(dict, 
+              data.frame(ids = fc.ids, baseline_fc = fc.result),
+              all.x = TRUE,
+              all.y = FALSE,
+              by = "ids")
+
+
+temp <- crp
+temp <- temp[order(temp$crp_time), ]
+
+crp.ids <- unique(temp$ids)
+crp.result <- c()
+
+for (id in crp.ids) {
+  crp.result <- c(crp.result, subset(temp, ids == id)[1, "crp_result"])
+} 
+
+dict <- merge(dict, 
+              data.frame(ids = crp.ids, baseline_crp = crp.result),
+              all.x = TRUE,
+              all.y = FALSE,
+              by = "ids")
+```
+
+::: {.panel-tabset group="biomarker"}
+
+#### Faecal calprotectin
+
+```{R}
+quants <- quantile(dict$baseline_fc,
+                   na.rm = TRUE,
+                   probs = c(0.25, 0.5, 0.75)) %>%
+  data.frame()
+quants <- cbind(rownames(quants), round(quants, 2))
+colnames(quants) <- c("Quantile", "Baseline FC")
+
+dict %>%
+  filter(!is.na(baseline_fc)) %>%
+  ggplot(aes(x = baseline_fc)) +
+  geom_density(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Baseline FC") +
+  ylab("Density") +
+  wrap_table(gt(quants), space = "free_y") 
+```
+
+#### CRP
+
+```{R}
+quants <- quantile(dict$baseline_crp,
+                   na.rm = TRUE,
+                   probs = c(0.25, 0.5, 0.75)) %>%
+  data.frame()
+
+quants <- cbind(rownames(quants), round(quants, 2))
+colnames(quants) <- c("Quantile", "Baseline CRP")
+
+dict %>%
+  filter(!is.na(baseline_crp)) %>%
+  ggplot(aes(x = baseline_crp)) +
+  geom_density(fill = "#EF2D56", color =   "#BE2544") +
+  theme_minimal() +
+  xlab("Baseline CRP") +
+  ylab("Density") +
+  wrap_table(gt(quants), space = "free_y") 
+```
+
+:::
+
+## Demographics table
+
+The following table compares the demographic data ("table 1") for the FC
+and CRP analysis and the overlap between the two (subjects included in both
+the FC and CRP analyses).
+
+```{R}
+dict.fc$model <- "FC"
+dict.crp$model <- "CRP"
+combined <- rbind(dict.fc, dict.crp)
+
+both <- subset(dict.fc, ids %in% dict.crp$ids)
+both$model <- "Overlap"
+combined <- rbind(combined, both)
+label(combined$age) <- "Age at diagnosis"
+label(combined$sex) <- "Sex"
+label(combined$diagnosis) <- "IBD type"
+
+combined$model <- factor(combined$model, levels = c("FC", "CRP", "Overlap"))
+
+my.render.cont <- function(x) {
+  with(
+    stats.apply.rounding(stats.default(x),
+      digits = 3,
+      round.integers = FALSE
+    ),
+    c("", "Median (IQR)" = sprintf("%s (%s - %s)", MEDIAN, Q1, Q3))
+  )
+}
+table1(~ age + sex + diagnosis | model,
+  data = combined,
+  overall = FALSE,
+  render.continuous = my.render.cont
+)
+```
+
+## Data saving
+
+```{R}
+saveRDS(dict, paste0(prefix, "processed/dict.RDS"))
+```
+

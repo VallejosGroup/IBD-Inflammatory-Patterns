@@ -225,38 +225,6 @@ dict <- data.frame(
 
 rm(id, ids, diagnosis, date.of.diag) # clean up
 dict <- fix_date_df(dict, "date.of.diag")
-
-dict <- fcal[,c("ids", "sex")] %>%
-  distinct(ids,
-           .keep_all = TRUE) %>%
-  merge(x = dict, by = "ids", all.x = TRUE, all.y = FALSE)
-
-
-# Update NA sex if sex available from updated
-
-dict <- merge(dict,
-              updated[, c("ids", "sex")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) 
-
-for (i in 1:nrow(dict)){
-  if (is.na(dict[i, "sex.x"]) & !is.na(dict[i, "sex.y"])) {
-    dict[i, "sex.x"] <- dict[i, "sex.y"]
-  }
-}
-
-dict$sex <- dict$sex.x
-dict$sex.x <- dict$sex.y <- NULL
-
-# Add age at IBD diagnosis
-updated <- fix_date_df(updated, "diagnosisDate")
-updated$age <- with(updated, year(diagnosisDate) - dateOfBirth)
-dict <- merge(dict,
-              updated[, c("ids", "age")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE)
 ```
 
 
@@ -273,7 +241,7 @@ dict <- dict[!is.na(dict$date.of.diag), ]
 ### Diagnosis type
 
 As can be seen in the below frequency table, two spellings of Crohn's disease 
-(with and without an apostrophe) and three names for IBDU are being used. There
+(with and without an apostrophe ("\'")) and three names for IBDU are used. There
 is also a subject reported to not have IBD. 
 
 ```{R Frequency table to diagnosis pre-process}
@@ -307,8 +275,8 @@ dict$diagnosis <- plyr::mapvalues(
     "IBDU"
   )
 )
-dict <- subset(dict, diagnosis != "Not IBD")
 
+dict <- subset(dict, diagnosis != "Not IBD")
 
 kable(addmargins(table(dict$diagnosis, dict$old), margin = 2))
 dict$old <- NULL
@@ -445,7 +413,7 @@ fcal <- fcal %>% distinct(ids,
 )
 fcal <- subset(fcal, ids %in% dict$ids)
 fcal <- merge(fcal,
-              dict[, c("ids", "diagnosis", "sex", "age")],
+              dict[, c("ids", "diagnosis")],
               by = "ids",
               all.x = TRUE)
 ```
@@ -976,7 +944,7 @@ crp$COLLECTION_DATE <- readr::parse_date(
 colnames(crp) <- c("ids", "crp_date", "crp_result")
 
 crp <- merge(crp,
-             dict[, c("ids", "diagnosis", "sex", "age")],
+             dict[, c("ids", "diagnosis")],
              by = "ids",
              all.x = TRUE)
 # Remove potential duplicates
@@ -1727,35 +1695,6 @@ fcal.sub %>%
   ggtitle("")
 ```
   
-```{R}
-temp <- fcal
-temp <- temp[order(temp$calpro_time), ]
-
-fc.ids <- unique(temp$ids)
-fc.result <- c()
-
-for (id in fc.ids) {
-  fc.result <- c(fc.result, subset(temp, ids == id)[1, "calpro_result"])
-} 
-
-fc.plot.data <- data.frame(ids = fc.ids, fc.result)
-fc.plot.data <- merge(fc.plot.data,
-                       dict[, c("ids", "age")],
-                       by = "ids",
-                       all.x = TRUE, 
-                       all.y = FALSE)
-```
-
-```{R}
-fc.plot.data %>%
-  ggplot(aes(x = age, y = log(fc.result))) +
-  geom_point(color = "#F46036") +
-  xlab("Age at diagnosis") +
-  ylab("Log(FC)") +
-  geom_smooth(method = 'lm', formula = y~x, color = "#5B85AA") +
-  theme_minimal()
-```
-  
   
 ### CRP
 
@@ -1792,34 +1731,6 @@ crp.sub %>%
   ggtitle("")
 ```
 
-```{R}
-temp <- crp
-temp <- temp[order(temp$crp_time), ]
-
-crp.ids <- unique(temp$ids)
-crp.result <- c()
-
-for (id in crp.ids) {
-  crp.result <- c(crp.result, subset(temp, ids == id)[1, "crp_result"])
-} 
-
-crp.plot.data <- data.frame(ids = crp.ids, crp.result)
-crp.plot.data <- merge(crp.plot.data,
-                       dict[, c("ids", "age")],
-                       by = "ids",
-                       all.x = TRUE, 
-                       all.y = FALSE)
-```
-
-```{R}
-crp.plot.data %>%
-  ggplot(aes(x = age, y = crp.result)) +
-  geom_point(color = "#F46036") +
-  xlab("Age at diagnosis") +
-  ylab("Log(CRP (mg/L))") +
-  geom_smooth(method = 'lm', formula = y~x, color = "#5B85AA") +
-  theme_minimal()
-```
 
 ## Data saving
 
@@ -1833,7 +1744,7 @@ if (!dir.exists(paste0(prefix, "processed"))) {
 
 fcal$calpro_result <- log(fcal$calpro_result)
 
-saveRDS(dict, paste0(prefix, "processed/dict.RDS"))
+saveRDS(dict, paste0(prefix, "processed/dict-initial.RDS"))
 saveRDS(fcal, paste0(prefix, "processed/fcal.RDS"))
 saveRDS(crp, paste0(prefix, "processed/crp.RDS"))
 saveRDS(crp.ma, paste0(prefix, "processed/median-crp.RDS"))
