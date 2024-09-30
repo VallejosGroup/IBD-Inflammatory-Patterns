@@ -117,152 +117,6 @@ considered separately for these diseases.
 ### Faecal calprotectin
 
 ```{R}
-#| warning: false
-cd.bio1 <- read_xlsx(paste0(prefix,
-                            "2024-07-30/cd-bio_to-do Master Copy (NathanNoID)",
-                            ".xlsx"))
-
-cd.bio1.all <- cd.bio1[, c(1, 2, 5, 8, 11, 14, 17, 20, 23)]
-
-cd.bio1 <- cd.bio1[, c(1, 4, 5, 6)]
-names(cd.bio1) <- c("ids", "advancedT", "Treatment", "startDate")
-cd.bio1$startDate <- plyr::mapvalues(cd.bio1$startDate, c("2017  00:00:00", "?2018"), c("2017", "2018"))
-
-
-ineligble <-  c("(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
-               "(Toculizamab for RA?)")
-
-
-cd.bio1$Treatment <- plyr::mapvalues(
-  cd.bio1$Treatment,
-  from = c("1",
-           "2",
-           "(Adalimumab for RA?)",
-           "2- adalimumab for both Crohn's and Ank spon",
-           "2- Adalimumab initiated for ank spond",
-           "2- Adalimumab started for Hidradinitis Supprativa",
-           "2- for ankylosing spondylitis",
-           "3",
-           "4",
-           "5",
-           "6",
-           "7",
-           "8",
-           "9"),
-  to = c("IFX",
-         "ADA",
-         "ADA",
-         "ADA",
-         "ADA",
-         "ADA",
-         "ADA",
-         "VDZ",
-         "UST",
-         "RIS",
-         "CET",
-         "GOL",
-         "UPA",
-         "TOF"),
-  warn_missing = FALSE)
- 
-cd.bio1 <- fix_date_df(cd.bio1, "startDate", excel = TRUE)
-
-cd.bio2 <- read_xlsx(paste0(prefix,
-                            "2024-07-30/cd-bio-first-line (Phil's data-Nathan)",
-                            ".xlsx"))
-cd.bio2$advancedT <- 1
-
-cd.bio2 <- cd.bio2[, c(1, 4, 2, 3)]
-names(cd.bio2) <- c("ids", "advancedT", "Treatment", "startDate")
-cd.bio2 <- fix_date_df(cd.bio2, "startDate")
-
-cd.bio2$Treatment <- plyr::mapvalues(
-  cd.bio2$Treatment,
-  from = c(1, "A", "I", "U", "V"),
-  to = c("IFX", "ADA", "IFX", "UST", "VDZ"))
-
-cd.bio <- rbind(cd.bio1, cd.bio2)
-dict.fc.cd <- subset(dict.fc, diagnosis == "Crohn's Disease")
-dict.fc.cd <- merge(dict.fc.cd, cd.bio, all.x = TRUE, all.y = FALSE)
-dict.fc.cd <- dict.fc.cd %>%
-  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
-dict.fc.cd$firstY <- dict.fc.cd$advancedT
-
-for (i in 1:nrow(dict.fc.cd)) {
-  if (dict.fc.cd[i, "advancedT"] == 0) { # If been on AT
-    # If been on AT later than one year of diag
-    
-    if (is.na(dict.fc.cd[i, "startDate"])) {
-      dict.fc.cd[i, "firstY"] <- 1 
-    } else if (dict.fc.cd[i, "startDate"] - dict.fc.cd[i, "date.of.diag"] > 365.25) {
-      dict.fc.cd[i, "firstY"] <- 1 # Map to "No"
-    }
-  }
-}
-# Change to more interpretable value
-dict.fc.cd$firstY <- as.logical(plyr::mapvalues(dict.fc.cd$firstY,
-                                     from = c(0, 1),
-                                     to = c(TRUE, FALSE)))
-
-dict.fc.cd$class <- as.factor(paste0("FC", dict.fc.cd$class))
-```
-
-Early advanced therapy in CD is particularly noteworthy given there is
-considerable evidence an early commencement of an advanced therapy in CD is
-associated with better disease outcomes [@Noor2024; @Dhaens2008].
-
-
-```{R}
-#| label: fig-first-year-cd-fc
-#| fig-cap: "First line therapy by year for Crohn's disease cohort."
-#| warning: false
-
-cols <- c(
-  "#E26D5C",
-  "#17C3B2",
-  "#FFCB77",
-  "#67AAF9"
-)
-dict.fc.cd$Treatment <- plyr::mapvalues(dict.fc.cd$Treatment,
-                                        from = "(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
-                                        to = NA)
-
-#dict.fc.cd <- dict.fc.cd %>%
-#  drop_na(Treatment)
-
-
-dict.fc.cd$Treatment <- factor(dict.fc.cd$Treatment,
-                               labels = c("Adalimumab",
-                                          "Infliximab",
-                                          "Ustekinumab",
-                                          "Vedolizumab"))
-
-p1 <- dict.fc.cd %>%
-  drop_na(Treatment) %>%
-  ggplot(aes(
-    color = Treatment,
-    fill = Treatment ,
-    x = year(startDate)
-  )) +
-  geom_bar(position = "stack") +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45),
-    panel.grid.minor.x = element_blank()
-  ) +
-  labs(
-    x = "Year",
-    y = "Frequency",
-    fill = "First-line\nadvanced therapy",
-    color = "First-line\nadvanced therapy"
-  ) +
-  scale_x_continuous(breaks = seq(2004, 2024, by = 2)) +
-  scale_fill_manual(values = cols) +
-  scale_color_manual(values = cols)
-p1
-```
-
-```{R}
 
 pred.fc.df <- data.frame(
   calpro_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
@@ -324,23 +178,6 @@ for (g in 1:6) {
 ```
 
 ```{R}
-# Population level density plot
-dict.fc.cd %>%
-    ggplot(aes(x = timeToTherapy)) +
-    geom_density(color = "#5D002F", fill = "#82204A") +
-    theme_minimal() + 
-    xlim(0, 7) +
-    ylim(0, 0.7) +
-    xlab("Time") + 
-    ylab("Density of time to first advanced therapy")
-ggsave(paste0("plots/at-density/all.png"),
-       width = 7,
-       height = 7,
-       units = "in",
-       create.dir = TRUE)
-```
-
-```{R}
 temp <- dict.fc.cd %>%
   mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
   mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
@@ -354,12 +191,6 @@ survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
 ```
 
 
-```{R}
-#clust.1 <- dict.fc.cd %>%
-#  filter(class == "FC1")
-#cluster1.traj <- fcal %>%
-#  filter(ids %in%)
-```
 
 ```{R}
 p1 <- dict.fc.cd %>%
@@ -476,74 +307,6 @@ with(dict.fc.cd,
 ```
 
 ### CRP
-
-```{R}
-dict.crp.cd <- subset(dict.crp, diagnosis == "Crohn's Disease")
-dict.crp.cd <- merge(dict.crp.cd, cd.bio, all.x = TRUE, all.y = FALSE)
-dict.crp.cd <- dict.crp.cd %>%
-  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
-dict.crp.cd$firstY <- dict.crp.cd$advancedT
-
-for (i in 1:nrow(dict.crp.cd)) {
-  if (dict.crp.cd[i, "advancedT"] == 0) { # If been on AT
-    # If been on AT later than one year of diag
-    
-    if (is.na(dict.crp.cd[i, "startDate"])) {
-      dict.crp.cd[i, "firstY"] <- 1 
-    } else if (dict.crp.cd[i, "startDate"] - dict.crp.cd[i, "date.of.diag"] > 365.25) {
-      dict.crp.cd[i, "firstY"] <- 1 # Map to "No"
-    }
-  }
-}
-# Change to more interpretable value
-dict.crp.cd$firstY <- as.logical(plyr::mapvalues(dict.crp.cd$firstY,
-                                     from = c(0, 1),
-                                     to = c(TRUE, FALSE)))
-
-dict.crp.cd$class <- as.factor(paste0("CRP", dict.crp.cd$class))
-dict.crp.cd$timeToTherapy <- with(dict.crp.cd, startDate - date.of.diag) / 365.25
-```
-
-
-```{R}
-dict.crp.cd$Treatment <- plyr::mapvalues(dict.crp.cd$Treatment,
-                                        from = "(Toculizamab for RA?)",
-                                        to = NA)
-
-#dict.fc.cd <- dict.fc.cd %>%
-#  drop_na(Treatment)
-
-
-dict.crp.cd$Treatment <- factor(dict.crp.cd$Treatment,
-                               labels = c("Adalimumab",
-                                          "Infliximab",
-                                          "Ustekinumab",
-                                          "Vedolizumab"))
-
-p1 <- dict.crp.cd %>%
-  drop_na(Treatment) %>%
-  ggplot(aes(
-    color = Treatment,
-    fill = Treatment ,
-    x = year(startDate)
-  )) +
-  geom_bar(position = "stack") +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45),
-    panel.grid.minor.x = element_blank()
-  ) +
-  labs(
-    x = "Year",
-    y = "Frequency",
-    fill = "First-line\nadvanced therapy",
-    color = "First-line\nadvanced therapy"
-  ) +
-  scale_x_continuous(breaks = seq(2004, 2024, by = 2)) +
-  scale_fill_manual(values = cols) +
-  scale_color_manual(values = cols)
-p1
-```
 
 ```{R}
 temp <- dict.crp.cd %>%
