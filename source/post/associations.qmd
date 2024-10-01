@@ -366,6 +366,62 @@ df %>%
   knitr::kable(digits = 3, col.names = c("Estimate", "SE", "Wald", "p-value"))
 ```
 
+
+```{R}
+dict.fc$diagnosis <- factor(dict.fc$diagnosis,
+  levels = c(
+    "Crohn's Disease",
+    "Ulcerative Colitis",
+    "IBDU"
+  )
+)
+
+dict.fc$class <- factor(dict.fc$class,
+  levels = seq(1, 6),
+  labels = paste0("FC ", seq(1, 6))
+)
+
+p1 <- dict.fc %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(class), fill = diagnosis), show.legend = FALSE) +
+  scale_fill_manual(values = c("#F8766D", "#619CFF", "#00BA38")) + 
+  theme_minimal() +
+  labs(
+    x = "Cluster",
+    y = "IBD type"
+  ) +
+  ggtitle(
+    "IBD type",
+    "Faecal calprotectin clustering"
+  )
+
+ggsave("plots/mosaic/fc-by-diag.png",
+  p1,
+  width = 7.5,
+  height = 5,
+  units = "in",
+  dpi = 300,
+  create.dir = TRUE
+)
+ggsave("plots/mosaic/fc-by-diag.pdf", p1, width = 7.5, height = 5)
+
+p5 <-  dict.fc %>%
+  ggplot(aes(x = class,  fill = diagnosis, color = diagnosis)) +
+   geom_bar(position="fill") +
+  scale_fill_manual(values = c("#F8766D", "#619CFF", "#00BA38")) +
+  scale_color_manual(values = c("#CF544B", "#417BD2", "#01932A")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Cluster",
+    y = "",
+    fill = "IBD type",
+    color = "IBD type"
+  )
+p5
+```
+
 ### Advanced therapy in CD
 
 ```{R}
@@ -375,10 +431,6 @@ dict.fc.cd <- merge(dict.fc.cd,
                     by = "ids",
                     all.x = TRUE,
                     all.y = FALSE)
-
-dict.fc.cd$class <- as.factor(paste0("FC ", dict.fc.cd$class))
-
-# saveRDS(dict.crp.cd, paste0(prefix, "processed/dict-crp-cd.RDS"))
 ```
 
 ```{R}
@@ -880,6 +932,61 @@ df %>%
   knitr::kable(digits = 3, col.names = c("Estimate", "SE", "Wald", "p-value"))
 ```
 
+```{R}
+dict.crp$diagnosis <- factor(dict.crp$diagnosis,
+  levels = c(
+    "Crohn's Disease",
+    "Ulcerative Colitis",
+    "IBDU"
+  )
+)
+
+dict.crp$class <- factor(dict.crp$class,
+  levels = seq(1, 8),
+  labels = paste0("CRP ", seq(1, 8))
+)
+
+p2 <- dict.crp %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(class), fill = diagnosis), show.legend = FALSE) +
+  scale_fill_manual(values = c("#F8766D", "#619CFF", "#00BA38")) +
+  theme_minimal() +
+  labs(
+    x = "Cluster",
+    y = "IBD type"
+  ) +
+  ggtitle(
+    "IBD type",
+    "CRP clustering"
+  )
+
+ggsave("plots/mosaic/crp-by-diag.png",
+  p2,
+  width = 7.5,
+  height = 5,
+  units = "in",
+  dpi = 300,
+  create.dir = TRUE
+)
+ggsave("plots/mosaic/crp-by-diag.pdf", p2, width = 7.5, height = 5)
+
+p6 <-  dict.crp %>%
+  ggplot(aes(x = class,  fill = diagnosis, color = diagnosis)) +
+   geom_bar(position="fill") +
+  scale_fill_manual(values = c("#F8766D", "#619CFF", "#00BA38")) +
+  scale_color_manual(values = c("#CF544B", "#417BD2", "#01932A")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Cluster",
+    y = "",
+    fill = "IBD type",
+    color = "IBD type"
+  )
+p6
+```
+
 ### Advanced therapy in CD
 
 ```{R}
@@ -890,8 +997,6 @@ dict.crp.cd <- merge(dict.crp.cd,
                     by = "ids",
                     all.x = TRUE,
                     all.y = FALSE)
-
-dict.crp.cd$class <- as.factor(paste0("CRP ", dict.crp.cd$class))
 ```
 
 
