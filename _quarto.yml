@@ -11,15 +11,14 @@ project:
     - "theme.css"
   render:
     - "index.qmd"
-    - "source/preprocessing/*"
+    - "source/pre/preprocessing.qmd"
+    - "source/pre/baseline.qmd"
     - "source/selection/fcal.qmd"
     - "source/selection/crp.qmd"
-    - "source/other/FCALvsCRP.qmd"
-    - "source/other/Advanced-therapies.qmd"
-    - "source/Covariate\ exploration/covariates.qmd"
-    - "source/Covariate\ exploration/Diagnosis.qmd"
-    - "source/Covariate\ exploration/Model-comparison.qmd"
-    - "404.qmd"
+    - "source/post/associations.qmd"
+    - "source/post/FCALvsCRP.qmd"
+    - "source/post/Diagnosis.qmd"
+    - "not-found.qmd"
   execute-dir: project
 format:
   html:
@@ -52,11 +51,11 @@ website:
     right:
       - href: index.qmd
         text: "About"
-      - text: "Prior to model fitting"
+      - text: "Before model fitting"
         menu:
-        - href: "source/preprocessing/preprocessing.qmd"
+        - href: "source/pre/preprocessing.qmd"
           text: "Preprocessing"
-        - href: "source/preprocessing/baseline.qmd"
+        - href: "source/pre/baseline.qmd"
           text: "Baseline data"
       - text: "Model fitting"
         menu:
@@ -66,8 +65,10 @@ website:
           text: "C-reactive protein"
       - text: "After model fitting"
         menu:
-        - href: source/other/FCALvsCRP.qmd
-          text: "Comparison between FCAL and CRP"
+        - href: source/post/associations.qmd
+          text: "Associations"
+        - href: source/post/FCALvsCRP.qmd
+          text: "Comparison between FC and CRP"
       - icon: github
         href: "https://github.com/VallejosGroup/Lothian-IBDR"
   page-footer:

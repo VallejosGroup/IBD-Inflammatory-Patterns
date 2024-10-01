@@ -1,6 +1,5 @@
 ---
-title: "Model selection"
-subtitle: "Faecal calprotectin"
+title: "Comparison of FC and CRP clustering"
 author:
   - name: "Nathan Constantine-Cooke" 
     url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
@@ -24,8 +23,9 @@ author:
 ---
 
 ```{R}
-library(libdr)
-library(ComplexHeatmap)
+suppressPackageStartupMessages(library(libdr))
+suppressPackageStartupMessages(library(ComplexHeatmap))
+suppressPackageStartupMessages(library(tidyverse))
 library(ggalluvial)
 library(lcmm)
 library(patchwork)
@@ -70,177 +70,6 @@ rm(G.cand, G.cands)
 
 
 ```{R}
-if (!dir.exists("plots/cluster-comp")) dir.create("plots/cluster-comp")
-
-################################
-### No posterior prob cutoff ###
-################################
-
-
-col.vec <- c(
-  "1" = "#EF3E36",
-  "2" = "#17BEBB",
-  "3" = "#F4AC45",
-  "4" = "#3E5622",
-  "5" = "#DDC3D0",
-  "6" = "#8FD744FF",
-  "7" = "#2A1E5C",
-  "8" = "black"
-)
-
-
-col.vec.ibd <- c(
-  "Crohn's Disease" = "#052F5F",
-  "Ulcerative Colitis" = "#F15BB5",
-  "IBDU" = "#329F5B"
-)
-
-for (G in 2:8) { # No G = 8 for FCAL
-  comp.mat <- compareClustering(G, models.fcal, models.crp)
-  ids.fcal <- models.fcal[[G]]$pprob$ids
-  ids.crp <- models.crp[[G]]$pprob$ids
-  ids.common <- intersect(ids.fcal, ids.crp)
-
-  dict.sub <- subset(dict, ids %in% ids.common)
-
-  column_ha <- HeatmapAnnotation(
-    "CRP cluster" = models.crp[[G]]$pprob$class[models.crp[[G]]$pprob$ids %in% ids.common],
-    "FC cluster" = models.fcal[[G]]$pprob$class[models.fcal[[G]]$pprob$ids %in% ids.common],
-    col = list("FC cluster" = col.vec, "CRP cluster" = col.vec)
-  )
-
-  row.ha <- HeatmapAnnotation(
-    "IBD type" = dict.sub$diagnosis,
-    col = list("IBD type" = col.vec.ibd),
-    annotation_name_rot = 45,
-    which = "row"
-  )
-
-  heat <- Heatmap(comp.mat,
-                  name = sprintf("Cluster Concordance"),
-                  col = gameR_cols("cyberpunk", reverse = TRUE),
-                  show_row_names = FALSE,
-                  show_column_names = FALSE,
-                  cluster_rows = TRUE,
-                  cluster_columns = TRUE,
-                  heatmap_legend_param = list(
-                    labels = c(
-                      "Shares cluster for both FC and CRP",
-                      "Shares cluster for only CRP",
-                      "Shares cluster for only FC",
-                      "Never clustered together"
-                    )
-                  ),
-                  top_annotation = column_ha,
-                  left_annotation = row.ha
-  )
-  # Save heatmaps to file
-  png(paste0("plots/cluster-comp/G=", G, ".png"),
-      width = 10.82,
-      height = 8,
-      units = "in",
-      res = 300
-  )
-  draw(heat)
-  invisible(dev.off())
-
-  pdf(paste0("plots/cluster-comp/G=", G, ".pdf"),
-      width = 10.82,
-      height = 8
-  )
-  draw(heat)
-  invisible(dev.off())
-  draw(heat)
-}
-```
-
-```{R}
-##################################
-### With posterior prob cutoff ###
-##################################
-
-col.vec <- c(
-  "1" = "#EF3E36",
-  "2" = "#17BEBB",
-  "3" = "#F4AC45",
-  "4" = "#3E5622",
-  "5" = "#DDC3D0",
-  "6" = "#8FD744FF",
-  "7" = "#2A1E5C",
-  "8" = "black"
-)
-
-col.vec.ibd <- c(
-  "Crohn's Disease" = "#052F5F",
-  "Ulcerative Colitis" = "#F15BB5",
-  "IBDU" = "#329F5B"
-)
-
-for (G in 2:8) {
-  comp.mat <- compareClustering(G, models.fcal, models.crp, cutoff = TRUE)
-
-  ids.fcal <- models.fcal[[G]]$pprob[apply(models.fcal[[G]]$pprob[,c(-1, -2)] > 0.8, 1, any),]$ids
-  ids.crp <- models.crp[[G]]$pprob[apply(models.crp[[G]]$pprob[,c(-1, -2)] > 0.8, 1, any),]$ids
-
-  ids.common <- intersect(ids.fcal, ids.crp)
-
-  dict.sub <- subset(dict, ids %in% ids.common)
-
-
-  column_ha <- HeatmapAnnotation(
-    "CRP cluster" = models.crp[[G]]$pprob$class[models.crp[[G]]$pprob$ids %in% ids.common],
-    "FC cluster" = models.fcal[[G]]$pprob$class[models.fcal[[G]]$pprob$ids %in% ids.common],
-    col = list("FC cluster" = col.vec, "CRP cluster" = col.vec)
-  )
-
-  row.ha <- HeatmapAnnotation(
-    "IBD type" = dict.sub$diagnosis,
-    col = list("IBD type" = col.vec.ibd),
-    annotation_name_rot = 45,
-    which = "row"
-  )
-
-
-  heat <- Heatmap(comp.mat,
-                  name = paste0("Cluster Concordance, n = ", nrow(comp.mat)),
-                  col = gameR::gameR_cols("cyberpunk", reverse = TRUE),
-                  show_row_names = FALSE,
-                  show_column_names = FALSE,
-                  cluster_rows = TRUE,
-                  cluster_columns = TRUE,
-                  heatmap_legend_param = list(
-                    labels = c(
-                      "Shares cluster for both FC and CRP",
-                      "Shares cluster for only CRP",
-                      "Shares cluster for only FC",
-                      "Never clustered together"
-                    )
-                  ),
-                  top_annotation = column_ha,
-                  left_annotation = row.ha
-  )
-  # Save heatmaps to file
-  png(paste0("plots/cluster-comp/G=", G, "-pprob.png"),
-      width = 10.82,
-      height = 8,
-      units = "in",
-      res = 300
-  )
-  draw(heat)
-  invisible(dev.off())
-
-  pdf(paste0("plots/cluster-comp/G=", G, "-pprob.pdf"),
-      width = 10.82,
-      height = 8
-  )
-  draw(heat)
-  invisible(dev.off())
-  draw(heat)
-}
-```
-
-
-```{R}
 fcal.pprob <- models.fcal[[6]]$pprob
 crp.pprob <- models.crp[[8]]$pprob
 
@@ -265,12 +94,14 @@ p1 <- ggplot(classes, aes(x = type,
                           fill = class,
                           label = class)) +
   geom_flow()  +
-  geom_stratum()  + geom_text(stat = "stratum", size = 3) +
+  geom_stratum()  +
+  geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
-  theme(axis.line = element_line(colour = "gray"))  +  theme(legend.position='bottom')
+  theme(axis.line = element_line(colour = "gray")) +
+  theme(legend.position='bottom')
 
 
-calpro_time <- seq(0,7, by = 0.1)
+calpro_time <- seq(0, 7, by = 0.1)
 
 new.data <- cbind(calpro_time, ns(calpro_time, df = 4, Boundary.knots = c(0,7)))
 new.data <- rbind(data.frame(new.data, diagnosis = "Crohn's"),
@@ -315,7 +146,7 @@ for (class in as.character(2:8)){
 }
 
 p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
-  geom_line(size = 0.7) +
+  geom_line(linewidth = 0.7) +
   theme_minimal() +
   xlab("Time (years)") +
   ylab("Log(CRP (mg/L))") +

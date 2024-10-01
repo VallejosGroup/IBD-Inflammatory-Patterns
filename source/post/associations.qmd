@@ -1,0 +1,1087 @@
+---
+title: "Associations"
+author:
+  - name: "Nathan Constantine-Cooke"
+    corresponding: true
+    url: https://scholar.google.com/citations?user=2emHWR0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: CGEM
+      - ref: HGU
+---
+
+## Introduction
+
+```{R Setup}
+#| message: false
+set.seed(123)
+if (file.exists("/.dockerenv")) { # Check if running in Docker
+  # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
+  prefix <- "data/"
+} else {
+  # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
+  # mounted at /Volumes
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+}
+
+##########################
+#--     Packages       --#
+##########################
+
+library(tidyverse)
+# Support package (source found in libdr/)
+library(libdr)
+## Modelling ##
+library(lcmm)
+library(kml) # K-means
+library(mice) # Imputation
+## Survival analysis
+library(survival)
+library(survminer)
+## Presentation ##
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+library(table1)
+
+library(ggmosaic)
+
+
+dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
+fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
+model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-6.RDS"))
+crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
+crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
+model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
+```
+
+To-date, the clustering of faecal calprotectin (FC) and CRP profiles have only
+considered the biomarker trajectories and IBD type. This report explores
+potential evidence for the need to incorporate sex and/or age at diagnosis into 
+the models by stratifying cluster profiles by either sex or age. 
+
+::: {.callout-note}
+Sex and age (at recruitment) was found to be significantly associated with
+baseline FC in PREdiCCt.
+:::
+
+## Faecal calprotectin
+
+### Sex
+
+```{R}
+dict.fc <- subset(dict, ids %in% model.fc$pprob$ids)
+dict.fc <- merge(dict.fc, model.fc$pprob[, c("ids", "class")])
+fcal <- merge(fcal,
+  dict.fc[, c("ids", "class", "sex")],
+  all.x = TRUE,
+  all.y = FALSE
+)
+
+
+
+fcal$sex <- factor(fcal$sex,
+  levels = c("Female", "Male")
+)
+
+chisq.test(dict.fc$class, dict.fc$sex) %>%
+  pander()
+```
+
+::: {.panel-tabset group="scale"}
+
+#### Log-scale
+
+```{R}
+#| results: "hold"
+#| column: "body-outset"
+#| fig-width: 10.6667
+#| fig-height: 6
+
+if (!dir.exists("../../plots/sex-comparison/fc")) {
+  dir.create("../../plots/sex-comparison/fc", recursive = TRUE)
+}
+
+if (!dir.exists("../../plots/sex-comparison/fc/log")) {
+  dir.create("../../plots/sex-comparison/fc/log")
+}
+
+if (!dir.exists("../../plots/sex-comparison/fc/original")) {
+  dir.create("../../plots/sex-comparison/fc/original")
+}
+
+for (g in 1:6) {
+  p <- fcal %>%
+    filter(class == g) %>%
+    ggplot(aes(x = calpro_time, y = calpro_result, color = as.factor(ids))) +
+    geom_line(alpha = 0.2) +
+    theme_bw() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+    facet_grid(. ~ sex) +
+    scale_color_manual(values = rep("black", nrow(fcal))) +
+    xlab("Time (years)") +
+    ylab("Log (FCAL (\u03BCg/g))") +
+    ggtitle(paste0("Cluster ", g))
+  ggsave(paste0("../../plots/sex-comparison/fc/log/g=", g, ".png"),
+    p,
+    width = 16 * 2 / 3,
+    height = 9 * 2 / 3
+  )
+  print(p)
+}
+```
+
+#### Original units scale
+
+```{R}
+#| results: "hold"
+#| column: "body-outset"
+#| fig-width: 10.6667
+#| fig-height: 6
+for (g in 1:6) {
+  p <- fcal %>%
+    filter(class == g) %>%
+    ggplot(aes(
+      x = calpro_time,
+      y = exp(calpro_result),
+      color = as.factor(ids)
+    )) +
+    geom_line(alpha = 0.2) +
+    theme_bw() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+    facet_grid(. ~ sex) +
+    scale_color_manual(values = rep("black", nrow(fcal))) +
+    xlab("Time (years)") +
+    ylab("FCAL (\u03BCg/g)") +
+    ggtitle(paste0("Cluster ", g))
+  ggsave(paste0("../../plots/sex-comparison/fc/original/g=", g, ".png"),
+    p,
+    width = 16 * 2 / 3,
+    height = 9 * 2 / 3
+  )
+  print(p)
+}
+```
+
+:::
+
+### Age
+
+```{R}
+ageLabels <- c("<18", "18-29", "30-49", "50-69", "\u226570")
+dict.fc$ageCat <- cut(dict.fc$age,
+  breaks = c(0, 18, 30, 50, 70, Inf),
+  labels = ageLabels,
+  include.lowest = TRUE,
+  right = FALSE
+)
+
+fcal <- merge(fcal,
+  dict.fc[, c("ids", "ageCat")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+)
+
+aov(class ~ age, data = dict.fc) %>%
+  summary() %>%
+  pander()
+```
+
+```{R}
+quantile(dict.fc$age, na.rm = TRUE)
+```
+
+```{R}
+#| label: fig-fc-age-dist
+#| fig-cap: "Distribution of age at diagnosis by FC cluster assignment."
+#| fig-height: 4
+#| fig-width: 9.142857
+#| warning: false
+p1 <- dict.fc %>%
+  mutate(class = factor(class, labels = paste("FC", seq(1, 6)))) %>%
+  ggplot(aes(x = class, y = age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+print(p1)
+```
+
+Age has been calculated by subtracting year of diagnosis from year of birth. Age
+is currently missing for some subjects meeting the FC criteria (but is not
+missing for subjects meeting the CRP criteria). Age has been grouped into the
+following categories, `r ageLabels`,
+
+::: {.panel-tabset group="scale"}
+
+#### Log-scale
+
+```{R}
+#| results: "hold"
+#| column: "body-outset"
+#| fig-width: 10.6667
+#| fig-height: 6
+
+if (!dir.exists("../../plots/age-comparison/fc")) {
+  dir.create("../../plots/age-comparison/fc", recursive = TRUE)
+}
+
+if (!dir.exists("../../plots/age-comparison/fc/log")) {
+  dir.create("../../plots/age-comparison/fc/log")
+}
+
+if (!dir.exists("../../plots/age-comparison/fc/original")) {
+  dir.create("../../plots/age-comparison/fc/original")
+}
+
+for (g in 1:6) {
+  p <- fcal %>%
+    filter(class == g) %>%
+    ggplot(aes(x = calpro_time, y = calpro_result, color = as.factor(ids))) +
+    geom_line(alpha = 0.2) +
+    theme_bw() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+    facet_wrap(. ~ ageCat, ncol = 3) +
+    scale_color_manual(values = rep("black", nrow(fcal))) +
+    xlab("Time (years)") +
+    ylab("Log (FCAL (\u03BCg/g))") +
+    ggtitle(paste0("Cluster ", g))
+  ggsave(paste0("../../plots/age-comparison/fc/log/g=", g, ".png"),
+    p,
+    width = 16 * 2 / 3,
+    height = 9 * 2 / 3
+  )
+  print(p)
+}
+```
+
+#### Original units scale
+
+```{R}
+#| results: "hold"
+#| column: "body-outset"
+#| fig-width: 10.6667
+#| fig-height: 6
+for (g in 1:6) {
+  p <- fcal %>%
+    filter(class == g) %>%
+    ggplot(aes(
+      x = calpro_time,
+      y = exp(calpro_result),
+      color = as.factor(ids)
+    )) +
+    geom_line(alpha = 0.2) +
+    theme_bw() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+    facet_wrap(. ~ ageCat, ncol = 3) +
+    scale_color_manual(values = rep("black", nrow(fcal))) +
+    xlab("Time (years)") +
+    ylab("FCAL (\u03BCg/g)") +
+    ggtitle(paste0("Cluster ", g))
+  ggsave(paste0("../../plots/age-comparison/fc/original/g=", g, ".png"),
+    p,
+    width = 16 * 2 / 3,
+    height = 9 * 2 / 3
+  )
+  print(p)
+}
+```
+
+:::
+
+### IBD type
+
+IBD type has been included in the cluster assignment sub model as a covariate.
+Crohn's disease is the reference IBD type with cluster FC 6 being the reference
+cluster. 
+
+
+```{R}
+#| label: fig-fc-ibd
+#| fig-cap: "Forest plot of IBD type for the chosen FC model."
+n.clust <- 6
+id <- 1:length(model.fc$best)
+
+indice <- rep(id * (id + 1) / 2)
+
+se <- sqrt(model.fc$V[indice])
+coefficient <- coef(model.fc)
+var.names <- names(coefficient)
+
+df <- data.frame(coefficient = coefficient, se = se)
+df <- df[1:(3 * (n.clust - 1)), ]
+
+df$lower <- df$coefficient - (qnorm(0.975) * df$se)
+df$upper <- df$coefficient + (qnorm(0.975) * df$se)
+df$labels <- names(coefficient)[1:(3 * (n.clust - 1))]
+
+df$labels <- factor(df$labels, levels=rev(df$labels))
+
+df$sig <- FALSE
+
+df[df$upper < 0, "sig"] <- TRUE 
+df[df$lower > 0, "sig"] <- TRUE 
+
+df <- df[n.clust:(3 * (n.clust - 1)), ] # Remove intercept 
+
+df %>%
+  ggplot(aes(x = labels,
+             y = coefficient,
+             ymin = lower,
+             ymax = upper,
+             color = sig)) +
+  geom_errorbar() +
+  geom_point(size = 3.5) + 
+  geom_hline(yintercept = 0, lty = 2) + 
+  coord_flip() +  # flip coordinates (puts labels on y axis)
+  xlab("") +
+  ylab("Estimate (95% CI)") +
+  theme_bw() +
+  ylim(-3, 3) +
+  scale_color_manual(values = c("black", "#FF007F")) +
+  theme(legend.position = "none")
+```
+
+```{R}
+#| label: tbl-fc-ibd
+#| fig-cap: "Table of β estimates and associated p-values obtained via univariate Wald tests."
+wald <- c()
+p.vals <- c()
+
+for (index in seq(n.clust, 3 * (n.clust - 1))) {
+  temp <- WaldMult(model.fc, pos = index)
+  wald <- c(wald, temp[, 1])
+  p.vals <- c(p.vals, temp[, 2])
+}
+
+df$wald <- wald
+df$p.vals <- p.vals
+
+rownames(df) <- df$labels
+
+df %>%
+  select(coefficient, se, wald, p.vals) %>%
+  knitr::kable(digits = 3, col.names = c("Estimate", "SE", "Wald", "p-value"))
+```
+
+### Advanced therapy in CD
+
+```{R}
+dict.fc.cd <- readRDS(paste0(prefix, "processed/dict-fc-cd.RDS"))
+dict.fc.cd <- merge(dict.fc.cd,
+                    dict.fc[, c("ids", "class")],
+                    by = "ids",
+                    all.x = TRUE,
+                    all.y = FALSE)
+
+dict.fc.cd$class <- as.factor(paste0("FC ", dict.fc.cd$class))
+
+# saveRDS(dict.crp.cd, paste0(prefix, "processed/dict-crp-cd.RDS"))
+```
+
+```{R}
+pred.fc.df <- data.frame(
+  calpro_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  diagnosis = c(
+    rep("Crohn's Disease", 701),
+    rep("Ulcerative Colitis", 701)
+  )
+)
+pred.fc.df.update <- predictY(model.fc, pred.fc.df,
+  var.time = "calpro_time",
+  draws = TRUE
+)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:6) {
+  temp <- rbind(
+    temp,
+    data.frame(
+      Time = seq(0, 7, 0.01),
+      Cluster = g,
+      Value = pred.fc.df.update[, g]
+    )
+  )
+}
+
+dict.fc.cd$timeToTherapy <- with(dict.fc.cd, startDate - date.of.diag) /365.25
+
+for (g in 1:6) {
+  p1 <- temp %>%
+    filter(Cluster == g) %>%
+    ggplot(aes(x = Time, y = Value)) +
+    geom_line(color = "#558C8C") +
+    theme_minimal() +
+    ylim(3, 6.5) + 
+    xlab("") + 
+    ylab("Log (FCAL (\u03BCg/g))")
+  p2 <- dict.fc.cd %>%
+    filter(class == paste0("FC ", g)) %>%
+    ggplot(aes(x = timeToTherapy)) +
+    geom_density(color = "#5D002F", fill = "#82204A") +
+    theme_minimal() + 
+    xlim(0, 7) +
+    ylim(0, 0.7) +
+    xlab("Time") + 
+    ylab("Density of time to first advanced therapy")
+  p <- p1/p2 + plot_annotation(title = paste("FC", g),
+                               subtitle = "Crohn's disease",
+                               tag_levels = "A")
+  ggsave(paste0("plots/at-density/g=", g, ".png"),
+         p,
+         width = 7,
+         height = 7,
+         units = "in",
+         create.dir = TRUE)
+  print(p)
+}
+```
+
+
+```{R}
+temp <- dict.fc.cd %>%
+  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
+  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
+  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
+   mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
+
+
+survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
+  ggsurvplot(pval = TRUE, conf.int = FALSE)
+```
+
+
+```{R}
+p1 <- dict.fc.cd %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(class), fill = firstY), show.legend = FALSE ) +
+  theme_minimal() +
+  labs(x = "Cluster",
+       y =  "Advanced therapy within first year of diagnosis") +
+  ggtitle("Crohn's disease subjects",
+          "Faecal calprotectin clustering")
+ggsave("plots/mosaic/fc-cd.png",
+       p1,
+       width = 7.5,
+       height = 5,
+       units = "in",
+       dpi = 300,
+       create.dir = TRUE)
+ggsave("plots/mosaic/fc-cd-AT.pdf", p, width = 7.5, height = 5)
+p1
+```
+
+```{R}
+pred.fc.df <- data.frame(
+  calpro_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  diagnosis = c(
+    rep("Crohn's Disease", 701),
+    rep("Ulcerative Colitis", 701)
+  )
+)
+pred.fc.df.update <- predictY(model.fc, pred.fc.df,
+  var.time = "calpro_time",
+  draws = TRUE
+)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:6) {
+  temp <- rbind(
+    temp,
+    data.frame(
+      Time = seq(0, 7, 0.01),
+      Cluster = g,
+      Value = pred.fc.df.update[, g]
+    )
+  )
+}
+
+traj.outlines <- list()
+
+for (g in 1:6) {
+  traj.outlines[[g]] <- temp %>%
+    filter(Cluster == g) %>%
+    ggplot(aes(x = Time, y = Value)) +
+    geom_line(color = "#757575") +
+    theme_classic() +
+    theme(text = element_blank(),
+          axis.ticks = element_blank(),
+          axis.line = element_line(color = "#dfdfdf")) +
+    ylim(3, 6.5)
+}
+
+
+
+desc <- "Advanced therapy within first year of diagnosis for Crohn's disease"
+
+p1 <-  dict.fc.cd %>%
+  ggplot(aes(x = class,  fill = firstY, color = firstY)) +
+   geom_bar(position="fill") +
+  scale_fill_manual(values = c("#F8766D", "#619CFF")) +
+  scale_color_manual(values = c("#CF544B", "#417BD2")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Cluster",
+    y = "",
+    fill = desc,
+    color = desc
+  )
+
+
+
+p <- p1 /
+  (traj.outlines[[1]] +
+    traj.outlines[[2]] +
+    traj.outlines[[3]] +
+    traj.outlines[[4]] +
+    traj.outlines[[5]] +
+    traj.outlines[[6]] +
+    plot_layout(ncol = 6, guides = "collect", widths = unit(3.9, "cm"))) +
+  plot_layout(heights = c(4, 1))
+
+ggsave("plots/mosaic/fc-by-AT-with-traj.pdf",
+  p,
+  width = 7 * 1.65,
+  height = 5 * 1.65
+)
+ggsave("plots/mosaic/fc-by-AT-with-traj.png",
+  p,
+  width = 7 * 1.65,
+  height = 5 * 1.65
+)
+
+```
+
+```{R}
+sum(dict.fc.cd$firstY)
+prop.table(table(dict.fc.cd$class, dict.fc.cd$firstY), margin = 1)
+```
+
+```{R}
+with(dict.fc.cd,
+     fisher.test(table(class, firstY), workspace = 2000000))
+```
+
+### Demographics table
+
+## CRP
+
+For CRP, we visualise the processed (median averaged) CRP instead of the
+pre-transformed data. This allows patterns and differences to be more easily
+seen.  
+
+### Sex
+
+```{R}
+dict.crp <- subset(dict, ids %in% model.crp$pprob$ids)
+dict.crp <- merge(dict.crp, model.crp$pprob[, c("ids", "class")])
+crp.median <- merge(crp.median,
+  dict.crp[, c("ids", "class", "sex")],
+  all.x = TRUE,
+  all.y = FALSE
+)
+
+chisq.test(dict.crp$class, dict.crp$sex) %>%
+  pander()
+```
+
+::: {.panel-tabset group="scale"}
+
+#### Log-scale
+
+```{R}
+#| results: "hold"
+#| column: "body-outset"
+#| fig-width: 10.6667
+#| fig-height: 6
+
+if (!dir.exists("../../plots/sex-comparison/crp")) {
+  dir.create("../../plots/sex-comparison/crp", recursive = TRUE)
+}
+
+if (!dir.exists("../../plots/sex-comparison/crp/log")) {
+  dir.create("../../plots/sex-comparison/crp/log")
+}
+
+if (!dir.exists("../../plots/sex-comparison/crp/original")) {
+  dir.create("../../plots/sex-comparison/crp/original")
+}
+
+for (g in 1:8) {
+  p <- crp.median %>%
+    filter(class == g) %>%
+    ggplot(aes(x = crp_time, y = crp_result, color = as.factor(ids))) +
+    geom_line(alpha = 0.2) +
+    theme_bw() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+    facet_grid(. ~ sex) +
+    scale_color_manual(values = rep("black", nrow(crp))) +
+    xlab("Time (years)") +
+    ylab("Log (CRP (\u03BCg/mL))") +
+    ggtitle(paste0("Cluster ", g))
+  ggsave(paste0("../../plots/sex-comparison/crp/log/g=", g, ".png"),
+    p,
+    width = 16 * 2 / 3,
+    height = 9 * 2 / 3
+  )
+  print(p)
+}
+```
+
+#### Original units scale
+
+```{R}
+#| results: "hold"
+#| column: "body-outset"
+#| fig-width: 10.6667
+#| fig-height: 6
+for (g in 1:8) {
+  p <- crp.median %>%
+    filter(class == g) %>%
+    ggplot(aes(x = crp_time, y = exp(crp_result), color = as.factor(ids))) +
+    geom_line(alpha = 0.2) +
+    theme_bw() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+    facet_grid(. ~ sex) +
+    scale_color_manual(values = rep("black", nrow(crp))) +
+    xlab("Time (years)") +
+    ylab("CRP (\u03BCg/mL)") +
+    ggtitle(paste0("Cluster ", g))
+  ggsave(paste0("../../plots/sex-comparison/crp/original/g=", g, ".png"),
+    p,
+    width = 16 * 2 / 3,
+    height = 9 * 2 / 3
+  )
+  print(p)
+}
+```
+
+:::
+
+### Age
+
+Age has been calculated by subtracting year of diagnosis from year of birth. 
+
+
+```{R}
+quantile(dict.crp$age, na.rm = TRUE)
+```
+
+```{R}
+dict.crp$ageCat <- cut(dict.crp$age,
+  breaks = c(0, 18, 30, 50, 70, Inf),
+  labels = c("<18", "18-29", "30-49", "50-69", "\u226570"),
+  include.lowest = TRUE,
+  right = FALSE
+)
+
+crp.median <- merge(crp.median,
+  dict.crp[, c("ids", "ageCat")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+)
+
+aov(class ~ age, data = dict.crp) %>%
+  summary() %>%
+  pander()
+```
+
+
+```{R}
+#| label: fig-crp-age-dist
+#| fig-cap: "Distribution of age at diagnosis by CRP cluster assignment."
+#| fig-height: 4
+#| fig-width: 9.142857
+#| warning: false
+p2 <- dict.crp %>%
+  mutate(class = factor(class, labels = paste("CRP", seq(1, 8)))) %>%
+  ggplot(aes(x = class, y = age)) +
+  geom_violin(fill = "#D4CDF4", color = "#7A6F9B") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+p <- p1 / p2 + plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(size = 16, face = "bold"))
+
+ggsave("plots/age-dist.png", p, width = 16 * 4 / 7, height = 8)
+ggsave("plots/age-dist.pdf", p, width = 16 * 4 / 7, height = 8)
+print(p2)
+```
+
+::: {.panel-tabset group="scale"}
+
+#### Log-scale
+
+```{R}
+#| results: "hold"
+#| column: "body-outset"
+#| fig-width: 10.6667
+#| fig-height: 6
+
+if (!dir.exists("../../plots/age-comparison/crp")) {
+  dir.create("../../plots/age-comparison/crp", recursive = TRUE)
+}
+
+if (!dir.exists("../../plots/age-comparison/crp/log")) {
+  dir.create("../../plots/age-comparison/crp/log")
+}
+
+if (!dir.exists("../../plots/age-comparison/crp/original")) {
+  dir.create("../../plots/age-comparison/crp/original")
+}
+
+for (g in 1:8) {
+  p <- crp.median %>%
+    filter(class == g) %>%
+    ggplot(aes(x = crp_time, y = crp_result, color = as.factor(ids))) +
+    geom_line(alpha = 0.2) +
+    theme_bw() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+    facet_wrap(. ~ ageCat, ncol = 3) +
+    scale_color_manual(values = rep("black", nrow(fcal))) +
+    xlab("Time (years)") +
+    ylab("Log (FCAL (\u03BCg/g))") +
+    ggtitle(paste0("Cluster ", g))
+  ggsave(paste0("../../plots/age-comparison/crp/log/g=", g, ".png"),
+    p,
+    width = 16 * 2 / 3,
+    height = 9 * 2 / 3
+  )
+  print(p)
+}
+```
+
+#### Original units scale
+
+```{R}
+#| results: "hold"
+#| column: "body-outset"
+#| fig-width: 10.6667
+#| fig-height: 6
+for (g in 1:8) {
+  p <- crp.median %>%
+    filter(class == g) %>%
+    ggplot(aes(
+      x = crp_time,
+      y = exp(crp_result),
+      color = as.factor(ids)
+    )) +
+    geom_line(alpha = 0.2) +
+    theme_bw() +
+    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+    facet_wrap(. ~ ageCat, ncol = 3) +
+    scale_color_manual(values = rep("black", nrow(fcal))) +
+    xlab("Time (years)") +
+    ylab("FCAL (\u03BCg/g)") +
+    ggtitle(paste0("Cluster ", g))
+  ggsave(paste0("../../plots/age-comparison/crp/original/g=", g, ".png"),
+    p,
+    width = 16 * 2 / 3,
+    height = 9 * 2 / 3
+  )
+  print(p)
+}
+```
+
+:::
+
+### IBD type
+
+As with the FC  model, IBD type has been included in the cluster assignment sub
+model as a covariate. Crohn's disease is the reference IBD type with cluster
+CRP 8 being the reference cluster. 
+
+
+```{R}
+#| label: fig-crp-ibd
+#| fig-cap: "Forest plot of IBD type for the chosen CRP model."
+n.clust <- 8
+id <- 1:length(model.crp$best)
+
+indice <- rep(id * (id + 1) / 2)
+
+se <- sqrt(model.crp$V[indice])
+coefficient <- coef(model.crp)
+var.names <- names(coefficient)
+
+df <- data.frame(coefficient = coefficient, se = se)
+df <- df[1:(3 * (n.clust - 1)), ]
+
+df$lower <- df$coefficient - (qnorm(0.975) * df$se)
+df$upper <- df$coefficient + (qnorm(0.975) * df$se)
+df$labels <- names(coefficient)[1:(3 * (n.clust - 1))]
+
+df$labels <- factor(df$labels, levels = rev(df$labels))
+
+df$sig <- FALSE
+
+df[df$upper < 0, "sig"] <- TRUE 
+df[df$lower > 0, "sig"] <- TRUE 
+
+df <- df[n.clust:(3 * (n.clust - 1)), ] # Remove intercept 
+
+df %>%
+  ggplot(aes(x = labels,
+             y = coefficient,
+             ymin = lower,
+             ymax = upper,
+             color = sig)) +
+  geom_errorbar() +
+  geom_point(size = 3.5) + 
+  geom_hline(yintercept = 0, lty = 2) + 
+  coord_flip() +  # flip coordinates (puts labels on y axis)
+  xlab("") +
+  ylab("Estimate (95% CI)") +
+  theme_bw() +
+  ylim(-4, 4) +
+  scale_color_manual(values = c("black", "#FF007F")) +
+  theme(legend.position = "none")
+```
+
+```{R}
+#| label: tbl-crp-ibd
+#| fig-cap: "Table of β estimates and associated p-values obtained via univariate Wald tests."
+wald <- c()
+p.vals <- c()
+
+for (index in seq(n.clust, 3 * (n.clust - 1))) {
+  temp <- WaldMult(model.crp, pos = index)
+  wald <- c(wald, temp[, 1])
+  p.vals <- c(p.vals, temp[, 2])
+}
+
+df$wald <- wald
+df$p.vals <- p.vals
+
+rownames(df) <- df$labels
+
+df %>%
+  select(coefficient, se, wald, p.vals) %>%
+  knitr::kable(digits = 3, col.names = c("Estimate", "SE", "Wald", "p-value"))
+```
+
+### Advanced therapy in CD
+
+```{R}
+dict.crp.cd <- readRDS(paste0(prefix, "processed/dict-crp-cd.RDS"))
+
+dict.crp.cd <- merge(dict.crp.cd,
+                    dict.crp[, c("ids", "class")],
+                    by = "ids",
+                    all.x = TRUE,
+                    all.y = FALSE)
+
+dict.crp.cd$class <- as.factor(paste0("CRP ", dict.crp.cd$class))
+```
+
+
+
+```{R}
+pred.crp.df <- data.frame(
+  crp_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  diagnosis = c(
+    rep("Crohn's Disease", 701),
+    rep("Ulcerative Colitis", 701)
+  )
+)
+pred.crp.df.update <- predictY(model.crp, pred.crp.df,
+  var.time = "crp_time",
+  draws = TRUE
+)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:8) {
+  temp <- rbind(
+    temp,
+    data.frame(
+      Time = seq(0, 7, 0.01),
+      Cluster = g,
+      Value = pred.crp.df.update[, g]
+    )
+  )
+}
+
+
+dict.crp.cd$timeToTherapy <- with(dict.crp.cd, startDate - date.of.diag) /365.25
+
+for (g in 1:8) {
+  p1 <- temp %>%
+    filter(Cluster == g) %>%
+    ggplot(aes(x = Time, y = Value)) +
+    geom_line(color = "#558C8C") +
+    theme_minimal() +
+    ylim(0, 6) + 
+    xlab("") + 
+    ylab("Log (CRP (\u03BCg/mL))")
+  p2 <- dict.crp.cd %>%
+    filter(class == paste0("CRP ", g)) %>%
+    ggplot(aes(x = timeToTherapy)) +
+    geom_density(color = "#5D002F", fill = "#82204A") +
+    theme_minimal() + 
+    xlim(0, 7) +
+    ylim(0, 0.3) +
+    xlab("Time") + 
+    ylab("Density of time to first advanced therapy")
+  p <- p1/p2 + plot_annotation(title = paste("CRP ", g),
+                               subtitle = "Crohn's disease",
+                               tag_levels = "A")
+  ggsave(paste0("plots/at-density-crp/g=", g, ".png"),
+         p,
+         width = 7,
+         height = 7,
+         units = "in",
+         create.dir = TRUE)
+  print(p)
+}
+```
+
+```{R}
+
+
+temp <- dict.crp.cd %>%
+  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
+  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
+  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
+   mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
+survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
+  ggsurvplot(pval = TRUE)
+```
+
+
+
+```{R}
+p <- dict.crp.cd %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(class), fill = firstY), show.legend = FALSE ) +
+  theme_minimal() +
+  labs(x = "Cluster",
+       y = "Advanced therapy within first year of diagnosis") +
+  ggtitle("Crohn's disease subjects",
+          "CRP clustering")
+ggsave("plots/mosaic/crp-cd.png",
+       p,
+       width = 7.5,
+       height = 5,
+       units = "in",
+       dpi = 300,
+       create.dir = TRUE)
+ggsave("plots/mosaic/crp-cd.pdf", p, width = 7.5, height = 5)
+p
+```
+
+```{R}
+pred.crp.df <- data.frame(
+  crp_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  diagnosis = c(
+    rep("Crohn's Disease", 701),
+    rep("Ulcerative Colitis", 701)
+  )
+)
+pred.crp.df.update <- predictY(model.crp, pred.crp.df,
+  var.time = "crp_time",
+  draws = TRUE
+)$pred
+
+temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
+
+for (g in 1:8) {
+  temp <- rbind(
+    temp,
+    data.frame(
+      Time = seq(0, 7, 0.01),
+      Cluster = g,
+      Value = pred.crp.df.update[, g]
+    )
+  )
+}
+
+traj.crp.outlines <- list()
+
+for (g in 1:8) {
+  traj.crp.outlines[[g]] <- temp %>%
+    filter(Cluster == g) %>%
+    ggplot(aes(x = Time, y = Value)) +
+    geom_line(color = "#757575") +
+    theme_classic() +
+    theme(text = element_blank(),
+          axis.ticks = element_blank(),
+          axis.line = element_line(color = "#dfdfdf")) +
+    ylim(0, 6)
+}
+
+
+p1 <-  dict.crp.cd %>%
+  ggplot(aes(x = class,  fill = firstY, color = firstY)) +
+   geom_bar(position="fill") +
+  scale_fill_manual(values = c("#F8766D", "#619CFF")) +
+  scale_color_manual(values = c("#CF544B", "#417BD2")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Cluster",
+    y = "",
+    fill = desc,
+    color = desc
+  )
+
+
+p <- (p1) /
+  (traj.crp.outlines[[1]] +
+    traj.crp.outlines[[2]] +
+    traj.crp.outlines[[3]] +
+    traj.crp.outlines[[4]] +
+    traj.crp.outlines[[5]] +
+    traj.crp.outlines[[6]] +
+    traj.crp.outlines[[7]] +
+    traj.crp.outlines[[8]] +
+    plot_layout(ncol = 8, guides = "collect", widths = unit(2.8, "cm") )) +
+  plot_layout(heights = c(4, 1), nrow = 2)
+
+ggsave("plots/mosaic/crp-by-AT-with-traj.pdf",
+  p,
+  width = 7 * 1.65,
+  height = 5 * 1.65
+)
+ggsave("plots/mosaic/crp-by-AT-with-traj.png",
+  p,
+  width = 7 * 1.65,
+  height = 5 * 1.65
+)
+
+```
+
+### Demographics table
+
+## Reuse {.appendix}
+
+Licensed by 
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY</a>
+ unless otherwise stated.
+ 
+## {.appendix}
+
+<div class = "center">
+  <img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
+  <img src="../../images/cgem-logo.png" alt="Centre for Genomic & Experimental Medicine logo" height = 50px>
+</div>
+
+---
+
+## Session info {.appendix}
+
+```{R Session info}
+pander(sessionInfo())
+```
+
+
+

@@ -479,6 +479,7 @@ From the below data, we can see how posterior probabilities change as the number
 of assumed clusters increase.
 
 ::: {.column-page}
+
 ::: {.panel-tabset}
 
 ```{R FCAL postpro}
@@ -495,7 +496,85 @@ rm(output)
 ```
 
 :::
+
 :::
+
+```{R PProb distributions NCS}
+#| fig-width: 8
+#| fig-height: 4.5
+pprobs.2 <- c(); groups.2 <- models.fcal[[2]]
+pprobs.3 <- c(); groups.3 <- models.fcal[[3]]
+pprobs.4 <- c(); groups.4 <- models.fcal[[4]]
+pprobs.5 <- c(); groups.5 <- models.fcal[[5]]
+pprobs.6 <- c(); groups.6 <- models.fcal[[6]]
+pprobs.7 <- c(); groups.7 <- models.fcal[[7]]
+pprobs.8 <- c(); groups.8 <- models.fcal[[8]]
+
+
+for (i in 1:nrow(models.fcal[[2]]$pprob)){
+  class.2 <- groups.2$pprob[i, 2]
+  pprobs.2 <- c(pprobs.2, groups.2$pprob[i, class.2 + 2 ])
+  class.3 <- groups.3$pprob[i, 2]
+  pprobs.3 <- c(pprobs.3, groups.3$pprob[i, class.3 + 2 ])
+  class.4 <- groups.4$pprob[i, 2]
+  pprobs.4 <- c(pprobs.4, groups.4$pprob[i, class.4 + 2 ])
+  class.5 <- groups.5$pprob[i, 2]
+  pprobs.5 <- c(pprobs.5, groups.5$pprob[i, class.5 + 2 ])
+  class.6 <- groups.6$pprob[i, 2]
+  pprobs.6 <- c(pprobs.6, groups.6$pprob[i, class.6 + 2 ])
+  class.7 <- groups.7$pprob[i, 2]
+  pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2 ])
+  class.8 <- groups.8$pprob[i, 2]
+  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2 ])
+}
+pprobs.2 <- tibble(prob = pprobs.2)
+pprobs.3 <- tibble(prob = pprobs.3)
+pprobs.4 <- tibble(prob = pprobs.4)
+pprobs.5 <- tibble(prob = pprobs.5)
+pprobs.6 <- tibble(prob = pprobs.6)
+pprobs.7 <- tibble(prob = pprobs.7)
+pprobs.8 <- tibble(prob = pprobs.8)
+
+pprobs.2$Model <- as.factor(rep("Two clusters", nrow(pprobs.2)))
+pprobs.3$Model <- as.factor(rep("Three clusters", nrow(pprobs.3)))
+pprobs.4$Model <- as.factor(rep("Four clusters", nrow(pprobs.4)))
+pprobs.5$Model <- as.factor(rep("Five clusters", nrow(pprobs.5)))
+pprobs.6$Model <- as.factor(rep("Six clusters", nrow(pprobs.6)))
+pprobs.7$Model <- as.factor(rep("Seven clusters", nrow(pprobs.7)))
+pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
+pprobs <- rbind(pprobs.2,
+                pprobs.3,
+                pprobs.4,
+                pprobs.5,
+                pprobs.6,
+                pprobs.7,
+                pprobs.8)
+
+p <- pprobs %>%
+  ggplot(aes(x = prob, y = Model)) +
+  #geom_histogram(bins = 40, fill = NA, position="identity")
+  stat_slab(fill = "#5D5179",color = "gray",
+                    size = 0.8,
+                    alpha = 0.7) +
+  geom_dots(color = "#4F759B", dotsize = 1) +
+  xlab("Posterior probability for cluster membership") +
+  ylab("") + 
+  ggtitle("Distribution of Posterior Probabilities Across Models",
+          "Subject-specific posterior probabilities for assigned cluster") +
+  theme_minimal() + 
+  scale_y_discrete(limits = rev)
+ggsave("plots/pprob-distribution.png",
+       p,
+       width = 8.5,
+       height = 7.5,
+       units = "in")
+ggsave("plots/pprob-distribution.pdf",
+       p,
+       width = 8.5,
+       height = 7.5,
+       units = "in")
+print(p)
+```
 
 
 #### Residual plots
@@ -504,14 +583,14 @@ rm(output)
 
 ```{R FCAL residuals}
 #| output: "asis"
-#| results: "hold"
 for (G in G.fcal) {
-  cat(paste0("\\", "##### G = ", G, "\\"))
+  cat(paste0("##### G = ", G, "\n"))
   plot(models.fcal[[G]], shades = TRUE)
 }
 ```
 
 :::
+
 
 ##### Chosen model
 
@@ -1101,6 +1180,83 @@ rm(output)
 
 :::
 :::
+
+```{R PProb distributions GRBF}
+#| fig-width: 8
+#| fig-height: 4.5
+pprobs.2 <- c(); groups.2 <- models.grbf[[2]]
+pprobs.3 <- c(); groups.3 <- models.grbf[[3]]
+pprobs.4 <- c(); groups.4 <- models.grbf[[4]]
+pprobs.5 <- c(); groups.5 <- models.grbf[[5]]
+pprobs.6 <- c(); groups.6 <- models.grbf[[6]]
+pprobs.7 <- c(); groups.7 <- models.grbf[[7]]
+pprobs.8 <- c(); groups.8 <- models.grbf[[8]]
+
+
+for (i in 1:nrow(models.grbf[[2]]$pprob)){
+  class.2 <- groups.2$pprob[i, 2]
+  pprobs.2 <- c(pprobs.2, groups.2$pprob[i, class.2 + 2 ])
+  class.3 <- groups.3$pprob[i, 2]
+  pprobs.3 <- c(pprobs.3, groups.3$pprob[i, class.3 + 2 ])
+  class.4 <- groups.4$pprob[i, 2]
+  pprobs.4 <- c(pprobs.4, groups.4$pprob[i, class.4 + 2 ])
+  class.5 <- groups.5$pprob[i, 2]
+  pprobs.5 <- c(pprobs.5, groups.5$pprob[i, class.5 + 2 ])
+  class.6 <- groups.6$pprob[i, 2]
+  pprobs.6 <- c(pprobs.6, groups.6$pprob[i, class.6 + 2 ])
+  class.7 <- groups.7$pprob[i, 2]
+  pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2 ])
+  class.8 <- groups.8$pprob[i, 2]
+  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2 ])
+}
+pprobs.2 <- tibble(prob = pprobs.2)
+pprobs.3 <- tibble(prob = pprobs.3)
+pprobs.4 <- tibble(prob = pprobs.4)
+pprobs.5 <- tibble(prob = pprobs.5)
+pprobs.6 <- tibble(prob = pprobs.6)
+pprobs.7 <- tibble(prob = pprobs.7)
+pprobs.8 <- tibble(prob = pprobs.8)
+
+pprobs.2$Model <- as.factor(rep("Two clusters", nrow(pprobs.2)))
+pprobs.3$Model <- as.factor(rep("Three clusters", nrow(pprobs.3)))
+pprobs.4$Model <- as.factor(rep("Four clusters", nrow(pprobs.4)))
+pprobs.5$Model <- as.factor(rep("Five clusters", nrow(pprobs.5)))
+pprobs.6$Model <- as.factor(rep("Six clusters", nrow(pprobs.6)))
+pprobs.7$Model <- as.factor(rep("Seven clusters", nrow(pprobs.7)))
+pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
+pprobs <- rbind(pprobs.2,
+                pprobs.3,
+                pprobs.4,
+                pprobs.5,
+                pprobs.6,
+                pprobs.7,
+                pprobs.8)
+
+p <- pprobs %>%
+  ggplot(aes(x = prob, y = Model)) +
+  #geom_histogram(bins = 40, fill = NA, position="identity")
+  stat_slab(fill = "#5D5179",color = "gray",
+                    size = 0.8,
+                    alpha = 0.7) +
+  geom_dots(color = "#4F759B", dotsize = 1) +
+  xlab("Posterior probability for cluster membership") +
+  ylab("") + 
+  ggtitle("Distribution of Posterior Probabilities Across Models",
+          "Subject-specific posterior probabilities for assigned cluster") +
+  theme_minimal() + 
+  scale_y_discrete(limits = rev)
+ggsave("plots/pprob-distribution-grbf.png",
+       p,
+       width = 8.5,
+       height = 7.5,
+       units = "in")
+ggsave("plots/pprob-distribution-grbf.pdf",
+       p,
+       width = 8.5,
+       height = 7.5,
+       units = "in")
+print(p)
+```
 
 
 #### Residual plots

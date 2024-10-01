@@ -66,219 +66,7 @@ crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp_median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 ```
 
-
-### Unprocessed CRP
-
-```{R Load Unprocessed CRP Models}
-#| fig-width: 12
-#| fig-height: 6.75
-# set the number of groups
-G.crp <- numeric()
-models.crp <- list()
-G.cands <- seq(2, 10)
-for (G.cand in G.cands) {
-  file.name <- paste0(prefix, "/cache/crp/crp-", G.cand, ".RDS")
-  if (file.exists(file.name)) {
-    G.crp <- c(G.crp, G.cand)
-    models.crp[[G.cand]] <- readRDS(file.name)
-  }
-}
-rm(G.cand)
-```
-
-```{R CRP alluvial}
-#| label: fig-crp-alluvial
-#| fig-cap: Alluvial plot of cluster membership across G for CRP
-alluvial.df <- matrix(nrow = 0, ncol = 3)
-colnames(alluvial.df) <- c("ids", "class", "G")
-for (G in G.crp) {
-  alluvial.df <- rbind(alluvial.df, cbind(models.crp[[G]]$pprob[, 1:2], G = G))
-}
-alluvial.df <- as.data.frame(alluvial.df)
-
-alluvial.df$ids <- as.character(alluvial.df$ids)
-alluvial.df$class <- as.factor(alluvial.df$class)
-
-alluvial.df[alluvial.df[, "G"] == 4, "class" ] <-
-  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
-                  from = c(seq(1, 4)),
-                  to = c(1, 4, 2, 3))
-
-alluvial.df[alluvial.df[, "G"] == 5, "class" ] <-
-  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
-                  from = c(seq(1, 5)),
-                  to = c(5, 2, 4, 3, 1))
-
-
-# eliminate label switching
-
-p <- ggplot(
-  alluvial.df,
-  aes(
-    x = G,
-    stratum = class,
-    alluvium = ids,
-    fill = class,
-    label = class
-  )
-) +
-  scale_x_discrete(expand = c(.1, .1)) +
-  geom_flow() +
-  geom_stratum(alpha = 0.5) +
-  geom_text(stat = "stratum", size = 3) +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  scale_fill_manual(values = rainbow(8)) +
-  xlab("Assumed number of clusters") +
-  ylab("Frequency")
-print(p)
-
-p <- p + ggtitle("", "")
-ggsave("paper/alluvial-CRP-all.png", p, width = 8, height = 4.5, units = "in")
-ggsave("paper/alluvial-CRP-all.pdf", p, width = 8, height = 4.5, units = "in")
-```
-
-##### Posterior classifications
-
-From the below data, we can see how posterior probabilities change as the number
-of assumed clusters increase
-
-
-:::{.column-page}
-::: {.panel-tabset}
-
-```{R CRP postpro}
-#| results: "asis"
-postprob_quiet <- quietly(postprob)
-for (G in G.crp) {
-  cat(paste0("##### G = ", G, "\n"))
-  output <- postprob_quiet(models.crp[[G]])$result
-  cat(pander::pander(output[[1]]))
-  cat(pander::pander(output[[2]]))
-  cat(pander::pander(output[[3]]))
-}
-rm(output)
-```
-
-:::
-:::
-
-
-##### Residual plots
-
-::: {.panel-tabset}
-
-```{R CRP residuals}
-#| results: "asis"
-for (G in G.crp) {
-  cat(paste0("##### G = ", G, "\n"))
-  plot(models.crp[[G]], shades = TRUE)
-}
-```
-
-:::
-
-##### Model metrics
-
-```{R CRP metrics plot}
-#| label: fig-crp-metrics
-#| fig-cap: "Model metrics for CRP for G = 4-8"
-summaryplot(models.crp[[4]],
-            models.crp[[5]],
-            which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
-            mfrow = c(2,3),
-            axis = "Class")
-```
-
-```{R CRP metrics table}
-crp.metrics <- makeMetrics(G.crp, models.crp)
-buildDT(crp.metrics)
-```
-
-##### Spaghetti plots per cluster
-
-::: {.panel-tabset}
-
-```{R CRP spaghetti plots}
-#| results: "asis"
-for (G in G.crp) {
-  cat(paste0("##### G = ", G, "\n\n"))
-  cat("###### Log-scale, all subjects \n\n")
-  grid::grid.newpage()
-  spaghettiPlot(crp,
-                models.crp,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = TRUE,
-                knot.type = "equal",
-                var.time = "crp_time")
-}
-```
-
-:::
-
-##### IBD Association
-
-```{R}
-cluster <- numeric()
-
-dict.crp <- subset(dict, ids %in% unique(crp$ids))
-
-for (id in dict.crp$ids) { 
-  cluster <- c(cluster,
-               subset(models.crp[[5]]$pprob, ids == id)$class)
-}
-
-dict.crp$diagnosis <- as.factor(dict.crp$diagnosis)
-dict.crp$cluster <- as.factor(cluster)
-rm(cluster)
-```
-
-```{R}
-describe_cat("diagnosis", dict.crp)
-```
-
-###### Cluster = 1
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp, cluster == 1))
-```
-###### Cluster = 2
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp, cluster == 2))
-```
-
-###### Cluster = 3
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp, cluster == 3))
-```
-
-###### Cluster = 4
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp, cluster == 4))
-```
-
-###### Cluster = 5
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp, cluster == 5))
-```
-
-###### Fisher’s exact test
-
-```{R}
-fisher.test(dict.crp$diagnosis,
-            dict.crp$cluster,
-            simulate.p.value = TRUE,
-            B = 1e5)
-```
-
-### Processed CRP
+## Model selection
 
 ```{R Load Processed CRP Models}
 #| fig-width: 12
@@ -306,7 +94,8 @@ colnames(alluvial.df) <- c("ids", "class", "G")
 
 for (G in G.crp) {
   alluvial.df <- rbind(alluvial.df, cbind(models.crp.ma[[G]]$pprob[, 1:2],
-                                          G = G))
+    G = G
+  ))
 }
 alluvial.df <- as.data.frame(alluvial.df)
 
@@ -316,50 +105,50 @@ alluvial.df$class <- as.factor(alluvial.df$class)
 alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
     from = c(seq(1, 3)),
-    to = c(1, 3, 2)
+    to = c(2, 3, 1)
   )
 
 alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
     from = c(seq(1, 4)),
-    to = c(3, 4, 2, 1)
+    to = c(2, 1, 3, 4)
   )
 
 alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
     from = c(seq(1, 5)),
-    to = c(5, 2, 4, 1, 3)
+    to = c(1, 4, 2, 5, 3)
   )
 
 alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
     from = c(seq(1, 6)),
-    to = c(6, 2, 1, 4, 3, 5)
+    to = c(1, 2, 4, 6, 5, 3)
   )
 
 alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
     from = c(seq(1, 7)),
-    to = c(2, 6, 3, 5, 1, 7, 4)
+    to = c(6, 7, 3, 5, 2, 1, 4)
   )
 
 alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
     from = c(seq(1, 8)),
-    to = c(6, 8, 1, 7, 2, 5, 4, 3)
+    to = c(7, 5, 1, 6, 8, 2, 4, 3)
   )
 
 
 alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 9, "class"],
     from = c(seq(1, 9)),
-    to = c(7, 9, 6, 4, 8, 1, 5, 2, 3)
+    to = c(1, 9, 6, 5, 4, 8, 3, 2, 7)
   )
 
 alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 10, "class"],
     from = c(seq(1, 10)),
-    to = c(2, 10, 7, 3, 5, 1, 9, 6, 8, 4)
+    to = c(1, 9, 7, 10, 6, 2, 4, 3, 8, 5)
   )
 
 # eliminate label switching
@@ -398,7 +187,7 @@ for (format in c("png", "pdf")) {
 saveRDS(p, paste0(prefix, "processed/plots/crp-alluvial.RDS"))
 ```
 
-##### Posterior classifications
+## Posterior classifications
 
 From the below data, we can see how posterior probabilities change as the number
 of assumed clusters increase
@@ -409,6 +198,7 @@ of assumed clusters increase
 
 ```{R CRP-ma postpro}
 #| results: "asis"
+postprob_quiet <- quietly(postprob)
 for (G in G.crp) {
   cat(paste0("##### G = ", G, "\n"))
   output <- postprob_quiet(models.crp.ma[[G]])$result
@@ -422,8 +212,111 @@ rm(output)
 :::
 :::
 
+```{R}
+pprobs.2 <- c()
+groups.2 <- models.crp.ma[[2]]
+pprobs.3 <- c()
+groups.3 <- models.crp.ma[[3]]
+pprobs.4 <- c()
+groups.4 <- models.crp.ma[[4]]
+pprobs.5 <- c()
+groups.5 <- models.crp.ma[[5]]
+pprobs.6 <- c()
+groups.6 <- models.crp.ma[[6]]
+pprobs.7 <- c()
+groups.7 <- models.crp.ma[[7]]
+pprobs.8 <- c()
+groups.8 <- models.crp.ma[[8]]
+pprobs.9 <- c()
+groups.9 <- models.crp.ma[[9]]
+pprobs.10 <- c()
+groups.10 <- models.crp.ma[[10]]
 
-##### Residual plots
+
+for (i in 1:nrow(models.crp.ma[[2]]$pprob)) {
+  class.2 <- groups.2$pprob[i, 2]
+  pprobs.2 <- c(pprobs.2, groups.2$pprob[i, class.2 + 2])
+  class.3 <- groups.3$pprob[i, 2]
+  pprobs.3 <- c(pprobs.3, groups.3$pprob[i, class.3 + 2])
+  class.4 <- groups.4$pprob[i, 2]
+  pprobs.4 <- c(pprobs.4, groups.4$pprob[i, class.4 + 2])
+  class.5 <- groups.5$pprob[i, 2]
+  pprobs.5 <- c(pprobs.5, groups.5$pprob[i, class.5 + 2])
+  class.6 <- groups.6$pprob[i, 2]
+  pprobs.6 <- c(pprobs.6, groups.6$pprob[i, class.6 + 2])
+  class.7 <- groups.7$pprob[i, 2]
+  pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2])
+  class.8 <- groups.8$pprob[i, 2]
+  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2])
+  class.9 <- groups.9$pprob[i, 2]
+  pprobs.9 <- c(pprobs.9, groups.9$pprob[i, class.9 + 2])
+  class.10 <- groups.10$pprob[i, 2]
+  pprobs.10 <- c(pprobs.10, groups.10$pprob[i, class.10 + 2])
+}
+pprobs.2 <- tibble(prob = pprobs.2)
+pprobs.3 <- tibble(prob = pprobs.3)
+pprobs.4 <- tibble(prob = pprobs.4)
+pprobs.5 <- tibble(prob = pprobs.5)
+pprobs.6 <- tibble(prob = pprobs.6)
+pprobs.7 <- tibble(prob = pprobs.7)
+pprobs.8 <- tibble(prob = pprobs.8)
+pprobs.9 <- tibble(prob = pprobs.9)
+pprobs.10 <- tibble(prob = pprobs.10)
+
+pprobs.2$Model <- as.factor(rep("Two clusters", nrow(pprobs.2)))
+pprobs.3$Model <- as.factor(rep("Three clusters", nrow(pprobs.3)))
+pprobs.4$Model <- as.factor(rep("Four clusters", nrow(pprobs.4)))
+pprobs.5$Model <- as.factor(rep("Five clusters", nrow(pprobs.5)))
+pprobs.6$Model <- as.factor(rep("Six clusters", nrow(pprobs.6)))
+pprobs.7$Model <- as.factor(rep("Seven clusters", nrow(pprobs.7)))
+pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
+pprobs.9$Model <- as.factor(rep("Nine clusters", nrow(pprobs.9)))
+pprobs.10$Model <- as.factor(rep("Ten clusters", nrow(pprobs.10)))
+pprobs <- rbind(
+  pprobs.2,
+  pprobs.3,
+  pprobs.4,
+  pprobs.5,
+  pprobs.6,
+  pprobs.7,
+  pprobs.8,
+  pprobs.9,
+  pprobs.10
+)
+
+p <- pprobs %>%
+  ggplot(aes(x = prob, y = Model)) +
+  # geom_histogram(bins = 40, fill = NA, position="identity")
+  stat_slab(
+    fill = "#5D5179", color = "gray",
+    size = 0.8,
+    alpha = 0.7
+  ) +
+  geom_dots(color = "#4F759B", dotsize = 1) +
+  xlab("Posterior probability for cluster membership") +
+  ylab("") +
+  ggtitle(
+    "Distribution of Posterior Probabilities Across Models",
+    "Subject-specific posterior probabilities for assigned cluster"
+  ) +
+  theme_minimal() +
+  scale_y_discrete(limits = rev)
+ggsave("plots/pprob-distribution-crp-ma.png",
+  p,
+  width = 8.5,
+  height = 8.5,
+  units = "in"
+)
+ggsave("plots/pprob-distribution-crp-ma.pdf",
+  p,
+  width = 8.5,
+  height = 8.5,
+  units = "in"
+)
+print(p)
+```
+
+#### Residual plots
 
 ::: {.panel-tabset}
 
@@ -437,21 +330,22 @@ for (G in G.crp) {
 
 :::
 
-##### Model metrics
+#### Model metrics
 
 ```{R CRP MA metrics plot}
 #| label: fig-crp-ma-metrics
 #| fig-cap: "Model metrics for CRP MA for G = 4-10"
 summaryplot(models.crp.ma[[4]],
-            models.crp.ma[[5]],
-            models.crp.ma[[6]],
-            models.crp.ma[[7]],
-            models.crp.ma[[8]],
-            models.crp.ma[[9]],
-            models.crp.ma[[10]],
-            which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
-            mfrow = c(2,3),
-            axis = "Class")
+  models.crp.ma[[5]],
+  models.crp.ma[[6]],
+  models.crp.ma[[7]],
+  models.crp.ma[[8]],
+  models.crp.ma[[9]],
+  models.crp.ma[[10]],
+  which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
+  mfrow = c(2, 3),
+  axis = "Class"
+)
 ```
 
 ```{R Processed CRP metrics table}
@@ -459,7 +353,7 @@ crp.metrics <- makeMetrics(G.crp, models.crp.ma)
 buildDT(crp.metrics)
 ```
 
-##### Spaghetti plots per cluster
+#### Spaghetti plots per cluster
 
 ::: {.panel-tabset}
 
@@ -469,21 +363,22 @@ for (G in G.crp) {
   cat("\n\n")
   cat(paste0("##### G = ", G, "\n\n"))
   cat("###### Processed CRP \n\n")
-  
+
   if (G == 8) {
     cairo_pdf("paper/crp-trajectories.pdf", width = 8, height = 12)
     grid::grid.newpage()
     spaghettiPlot(crp_median,
-              models.crp.ma,
-              G,
-              var.time = "crp_time",
-              tmax = 7,
-              knots = FALSE,
-              ylim = "data",
-              sizes = TRUE)
+      models.crp.ma,
+      G,
+      var.time = "crp_time",
+      tmax = 7,
+      knots = FALSE,
+      ylim = "data",
+      sizes = TRUE
+    )
     dev.off()
   }
-  
+
   grid::grid.newpage()
   spaghettiPlot(crp_median,
     models.crp.ma,
@@ -497,34 +392,37 @@ for (G in G.crp) {
   cat("###### Unprocessed CRP \n\n")
   grid::grid.newpage()
   spaghettiPlot(crp,
-                models.crp.ma,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = TRUE,
-                knot.type = "equal",
-                var.time = "crp_time")
+    models.crp.ma,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = TRUE,
+    knot.type = "equal",
+    var.time = "crp_time"
+  )
 }
 ```
 
 :::
 
 
-##### IBD Association
+## IBD Association
 
 ```{R}
 cluster <- numeric()
 
 dict.crp.median <- subset(dict, ids %in% unique(crp_median$ids))
 
-for (id in dict.crp.median $ids) { 
-  cluster <- c(cluster,
-               subset(models.crp.ma[[8]]$pprob, ids == id)$class)
+for (id in dict.crp.median$ids) {
+  cluster <- c(
+    cluster,
+    subset(models.crp.ma[[8]]$pprob, ids == id)$class
+  )
 }
 
-dict.crp.median $diagnosis <- as.factor(dict.crp.median$diagnosis)
-dict.crp.median $cluster <- as.factor(cluster)
+dict.crp.median$diagnosis <- as.factor(dict.crp.median$diagnosis)
+dict.crp.median$cluster <- as.factor(cluster)
 rm(cluster)
 ```
 
@@ -532,90 +430,101 @@ rm(cluster)
 describe_cat("diagnosis", dict.crp.median)
 ```
 
-###### Cluster = 1
+##### Cluster = 1
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 1))
 ```
-###### Cluster = 2
+##### Cluster = 2
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 2))
 ```
 
-###### Cluster = 3
+##### Cluster = 3
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 3))
 ```
 
-###### Cluster = 4
+##### Cluster = 4
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 4))
 ```
 
-###### Cluster = 5
+##### Cluster = 5
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 5))
 ```
 
-###### Cluster = 6
+##### Cluster = 6
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 6))
 ```
 
 
-###### Cluster = 7
+##### Cluster = 7
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 7))
 ```
 
 
-
-
-###### Cluster = 8
+##### Cluster = 8
 
 ```{R}
 describe_cat("diagnosis", subset(dict.crp.median, cluster == 8))
 ```
 
-###### Fisher’s exact test
+##### Fisher’s exact test
 
 ```{R}
 fisher.test(dict.crp.median$diagnosis,
-            dict.crp.median$cluster,
-            simulate.p.value = TRUE,
-            B = 1e5)
+  dict.crp.median$cluster,
+  simulate.p.value = TRUE,
+  B = 1e5
+)
 ```
 
 
-#### Number of observations by cluster 
+### Number of observations by cluster 
 
 ```{R}
-stats.by.clust <- data.frame(Cluster = character(),
-                              Median = numeric(),
-                              IQR = numeric())
-counts.by.clust <- data.frame(Cluster = character(),
-                              Count = numeric())
+stats.by.clust <- data.frame(
+  Cluster = character(),
+  Median = numeric(),
+  IQR = numeric()
+)
+counts.by.clust <- data.frame(
+  Cluster = character(),
+  Count = numeric()
+)
 
 
 
 for (G in sort(unique(dict.crp.median$cluster))) {
-  cluster.subset <- subset(dict.crp.median, cluster == G) 
+  cluster.subset <- subset(dict.crp.median, cluster == G)
   crp.subset <- subset(crp_median, ids %in% cluster.subset$ids)
   tab <- table(crp.subset$ids)
-  stats.by.clust <- rbind(stats.by.clust,
-                           data.frame(Cluster = G,
-                                      Median = median(tab),
-                                      IQR = IQR(tab)))
-  
-  counts.by.clust <- rbind(counts.by.clust,
-                           data.frame(Cluster = G,
-                                      Count = as.numeric(tab)))
+  stats.by.clust <- rbind(
+    stats.by.clust,
+    data.frame(
+      Cluster = G,
+      Median = median(tab),
+      IQR = IQR(tab)
+    )
+  )
+
+  counts.by.clust <- rbind(
+    counts.by.clust,
+    data.frame(
+      Cluster = G,
+      Count = as.numeric(tab)
+    )
+  )
 }
 stats.by.clust %>% knitr::kable()
 ```
@@ -626,25 +535,27 @@ aov(Cluster ~ Count, data = counts.by.clust) %>%
   pander()
 ```
 
-### Five-individual median trends
+## Five-individual median trends
 
 Subjects grouped into pseudo-subjects derived from five subjects. 
 
 ```{R}
 # Data frame to hold processed data
-new.crp <- data.frame(ids = numeric(),
-                     crp_result = numeric(),
-                     crp_time = numeric(),
-                     class = numeric())
+new.crp <- data.frame(
+  ids = numeric(),
+  crp_result = numeric(),
+  crp_time = numeric(),
+  class = numeric()
+)
 
 for (clust in 1:8) {
   ids.clust <- subset(dict.crp.median, cluster == clust)$ids
   n.clust <- length(ids.clust)
   rand <- sample(n.clust, n.clust) # Randomise the order of the ids
-  iters <- floor(n.clust / 5) # How many groups of five are there? 
-  
+  iters <- floor(n.clust / 5) # How many groups of five are there?
+
   # Matrix to hold the smoothed data
-  crp.ma <- matrix(NA, nrow = iters, ncol = 7) 
+  crp.ma <- matrix(NA, nrow = iters, ncol = 7)
   for (i in 0:(iters - 1)) {
     # Find ids for group of five
     ids.select <- ids.clust[rand[((i * 5) + 1):((i * 5) + 5)]]
@@ -667,46 +578,51 @@ for (clust in 1:8) {
       }
     }
   }
-  
+
   rownames(crp.ma) <- 1:iters
   crp.ma <- reshape2::melt(t(crp.ma),
-                            id.vars = row.names(crp.ma),
-                            na.rm = TRUE)
+    id.vars = row.names(crp.ma),
+    na.rm = TRUE
+  )
   colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
-  crp.ma  <- crp.ma[, c(2, 3, 1)] # Make ids first column
+  crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
   crp.ma$crp_time <- crp.ma$crp_time - 1
   # Take into account uneven spacing at start and end
   crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
-                                     from = c(0, 6),
-                                     to = c(0.25, 6.25))
+    from = c(0, 6),
+    to = c(0.25, 6.25)
+  )
   crp.ma$class <- clust # Identify cluster assignment
   new.crp <- rbind(new.crp, crp.ma)
 }
 
 cairo_pdf("paper/CRP-8-cluster-smoothed.pdf", width = 8, height = 12)
 grid::grid.newpage()
-spaghettiPlot(new.crp, 
-              models.crp.ma,
-              8, 
-              clusters = TRUE,
-              tmax = 7,
-              var.time = "crp_time",
-              ylim = "data")
+spaghettiPlot(new.crp,
+  models.crp.ma,
+  8,
+  clusters = TRUE,
+  tmax = 7,
+  var.time = "crp_time",
+  ylim = "data"
+)
 invisible(dev.off())
 
 png("paper/CRP-8-cluster-smoothed.png",
-    width = 8,
-    height = 12,
-    units = "in",
-    res = 300)
+  width = 8,
+  height = 12,
+  units = "in",
+  res = 300
+)
 grid::grid.newpage()
-spaghettiPlot(new.crp, 
-              models.crp.ma,
-              8, 
-              clusters = TRUE,
-              tmax = 7,
-              var.time = "crp_time",
-              ylim = "data")
+spaghettiPlot(new.crp,
+  models.crp.ma,
+  8,
+  clusters = TRUE,
+  tmax = 7,
+  var.time = "crp_time",
+  ylim = "data"
+)
 invisible(dev.off())
 ```
 

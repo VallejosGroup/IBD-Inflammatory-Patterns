@@ -2,16 +2,18 @@
 title: "Page Not Found"
 format:
   html:
-    theme:
-      light: [default]
-      dark: [darkly]
-    css: theme.css
     code-tools: false
-    title-block-style: "none"
 date: ""
+sidebar: false
 date-format: ""
-title-block-banner: false # can set as hex col
+title-block-banner: false # can set as hex 
+output-file: "404.html"
 ---
+
+```{R}
+#| echo: false
+x <- 1
+```
 
 The page you requested cannot be found (perhaps it was moved or renamed).
 
