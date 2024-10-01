@@ -453,6 +453,18 @@ survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
   ggsurvplot(pval = TRUE, conf.int = FALSE)
 ```
 
+```{R}
+#| echo: false
+png("plots/at-survival-fc-ci.png",
+    width = 7,
+    height = 5,
+    units = "in",
+    res = 300)
+survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
+  ggsurvplot(pval = TRUE, conf.int = TRUE)
+invisible(dev.off())
+```
+
 
 ```{R}
 p1 <- dict.fc.cd %>%
@@ -945,8 +957,6 @@ for (g in 1:8) {
 ```
 
 ```{R}
-
-
 temp <- dict.crp.cd %>%
   mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
   mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
@@ -956,6 +966,17 @@ survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
   ggsurvplot(pval = TRUE)
 ```
 
+```{R}
+#| echo: false
+png("plots/at-survival-crp-ci.png",
+    width = 7,
+    height = 5,
+    units = "in",
+    res = 300)
+survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
+  ggsurvplot(pval = TRUE, conf.int = TRUE)
+invisible(dev.off())
+```
 
 
 ```{R}
