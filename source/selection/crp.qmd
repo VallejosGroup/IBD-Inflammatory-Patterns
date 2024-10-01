@@ -371,7 +371,7 @@ for (G in G.crp) {
       models.crp.ma,
       G,
       var.time = "crp_time",
-      tmax = 7,
+      tmax = 6.25,
       knots = FALSE,
       ylim = "data",
       sizes = TRUE
@@ -384,7 +384,7 @@ for (G in G.crp) {
     models.crp.ma,
     G,
     var.time = "crp_time",
-    tmax = 7,
+    tmax = 6.25,
     knots = TRUE,
     ylim = "data"
   )
