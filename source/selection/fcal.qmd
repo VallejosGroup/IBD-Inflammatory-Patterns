@@ -876,7 +876,10 @@ for (clust in 1:6) {
   iters <- floor(n.clust / 5) # How many groups of five are there? 
   
   # Matrix to hold the smoothed data
-  fcal.ma <- matrix(NA, nrow = iters, ncol = 7) 
+  fcal.ma <- matrix(NA, nrow = iters, ncol = 7)
+  fcal.time <- matrix(NA, nrow = iters, ncol = 7)
+  
+  
   for (i in 0:(iters - 1)) {
     # Find ids for group of five
     ids.select <- ids.clust[rand[((i * 5) + 1):((i * 5) + 5)]]
@@ -895,7 +898,8 @@ for (clust in 1:6) {
         )
       }
       if (nrow(sub.obs) > 0) {
-        fcal.ma[i+1, j + 1] <- median(sub.obs$calpro_result)
+        fcal.ma[i + 1, j + 1] <- median(sub.obs$calpro_result)
+        fcal.time[i + 1, j + 1] <- median(sub.obs$calpro_time)
       }
     }
   }
@@ -906,11 +910,20 @@ for (clust in 1:6) {
                             na.rm = TRUE)
   colnames(fcal.ma) <- c("calpro_time", "ids", "calpro_result")
   fcal.ma  <- fcal.ma[, c(2, 3, 1)] # Make ids first column
-  fcal.ma$calpro_time <- fcal.ma$calpro_time - 1
-  # Take into account uneven spacing at start and end
-  fcal.ma$calpro_time <- plyr::mapvalues(fcal.ma$calpro_time,
-                                         from = c(0, 6),
-                                         to = c(0.25, 6.25))
+  
+  
+  rownames(fcal.time) <- 1:iters
+  fcal.time <- reshape2::melt(t(fcal.time ),
+                            id.vars = row.names(fcal.time),
+                            na.rm = TRUE)
+  colnames(fcal.time) <- c("calpro_time", "ids", "pred_time")
+  fcal.time  <- fcal.time[, c(2, 3, 1)] # Make ids first column
+  
+  fcal.ma <- merge(fcal.ma, fcal.time, by = c("ids", "calpro_time"))
+  fcal.ma <- fcal.ma %>%
+    mutate(calpro_time = pred_time) %>%
+    select(-pred_time)
+  
   fcal.ma$class <- clust # Identify cluster assignment
   new.fc <- rbind(new.fc, fcal.ma)
 }
@@ -936,6 +949,13 @@ spaghettiPlot(new.fc,
               clusters = TRUE,
               tmax = 7)
 invisible(dev.off())
+
+grid::grid.newpage()
+spaghettiPlot(new.fc, 
+              models.fcal,
+              6, 
+              clusters = TRUE,
+              tmax = 7)
 
 ```
 
