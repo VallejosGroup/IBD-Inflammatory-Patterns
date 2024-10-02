@@ -422,6 +422,68 @@ p5 <-  dict.fc %>%
 p5
 ```
 
+```{R}
+#| label: fig-fc-ibd-facet
+#| fig-cap: "Percentage of (A) Crohn's disease, (B) ulcerative colitis, and (C) IBDU within each FC cluster. Dotted lines indicate the overall percentage of each IBD type."
+perc.table <- data.frame(diagnosis = character(),
+                         cluster = character(),
+                         perc = numeric())
+for (g in 1:6) {
+  temp.1 <- subset(dict.fc, class == paste0("FC ", g))
+  for (diag in c("Crohn's Disease", "Ulcerative Colitis", "IBDU")) {
+    perc <- nrow(subset(temp.1, diagnosis == diag)) / nrow(temp.1)
+    perc.table <- rbind(perc.table, 
+                        data.frame(diagnosis = diag,
+                                   cluster = paste0("FC ", g),
+                                   perc = perc))
+    
+  }
+}
+
+totalCdPerc <- nrow(subset(dict.fc, diagnosis == "Crohn's Disease")) /
+  nrow(dict.fc)
+
+p1 <- perc.table %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
+  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+totalCdPerc <- nrow(subset(dict.fc, diagnosis == "Ulcerative Colitis")) /
+  nrow(dict.fc)
+
+p2 <- perc.table %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
+  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+
+totalCdPerc <- nrow(subset(dict.fc, diagnosis == "IBDU")) /
+  nrow(dict.fc)
+
+p3 <- perc.table %>%
+  filter(diagnosis == "IBDU") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
+  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")
+ggsave("plots/ibd-type-fc.png", p, width = 7.5, height = 7.5)
+ggsave("plots/ibd-type-fc.pdf", p, width = 7.5, height = 7.5)
+print(p)
+```
+
+
 ### Advanced therapy in CD
 
 ```{R}
@@ -985,6 +1047,67 @@ p6 <-  dict.crp %>%
     color = "IBD type"
   )
 p6
+```
+
+```{R}
+#| label: fig-crp-ibd-facet
+#| fig-cap: "Percentage of (A) Crohn's disease, (B) ulcerative colitis, and (C) IBDU within each CRP cluster. Dotted lines indicate the overall percentage of each IBD type."
+perc.table <- data.frame(diagnosis = character(),
+                         cluster = character(),
+                         perc = numeric())
+for (g in 1:8) {
+  temp.1 <- subset(dict.crp, class == paste0("CRP ", g))
+  for (diag in c("Crohn's Disease", "Ulcerative Colitis", "IBDU")) {
+    perc <- nrow(subset(temp.1, diagnosis == diag)) / nrow(temp.1)
+    perc.table <- rbind(perc.table, 
+                        data.frame(diagnosis = diag,
+                                   cluster = paste0("CRP ", g),
+                                   perc = perc))
+    
+  }
+}
+
+totalCdPerc <- nrow(subset(dict.crp, diagnosis == "Crohn's Disease")) /
+  nrow(dict.crp)
+
+p1 <- perc.table %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
+  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+totalCdPerc <- nrow(subset(dict.crp, diagnosis == "Ulcerative Colitis")) /
+  nrow(dict.crp)
+
+p2 <- perc.table %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
+  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+
+totalCdPerc <- nrow(subset(dict.crp, diagnosis == "IBDU")) /
+  nrow(dict.crp)
+
+p3 <- perc.table %>%
+  filter(diagnosis == "IBDU") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
+  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")
+ggsave("plots/ibd-type-crp.png", p, width = 7.5, height = 7.5)
+ggsave("plots/ibd-type-crp.pdf", p, width = 7.5, height = 7.5)
+print(p)
 ```
 
 ### Advanced therapy in CD
