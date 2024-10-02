@@ -178,6 +178,53 @@ rowSums(tab)
 colSums(tab)
 ```
 
+Out of subjects paired in FC, how many are also paired in CRP?
+
+```{R}
+paired <- 0
+doublePaired <- 0
+
+for (i in fc.df$ids) {
+  for (j in fc.df$ids) {
+    if (i != j) {
+      if (subset(fc.df, ids == i)$FCcluster == subset(fc.df, ids == j)$FCcluster){
+        paired <- paired + 1
+        if (subset(crp.df, ids == i)$CRPcluster == subset(crp.df, ids == j)$CRPcluster) {
+          doublePaired <- doublePaired + 1
+        }
+      }
+    }
+  }
+}
+
+doublePaired / paired
+```
+
+
+Of out subjects paired in CRP, how many are also paired in FC?
+
+```{R}
+paired <- 0
+doublePaired <- 0
+
+for (i in crp.df$ids) {
+  for (j in crp.df$ids) {
+    if (i != j) {
+      if (subset(fc.df, ids == i)$FCcluster == subset(fc.df, ids == j)$FCcluster){
+        paired <- paired + 1
+        if (subset(crp.df, ids == i)$CRPcluster == subset(crp.df, ids == j)$CRPcluster) {
+          doublePaired <- doublePaired + 1
+        }
+      }
+    }
+  }
+}
+
+doublePaired / paired
+```
+
+
+
 ## Reuse {.appendix}
 
 Licensed by 
