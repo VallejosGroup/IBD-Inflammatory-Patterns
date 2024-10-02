@@ -483,6 +483,36 @@ ggsave("plots/ibd-type-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
 ```
 
+```{R}
+obs <- dict.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  select(class) %>%
+  table()
+estPerc <- table(dict.fc$class) / nrow(dict.fc)
+chisq.test(obs, p = estPerc) %>%
+  pander()
+```
+
+
+```{R}
+obs <- dict.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  select(class) %>%
+  table()
+estPerc <- table(dict.fc$class) / nrow(dict.fc)
+chisq.test(obs, p = estPerc) %>%
+  pander()
+```
+
+```{R}
+obs <- dict.fc %>%
+  filter(diagnosis == "IBDU") %>%
+  select(class) %>%
+  table()
+estPerc <- table(dict.fc$class) / nrow(dict.fc)
+chisq.test(obs, p = estPerc) %>%
+  pander()
+```
 
 ### Advanced therapy in CD
 
