@@ -210,9 +210,9 @@ doublePaired <- 0
 for (i in crp.df$ids) {
   for (j in crp.df$ids) {
     if (i != j) {
-      if (subset(fc.df, ids == i)$FCcluster == subset(fc.df, ids == j)$FCcluster){
+      if (subset(crp.df, ids == i)$CRPcluster == subset(crp.df, ids == j)$CRPcluster){
         paired <- paired + 1
-        if (subset(crp.df, ids == i)$CRPcluster == subset(crp.df, ids == j)$CRPcluster) {
+        if (subset(fc.df, ids == i)$FCcluster == subset(fc.df, ids == j)$FCcluster) {
           doublePaired <- doublePaired + 1
         }
       }
