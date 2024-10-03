@@ -277,9 +277,78 @@ dict <- fix_date_df(dict, "date.of.diag.fcal")
 dim(dict)
 ```
 
+```{R Create subject dictionary alternative sex}
+# From outcomes
+dict <- merge(dict,
+              outcomes[, c("ids", "Gender")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(sex.outcomes = Gender)
+dim(dict)
+
+# From updated
+dict <- merge(dict,
+              updated[, c("ids", "sex")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(sex.updated = sex)
+dim(dict)
+
+# From fcal
+dict <- merge(dict,
+              fcal[, c("ids", "sex")] %>% distinct(ids, .keep_all = TRUE),
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(sex.fcal = sex)
+dim(dict)
+
+table(dict$sex.outcomes, dict$sex.updated, useNA = "always")
+table(dict$sex.outcomes, dict$sex.fcal, useNA = "always")
+table(dict$sex.updated, dict$sex.fcal, useNA = "always")
+```
+
+```{R Create subject dictionary alternative diag}
+# From outcomes
+dict <- merge(dict,
+              outcomes[, c("ids", "diagnosisId")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(diagnosis.outcomes = diagnosisId)
+dim(dict)
+
+# From updated
+dict <- merge(dict,
+              updated[, c("ids", "diagnosis")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(diagnosis = diagnosis.x,
+         diagnosis.updated = diagnosis.y)
+dim(dict)
+
+# From fcal
+dict <- merge(dict,
+              fcal[, c("ids", "diagnosis")] %>% distinct(ids, .keep_all = TRUE),
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(diagnosis = diagnosis.x,
+         diagnosis.fcal = diagnosis.y)
+dim(dict)
+
+table(dict$diagnosis.outcomes, dict$diagnosis.updated, useNA = "always")
+table(dict$diagnosis.outcomes, dict$diagnosis.fcal, useNA = "always")
+table(dict$diagnosis.updated, dict$diagnosis.fcal, useNA = "always")
+```
+
 ```{r explore differences in diagnostic date, eval = FALSE}
 table(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.updated))
 table(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.fcal))
+table(year(dict$date.of.diag.updated) - year(dict$date.of.diag.fcal))
 
 ids1 <- dict$ids[which(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.updated) < -10)]
 
