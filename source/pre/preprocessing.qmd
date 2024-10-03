@@ -225,8 +225,67 @@ dict <- data.frame(
 
 rm(id, ids, diagnosis, date.of.diag) # clean up
 dict <- fix_date_df(dict, "date.of.diag")
+
+dim(dict)
 ```
 
+### Date of death
+
+```{r add date.of.death}
+dict <- merge(dict,
+              updated[, c("ids", "death")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(date.of.death = death)
+
+dict <- fix_date_df(dict, "date.of.death")
+dim(dict)
+```
+
+### Exploration of date disagreements
+
+```{R Create subject dictionary alternative}
+# From outcomes
+dict <- merge(dict,
+              outcomes[, c("ids", "diagnosisDate")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(date.of.diag.outcomes = diagnosisDate)
+dict <- fix_date_df(dict, "date.of.diag.outcomes")
+dim(dict)
+
+# From updated
+dict <- merge(dict,
+              updated[, c("ids", "diagnosisDate")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(date.of.diag.updated = diagnosisDate)
+dict <- fix_date_df(dict, "date.of.diag.updated")
+dim(dict)
+
+# From fcal
+dict <- merge(dict,
+              fcal[, c("ids", "diagnosis_date")] %>% distinct(ids, .keep_all = TRUE),
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) %>% 
+  rename(date.of.diag.fcal = diagnosis_date)
+dict <- fix_date_df(dict, "date.of.diag.fcal")
+dim(dict)
+```
+
+```{r explore differences in diagnostic date, eval = FALSE}
+table(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.updated))
+table(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.fcal))
+
+ids1 <- dict$ids[which(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.updated) < -10)]
+
+dict %>% subset(ids %in% ids1)
+updated  %>% subset(ids %in% ids1)
+```
 
 There are a total of `r nrow(dict)` subjects in our dictionary before filtering
 by inclusion/exclusion criteria. `r sum(is.na(dict$date.of.diag))` subjects had
