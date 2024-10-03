@@ -285,6 +285,29 @@ ids1 <- dict$ids[which(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag
 
 dict %>% subset(ids %in% ids1)
 updated  %>% subset(ids %in% ids1)
+outcomes  %>% subset(ids %in% ids1)
+
+dict %>% subset(!is.na(date.of.death))
+
+par(mfrow = c(1,3))
+with(dict, plot(date.of.diag.outcomes, date.of.diag.updated))
+abline(a = 0, b = 1, col = "red")
+
+with(dict, plot(date.of.diag.outcomes, date.of.diag.fcal))
+abline(a = 0, b = 1, col = "red")
+
+with(dict, plot(date.of.diag.updated, date.of.diag.fcal))
+abline(a = 0, b = 1, col = "red")
+
+par(mfrow = c(1,3))
+with(dict, plot(date.of.death, date.of.diag.updated))
+abline(a = 0, b = 1, col = "red")
+
+with(dict, plot(date.of.death, date.of.diag.outcomes))
+abline(a = 0, b = 1, col = "red")
+
+with(dict, plot(date.of.death, date.of.diag.fcal))
+abline(a = 0, b = 1, col = "red")
 ```
 
 There are a total of `r nrow(dict)` subjects in our dictionary before filtering
