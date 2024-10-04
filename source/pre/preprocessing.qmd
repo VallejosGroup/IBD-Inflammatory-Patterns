@@ -448,13 +448,16 @@ to retime biomarker measurements.
 
 ```{R Apply date of diagnosis exclusion}
 # no. subjects over upper bound
-n.upper <- nrow(subset(dict, year(date.of.diag) >= 2018))
+max_fup <- max(labs$COLLECTION_DATE)
+max_fup <- as.Date(max_fup)
+
+n.upper <- nrow(subset(dict, max_fup - date.of.diag  < 5 * 365.25))
 # no. subjects under lower bound
 n.lower <- nrow(subset(dict, (year(date.of.diag) < 2004) |
   (year(date.of.diag) == 2004 & month(date.of.diag) <= 9)))
 
 # subset to subjects meeting the criteria.
-dict <- subset(dict, year(date.of.diag) <= 2017)
+dict <- subset(dict, max_fup - date.of.diag >= 5 * 365.25)
 dict <- subset(dict, (year(date.of.diag) >= 2005) |
   (year(date.of.diag) == 2004 & month(date.of.diag) >= 10))
 ```
