@@ -58,10 +58,11 @@ library(qqplotr)
 
 ##########################
 #--     Data read      --#
-##########################
+#########################
 
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 crp_median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
+crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 ```
 
 ## Model selection
