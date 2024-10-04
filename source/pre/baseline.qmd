@@ -50,11 +50,12 @@ tabs.
 
 ```{R}
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
-fcal.all <- read.csv(paste0(prefix, "2022-12-07/fcal-cleaned.csv"))
+fcal.all <- read.csv(paste0(prefix, "2024-10-03/fcal-cleaned.csv"))
 crp <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 dict <- readRDS(paste0(prefix, "processed/dict-initial.RDS"))
-dict <- dict %>% filter(ids %in% c(fcal$ids, crp$ids)) 
-updated <- read.csv(paste0(prefix, "2023-03-13/allPatientsNathanCleaned.csv"))
+dict <- dict %>%
+  filter(ids %in% c(fcal$ids, crp$ids)) 
+updated <- read.csv(paste0(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
 ```
 
 Categorical data is presented via barcharts and frequency tables whilst
@@ -134,7 +135,6 @@ quants <- quantile(dict.crp$age, na.rm = TRUE, probs = c(0.25, 0.5, 0.75)) %>%
 quants <- cbind(rownames(quants), quants)
 colnames(quants) <- c("Quantile", "Age at diagnosis")
 ```
-
 
 Age at diagnosis is missing for `r sum(is.na(dict.crp$age))`
 (`r round(sum(is.na(dict.crp$age) / nrow(dict.crp) * 100), 2)`%) subjects 

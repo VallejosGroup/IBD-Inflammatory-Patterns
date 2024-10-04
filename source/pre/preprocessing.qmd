@@ -126,21 +126,21 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
   prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
 }
 
-fcal <- read.csv(paste0(prefix, "2022-12-07/fcal-cleaned.csv"))
+fcal <- read.csv(paste0(prefix, "2024-10-03/fcal-cleaned.csv"))
 
 # Extract from TRAK which also now introduces CRP.
-labs <- read.csv(paste0(prefix, "2023-02-15/labs.csv"))
+labs <- read.csv(paste0(prefix, "2024-10-03/markers-cleaned.csv"))
 labs.fcal <- subset(labs, TEST == "f-Calprotectin-ALP")
 # labs prefix not required for crp as labs is the only crp extract
 crp <- subset(labs, TEST == "C-Reactive Prot")
-updated <- read.csv(paste0(prefix, "2023-03-13/allPatientsNathanCleaned.csv"))
-outcomes <- read.csv(paste0(prefix, "2022-12-07/cd-cleaned.csv"))
+updated <- read.csv(paste0(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
+outcomes <- read.csv(paste0(prefix, "2024-10-03/cd-cleaned.csv"))
 ```
 
 Multiple datasets are used in this report with varying degrees of previous
 curation.
 
-* `labs.csv` is a January 2023 extraction from TRAK describing
+* `markers.csv` is a 2024 extraction from TRAK describing
   `r nrow(labs)` test results (FC: `r nrow(labs.fcal)`; CRP:
   `r nrow(crp)`). Each row represents a test result with columns indicating the
   corresponding subject ID, the test type (FC or CRP), the time of the test,
@@ -277,6 +277,7 @@ dict <- fix_date_df(dict, "date.of.diag.fcal")
 dim(dict)
 ```
 
+
 ```{R Create subject dictionary alternative sex}
 # From outcomes
 dict <- merge(dict,
@@ -309,6 +310,8 @@ table(dict$sex.outcomes, dict$sex.updated, useNA = "always")
 table(dict$sex.outcomes, dict$sex.fcal, useNA = "always")
 table(dict$sex.updated, dict$sex.fcal, useNA = "always")
 ```
+
+:::{.column-page}
 
 ```{R Create subject dictionary alternative diag}
 # From outcomes
@@ -344,6 +347,8 @@ table(dict$diagnosis.outcomes, dict$diagnosis.updated, useNA = "always")
 table(dict$diagnosis.outcomes, dict$diagnosis.fcal, useNA = "always")
 table(dict$diagnosis.updated, dict$diagnosis.fcal, useNA = "always")
 ```
+
+:::
 
 ```{r explore differences in diagnostic date, eval = FALSE}
 table(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.updated))
@@ -544,15 +549,16 @@ degree of granularity is not required.
 
 ```{R FCAL merge}
 fcal <- fcal[, c("ids", "calpro_date", "calpro_result")]
-labs.fcal <- labs.fcal[, c("CHI", "COLLECTION_DATE", "TEST_DATA")] %>%
-  subset(CHI %in% dict$ids)
+labs.fcal <- labs.fcal[, c("ids", "COLLECTION_DATE", "TEST_DATA")] %>%
+  subset(ids %in% dict$ids)
 
 # Collection dates include collection times which are not required. Discarding.
 
 labs.fcal$COLLECTION_DATE <- readr::parse_date(
   stringr::str_split_fixed(labs.fcal$COLLECTION_DATE, " ", n = 2)[, 1],
-  format = "%d-%b-%Y"
+  format = "%Y-%m-%d"
 )
+
 
 colnames(labs.fcal) <- c("ids", "calpro_date", "calpro_result")
 fcal <- rbind(fcal, labs.fcal)
@@ -1083,13 +1089,13 @@ results have been removed.
 
 
 ```{R crp preprocess}
-crp <- crp[, c("CHI", "COLLECTION_DATE", "TEST_DATA")] %>%
-  subset(CHI %in% dict$ids)
+crp <- crp[, c("ids", "COLLECTION_DATE", "TEST_DATA")] %>%
+  subset(ids %in% dict$ids)
 
 # Collection dates include collection times which are not required. Discarding.
 crp$COLLECTION_DATE <- readr::parse_date(
   stringr::str_split_fixed(crp$COLLECTION_DATE, " ", n = 2)[, 1],
-  format = "%d-%b-%Y"
+  format = "%Y-%m-%d"
 )
 
 colnames(crp) <- c("ids", "crp_date", "crp_result")
