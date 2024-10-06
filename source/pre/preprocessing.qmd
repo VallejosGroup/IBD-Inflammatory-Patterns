@@ -125,18 +125,18 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
 } else {
   # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
   # mounted at /Volumes
-  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/2024-10-03"
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
 }
 
-fcal <- read.csv(file.path(prefix, "fcal-cleaned.csv"))
+fcal <- read.csv(file.path(prefix, "2024-10-03/fcal-cleaned.csv"))
 
 # Extract from TRAK which also now introduces CRP.
-labs <- read.csv(file.path(prefix, "markers-cleaned.csv"))
+labs <- read.csv(file.path(prefix, "2024-10-03/markers-cleaned.csv"))
 labs.fcal <- subset(labs, TEST == "f-Calprotectin-ALP")
 # labs prefix not required for crp as labs is the only crp extract
 crp <- subset(labs, TEST == "C-Reactive Prot")
-updated <- read.csv(file.path(prefix, "allPatientsNathanCleaned.csv"))
-outcomes <- read.csv(file.path(prefix, "cd-cleaned.csv"))
+updated <- read.csv(file.path(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
+outcomes <- read.csv(file.path(prefix, "2024-10-03/cd-cleaned.csv"))
 ```
 
 Multiple datasets are used in this report with varying degrees of
@@ -823,6 +823,11 @@ for (id in fc.ids) {
 
 
 fc.dist <- data.frame(ids = fc.ids, diagnostic = diag.time)
+
+if (!dir.exists(paste0(prefix, "processed"))) {
+  dir.create(paste0(prefix, "processed"))
+}
+
 saveRDS(fc.dist, paste0(prefix, "processed/fc-diag-dist.RDS"))
 
 

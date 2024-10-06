@@ -68,18 +68,6 @@ quantile(table(fcal$ids))
 
 ### Age at diagnosis
 
-```{R}
-# Add age at IBD diagnosis
-updated <- fix_date_df(updated, "diagnosisDate")
-updated$age <- with(updated, year(diagnosisDate) - dateOfBirth)
-dict <- merge(dict,
-              updated[, c("ids", "age")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE)
-```
-
-
 For subjects in the LIBDR, only the year of birth was extracted (not the whole
 date) from NHS records to reduce the identifiability of subjects. This also
 follows the [GDPR practice](https://gdpr-info.eu/) of only requesting data which
