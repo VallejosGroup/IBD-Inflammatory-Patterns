@@ -54,64 +54,66 @@ library(patchwork) # Arranging plots
 ```
 
 This page details preprocessing steps undertaken prior to model fitting.
-These steps include examining data quality, performing data cleaning, and
-deriving the study cohort. 
+These steps include examining data quality, performing data cleaning,
+and deriving the study cohort.
 
-The biomarker (FC and CRP) data used in this pipeline have been primarily
-obtained from TRAK, a system used by NHS Lothian for the electronic ordering of
-laboratory tests. However, we also use phenotyping data manually curated by the
-Lees group for previous studies (see @Jenkinson2020).
+The biomarker (FC and CRP) data used in this pipeline have been
+primarily obtained from TRAK, a system used by NHS Lothian for the
+electronic ordering of laboratory tests. However, we also use
+phenotyping data manually curated by the Lees group for previous studies
+(see @Jenkinson2020).
 
-Prior to this report, all subject CHI (community health index) numbers, which 
-uniquely identifies a patient when they interact with NHS Scotland services, 
-were pseudoanonymised. Each CHI has been replaced with a unique random number. 
+Prior to this report, all subject CHI (community health index) numbers,
+which uniquely identifies a patient when they interact with NHS Scotland
+services, were pseudoanonymised. Each CHI has been replaced with a
+unique random number.
 
-### Inclusion/exclusion criteria definitions
+### Inclusion/exclusion criteria definitions {#inclusionexclusion-criteria-definitions}
 
-The inclusion criteria for this study can broadly be categorised into two
-classifications: baseline and longitudinal. Baseline criteria can be applied
-using information known at diagnosis whilst longitudinal criteria are based on 
-biomarker measurements taken over time.
+The inclusion criteria for this study can broadly be categorised into
+two classifications: baseline and longitudinal. Baseline criteria can be
+applied using information known at diagnosis whilst longitudinal
+criteria are based on biomarker measurements taken over time.
 
 The longitudinal criteria for each biomarker (FC and CRP) are considered
-independently. If a subject meets the below criteria for FC but not CRP, then
-only the FC for the subject will be modelled and vice versa. 
+independently. If a subject meets the below criteria for FC but not CRP,
+then only the FC for the subject will be modelled and vice versa.
 
-::: {.panel-tabset}
-
-#### Baseline 
+::: panel-tabset
+#### Baseline
 
 ##### Diagnosis of Inflammatory bowel disease
 
-As inflammatory bowel disease (IBD) is the disease of interest for this study,
-subjects are required to have a confirmed diagnosis of either Crohn's disease,
-ulcerative colitis, or inflammatory bowel disease unclassified. 
+As inflammatory bowel disease (IBD) is the disease of interest for this
+study, subjects are required to have a confirmed diagnosis of either
+Crohn's disease, ulcerative colitis, or inflammatory bowel disease
+unclassified.
 
 ##### Diagnosis date
 
-Study subjects are required to have been diagnosed with IBD between October 2004
-and December 2017. The lower bound is required as FC tests were not introduced
-until 2005 and we require study subjects to have a FC available close to
-diagnosis (see the longitudinal tab). The upper bound is required to ensure
-subjects have the opportunity to have at least five years of follow-up. The most
-recent FC observation in this dataset is January 2023 which informed when
-deciding upon this cut-off.
+Study subjects are required to have been diagnosed with IBD between
+October 2004 and December 2017. The lower bound is required as FC tests
+were not introduced until 2005 and we require study subjects to have a
+FC available close to diagnosis (see the longitudinal tab). The upper
+bound is required to ensure subjects have the opportunity to have at
+least five years of follow-up. The most recent FC observation in this
+dataset is January 2023 which informed when deciding upon this cut-off.
 
 #### Longitudinal
 
 ##### Diagnostic measurement
 
-We require study subjects to have a biomarker measurement taken ±90 days of
-reported date of diagnosis. 
+We require study subjects to have a biomarker measurement taken ±90 days
+of reported date of diagnosis.
 
 ##### At least three non-censored measurements
 
-To ensure stability and interpretability, study subjects are also required to
-have at three non-censored biomarker measurements taken across follow-up. Like
-most biomarkers, the biomarkers used in this study are subject to censoring.
-However, these censored observations make it impossible to detect changes over
-time and we therefore do not wish to be reliant on censored observations. 
-
+To ensure stability and interpretability, study subjects are also
+required to have at three non-censored biomarker measurements taken
+across follow-up. Like most biomarkers, the biomarkers used in this
+study are subject to censoring. However, these censored observations
+make it impossible to detect changes over time and we therefore do not
+wish to be reliant on censored observations.
 :::
 
 ### Datasets
@@ -123,66 +125,71 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
 } else {
   # Assume running outside of a Docker container and the IGC(/IGMM) datastore is
   # mounted at /Volumes
-  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
+  prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/2024-10-03"
 }
 
-fcal <- read.csv(paste0(prefix, "2024-10-03/fcal-cleaned.csv"))
+fcal <- read.csv(file.path(prefix, "fcal-cleaned.csv"))
 
 # Extract from TRAK which also now introduces CRP.
-labs <- read.csv(paste0(prefix, "2024-10-03/markers-cleaned.csv"))
+labs <- read.csv(file.path(prefix, "markers-cleaned.csv"))
 labs.fcal <- subset(labs, TEST == "f-Calprotectin-ALP")
 # labs prefix not required for crp as labs is the only crp extract
 crp <- subset(labs, TEST == "C-Reactive Prot")
-updated <- read.csv(paste0(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
-outcomes <- read.csv(paste0(prefix, "2024-10-03/cd-cleaned.csv"))
+updated <- read.csv(file.path(prefix, "allPatientsNathanCleaned.csv"))
+outcomes <- read.csv(file.path(prefix, "cd-cleaned.csv"))
 ```
 
-Multiple datasets are used in this report with varying degrees of previous
-curation.
+Multiple datasets are used in this report with varying degrees of
+previous curation.
 
-* `markers.csv` is a 2024 extraction from TRAK describing
-  `r nrow(labs)` test results (FC: `r nrow(labs.fcal)`; CRP:
-  `r nrow(crp)`). Each row represents a test result with columns indicating the
-  corresponding subject ID, the test type (FC or CRP), the time of the test,
-  and the test result. This dataset contains the most recent data out of the
-  other datasets. However, there has been no manual curation of these data, and
-  no information about the patient's  characteristics are available (other than
-  their ID). 
-* `fcal-cleaned.csv` does not describe CRP data. However, these data have been 
-  curated by the Lees group and includes additional FC
-  results. These are likely from other studies which involved FC data, such
-  as [PREdiCCt](https://www.predicct.co.uk). In addition to `r nrow(fcal)`
-  FC test results, each row also provides the sex, IBD type, date of
-  diagnosis, and date of death (if applicable) for the corresponding subject. 
-* `allPatientsNathanCleaned.csv` provides sex, IBD type, and diagnosis date for
-  most (but not all) subjects in `labs.csv` not described by `fcal-cleaned.csv`. 
-* `cd-cleaned.csv` describes CD patient
-  data (n = `r nrow(outcomes)`). In addition to the same basic patient
-  characteristic variables in other datasets, this dataset also describes
-  surgical outcomes and biologic treatments prescribed to the subject. 
-  
-::: {.callout-note}
-The "cleaned" in the above file names refers to the CHI numbers having been
-replaced. No further processing of the data has been undertaken for this study
-prior to the steps outlined in this report.
+-   `markers.csv` is a 2024 extraction from TRAK describing
+    `r nrow(labs)` test results (FC: `r nrow(labs.fcal)`; CRP:
+    `r nrow(crp)`). Each row represents a test result with columns
+    indicating the corresponding subject ID, the test type (FC or CRP),
+    the time of the test, and the test result. This dataset contains the
+    most recent data out of the other datasets. However, there has been
+    no manual curation of these data, and no information about the
+    patient's characteristics are available (other than their ID).
+-   `fcal-cleaned.csv` does not describe CRP data. However, these data
+    have been curated by the Lees group and includes additional FC
+    results. These are likely from other studies which involved FC data,
+    such as [PREdiCCt](https://www.predicct.co.uk). In addition to
+    `r nrow(fcal)` FC test results, each row also provides the sex, IBD
+    type, date of diagnosis, and date of death (if applicable) for the
+    corresponding subject.
+-   `allPatientsNathanCleaned.csv` provides sex, IBD type, and diagnosis
+    date for most (but not all) subjects in `labs.csv` not described by
+    `fcal-cleaned.csv`.
+-   `cd-cleaned.csv` describes CD patient data (n = `r nrow(outcomes)`).
+    In addition to the same basic patient characteristic variables in
+    other datasets, this dataset also describes surgical outcomes and
+    biologic treatments prescribed to the subject.
+
+::: callout-note
+The "cleaned" in the above file names refers to the CHI numbers having
+been replaced. No further processing of the data has been undertaken for
+this study prior to the steps outlined in this report.
 :::
 
 ## Subject data
 
-We will create a "dictionary" which, for each subject, lists their subject ID,
-their IBD type, and their date of diagnosis. In addition to ensuring inclusion
-criteria are met, date of diagnosis will be used to retime all biomarker
-measurements of a subject such that $t=0$ corresponds to their diagnosis date.
-IBD types are used to test if clusters are enriched by IBD type and may be used
-to adjust the clustering. 
+We will create a "dictionary" which, for each subject, lists their
+subject ID, their IBD type, and their date of diagnosis. In addition to
+ensuring inclusion criteria are met, date of diagnosis will be used to
+retime all biomarker measurements of a subject such that $t=0$
+corresponds to their diagnosis date. IBD types are used to test if
+clusters are enriched by IBD type and may be used to adjust the
+clustering.
 
-There are multiple potential sources for date of diagnosis and IBD type: the
-CD outcomes dataset, a demographics dataset maintained by the Lees group, and a
-raw TRAK extraction. For every subject listed in at  least one of these
-datasets, we have tried to extract their date of diagnosis and diagnosis type.
-We have assumed a hierarchy of datasets where manually curated datasets are
-preferred for extracting data over a dataset generated with minimal human
-involvement. 
+There are multiple potential sources for date of diagnosis and IBD type:
+the CD outcomes dataset, a demographics dataset maintained by the Lees
+group, and a raw TRAK extraction. For every subject listed in at least
+one of these datasets, we have tried to extract their date of diagnosis
+and diagnosis type. We have assumed a hierarchy of datasets where
+manually curated datasets are preferred for extracting data over a
+dataset generated with minimal human involvement.
+
+### Diagnosis and diagnosis date
 
 ```{R Create subject dictionary}
 ids <- unique(c(outcomes$ids, fcal$ids, updated$ids))
@@ -229,6 +236,95 @@ dict <- fix_date_df(dict, "date.of.diag")
 dim(dict)
 ```
 
+There are a total of `r nrow(dict)` subjects in our dictionary before
+filtering by inclusion/exclusion criteria. Amongst those, there are
+`r sum(is.na(dict$date.of.diag))` individuals for which a diagnostic
+date is missing. However, `r sum(is.na(dict$diagnosis))` missing values
+are observed for diagnosis.
+
+As can be seen in the below frequency table, two spellings of Crohn's
+disease (with and without an apostrophe ("'")) and three names for IBDU
+are used. There is also a subject reported to not have IBD.
+
+```{R Frequency table to diagnosis pre-process}
+#| label: tbl-diag-pre
+#| tbl-cap: Frequency table of reported IBD type
+kable(table(dict$diagnosis, useNA = "always"),
+  col.names = c("Variable", "Frequency")
+)
+```
+
+The Crohn's disease and IBDU names have been standardised (IBDU,
+Inflammatory Bowel Disease, Inflammatory Bowel Disease - Unknown Subtype
+are assumed to be equivalent). The subject reported to not have IBD has
+been removed.
+
+```{R Contingency table of IBD diagnosis pre and post processing}
+#| label: tbl-diag-post
+#| tbl-cap: Contingency table showing mapping of IBD types to a standardised format
+#| results: "hold"
+dict$old <- dict$diagnosis
+dict$diagnosis <- plyr::mapvalues(
+  dict$diagnosis,
+  from = c(
+    "Crohns Disease",
+    "Inflamatory Bowel Disease",
+    "Inflamatory Bowel Disease - Unknown Subtype"
+  ),
+  to = c(
+    "Crohn's Disease",
+    "IBDU",
+    "IBDU"
+  )
+)
+
+kable(addmargins(table(dict$diagnosis, dict$old), margin = 2))
+dict$old <- NULL
+
+dim(dict)
+```
+
+### Age and sex
+
+```{r add sex to dict}
+# Merge with fcal to add sex information
+dict <- fcal[,c("ids", "sex")] %>%
+  distinct(ids,
+           .keep_all = TRUE) %>%
+  merge(x = dict, by = "ids", all.x = TRUE, all.y = FALSE)
+
+# Update NA sex if sex available from updated
+dict <- merge(dict,
+              updated[, c("ids", "sex")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE) 
+
+for (i in 1:nrow(dict)){
+  if (is.na(dict[i, "sex.x"]) & !is.na(dict[i, "sex.y"])) {
+    dict[i, "sex.x"] <- dict[i, "sex.y"]
+  }
+}
+
+dict$sex <- dict$sex.x
+dict$sex.x <- dict$sex.y <- NULL
+
+# Add age at IBD diagnosis
+updated <- fix_date_df(updated, "diagnosisDate")
+updated$age <- with(updated, year(diagnosisDate) - dateOfBirth)
+dict <- merge(dict,
+              updated[, c("ids", "age")],
+              by = "ids",
+              all.x = TRUE,
+              all.y = FALSE)
+
+dim(dict)
+```
+
+Note that there `r sum(is.na(dict$age))` individuals for which age at
+diagnosis is missing (this is due to missing diagnostic dates). However,
+there are `r sum(is.na(dict$sex))` individuals for which sex is missing.
+
 ### Date of death
 
 ```{r add date.of.death}
@@ -243,7 +339,13 @@ dict <- fix_date_df(dict, "date.of.death")
 dim(dict)
 ```
 
-### Exploration of date disagreements
+Date of death information is available for
+`r sum(!is.na(dict$date.of.death))` individuals. We assume that all
+remaining individuals have not died by the date of data extraction.
+
+## Exploration of data disagreements
+
+<!--- CAV: we may remove this from the final website as it shows small counts ---> 
 
 ```{R Create subject dictionary alternative}
 # From outcomes
@@ -277,7 +379,6 @@ dict <- fix_date_df(dict, "date.of.diag.fcal")
 dim(dict)
 ```
 
-
 ```{R Create subject dictionary alternative sex}
 # From outcomes
 dict <- merge(dict,
@@ -294,7 +395,7 @@ dict <- merge(dict,
               by = "ids",
               all.x = TRUE,
               all.y = FALSE) %>% 
-  rename(sex.updated = sex)
+  rename(sex.updated = sex.y, sex = sex.x)
 dim(dict)
 
 # From fcal
@@ -303,7 +404,7 @@ dict <- merge(dict,
               by = "ids",
               all.x = TRUE,
               all.y = FALSE) %>% 
-  rename(sex.fcal = sex)
+  rename(sex.fcal = sex.y, sex = sex.x)
 dim(dict)
 
 table(dict$sex.outcomes, dict$sex.updated, useNA = "always")
@@ -311,8 +412,7 @@ table(dict$sex.outcomes, dict$sex.fcal, useNA = "always")
 table(dict$sex.updated, dict$sex.fcal, useNA = "always")
 ```
 
-:::{.column-page}
-
+::: column-page
 ```{R Create subject dictionary alternative diag}
 # From outcomes
 dict <- merge(dict,
@@ -347,7 +447,6 @@ table(dict$diagnosis.outcomes, dict$diagnosis.updated, useNA = "always")
 table(dict$diagnosis.outcomes, dict$diagnosis.fcal, useNA = "always")
 table(dict$diagnosis.updated, dict$diagnosis.fcal, useNA = "always")
 ```
-
 :::
 
 ```{r explore differences in diagnostic date, eval = FALSE}
@@ -358,9 +457,6 @@ table(year(dict$date.of.diag.updated) - year(dict$date.of.diag.fcal))
 ids1 <- dict$ids[which(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.updated) < -10)]
 
 dict %>% subset(ids %in% ids1)
-updated  %>% subset(ids %in% ids1)
-outcomes  %>% subset(ids %in% ids1)
-
 dict %>% subset(!is.na(date.of.death))
 
 par(mfrow = c(1,3))
@@ -384,67 +480,22 @@ with(dict, plot(date.of.death, date.of.diag.fcal))
 abline(a = 0, b = 1, col = "red")
 ```
 
-There are a total of `r nrow(dict)` subjects in our dictionary before filtering
-by inclusion/exclusion criteria. `r sum(is.na(dict$date.of.diag))` subjects had
-an `NA` date of diagnosis and will be removed
-(resulting in `r nrow(dict) - sum(is.na(dict$date.of.diag))` subjects)
+## Exclusion criteria according to diagnosis and date of diagnosis
+
+Date of diagnosis in an integral aspect of the inclusion criteria and
+also used to retime biomarker measurements.
+
+Firstly, we remove individuals that we classed as not IBD patients and those
+with a missing date of diagnosis. 
 
 ```{R Remove NA date of diagnosis}
 dict <- dict[!is.na(dict$date.of.diag), ]
-```
-
-
-### Diagnosis type
-
-As can be seen in the below frequency table, two spellings of Crohn's disease 
-(with and without an apostrophe ("\'")) and three names for IBDU are used. There
-is also a subject reported to not have IBD. 
-
-```{R Frequency table to diagnosis pre-process}
-#| label: tbl-diag-pre
-#| tbl-cap: Frequency table of reported IBD type
-kable(table(dict$diagnosis, useNA = "always"),
-  col.names = c("Variable", "Frequency")
-)
-``` 
-
-The Crohn's disease and IBDU names have been standardised (IBDU,
-Inflammatory Bowel Disease, Inflammatory Bowel Disease - Unknown Subtype are
-assumed to be equivalent). The subject reported to not have IBD has been
-removed. 
-
-```{R Contingency table of IBD diagnosis pre and post processing}
-#| label: tbl-diag-post
-#| tbl-cap: Contingency table showing mapping of IBD types to a standardised format
-#| results: "hold"
-dict$old <- dict$diagnosis
-dict$diagnosis <- plyr::mapvalues(
-  dict$diagnosis,
-  from = c(
-    "Crohns Disease",
-    "Inflamatory Bowel Disease",
-    "Inflamatory Bowel Disease - Unknown Subtype"
-  ),
-  to = c(
-    "Crohn's Disease",
-    "IBDU",
-    "IBDU"
-  )
-)
-
 dict <- subset(dict, diagnosis != "Not IBD")
 
-kable(addmargins(table(dict$diagnosis, dict$old), margin = 2))
-dict$old <- NULL
+dim(dict)
 ```
 
-
-### Date of diagnosis
-
-Date of diagnosis in an integral aspect of the inclusion criteria and also used
-to retime biomarker measurements. 
-
-#### Applying exclusion criteria 
+This leaves `r nrow(dict)` for subsequent analyses. 
 
 ```{R Apply date of diagnosis exclusion}
 # no. subjects over upper bound
@@ -462,13 +513,14 @@ dict <- subset(dict, (year(date.of.diag) >= 2005) |
   (year(date.of.diag) == 2004 & month(date.of.diag) >= 10))
 ```
 
-As described in the
-[inclusion/exclusion criteria section](#inclusionexclusion-criteria-definitions),
-study subjects are required to be diagnosed between October 2004 and December
-2017. As such, subjects who do not meet this criteria will be excluded.
-`r n.upper` subjects were diagnosed in 2018 or later and were removed, and 
-`r n.lower` subjects were diagnosed prior to October 2004 and were likewise
-removed. This results in a cohort size of `r nrow(dict)` subjects. 
+As described in the [inclusion/exclusion criteria
+section](#inclusionexclusion-criteria-definitions), study subjects are
+required to be diagnosed between October 2004 and December 2017. As
+such, subjects who do not meet this criteria will be excluded.
+`r n.upper` subjects were diagnosed in 2018 or later and were removed,
+and `r n.lower` subjects were diagnosed prior to October 2004 and were
+likewise removed. This results in a cohort size of `r nrow(dict)`
+subjects.
 
 ```{R Clean up excluded date of diagnosis counts}
 #| include: false
@@ -483,11 +535,11 @@ standard.
 ##### Year of diagnosis
 
 From @fig-diag-year, we can see the number of IBD diagnoses each year is
-relatively static with the exception of 2004 and 2005. The former describes
-only three months of the year, and incidence was likely still increasing across
-both of these two years.  @Jones2019 found IBD incidence from 2008 onwards to be
-consistent over time for patients diagnosed by NHS Lothian which is in agreement
-with our findings.
+relatively static with the exception of 2004 and 2005. The former
+describes only three months of the year, and incidence was likely still
+increasing across both of these two years. @Jones2019 found IBD
+incidence from 2008 onwards to be consistent over time for patients
+diagnosed by NHS Lothian which is in agreement with our findings.
 
 ```{R Year of diagnosis}
 #| label: fig-diag-year
@@ -502,24 +554,26 @@ dict %>%
 
 ##### Month of diagnosis
 
-It appears there are subjects for whom only year of diagnosis was available.
-This has resulted in the 1<sup>st</sup> of January for that year being
-recorded as the date of diagnosis for that subject. As such, far more diagnoses
-are reported in January than in other months (@fig-diag-month). There are
+It appears there are subjects for whom only year of diagnosis was
+available. This has resulted in the 1<sup>st</sup> of January for that
+year being recorded as the date of diagnosis for that subject. As such,
+far more diagnoses are reported in January than in other months
+(@fig-diag-month). There are
 `r sum(day(dict$date.of.diag) == 1 & month(dict$date.of.diag) == 1)`
 subjects reported to have been diagnosed on New Year's day .
 
-If a subject's exact date of diagnosis is not known, then this is most likely
-because the subject was not diagnosed by NHS Lothian. Instead, the date of
-diagnosis would have needed to be recalled by the subject which introduces the
-inaccuracy observed.
+If a subject's exact date of diagnosis is not known, then this is most
+likely because the subject was not diagnosed by NHS Lothian. Instead,
+the date of diagnosis would have needed to be recalled by the subject
+which introduces the inaccuracy observed.
 
-As subjects are require a diagnostic biomarker measurement to be available
-within 90 days of reported date of diagnosis to be included in this study and
-patients diagnosed outside of NHS Lothian will not have a biomarker test result
-available within this period, the effect on  our study should be minimal.
-However, we will revisit month of diagnosis after filtering by existence of
-diagnostic biomarker measurements to confirm our assumption. 
+As subjects are require a diagnostic biomarker measurement to be
+available within 90 days of reported date of diagnosis to be included in
+this study and patients diagnosed outside of NHS Lothian will not have a
+biomarker test result available within this period, the effect on our
+study should be minimal. However, we will revisit month of diagnosis
+after filtering by existence of diagnostic biomarker measurements to
+confirm our assumption.
 
 ```{R Month of diagnosis (preprocessed)}
 #| label: fig-diag-month
@@ -535,20 +589,20 @@ dict %>%
 ## Faecal calprotectin
 
 Faecal calprotectin (FC), a marker of intestinal inflammation, has been
-obtained from two datasets. The first dataset has been curated by members of the
-Lees group whilst the second dataset is a direct extract from TRAK, a patient
-monitoring system used by NHS Lothian. 
+obtained from two datasets. The first dataset has been curated by
+members of the Lees group whilst the second dataset is a direct extract
+from TRAK, a patient monitoring system used by NHS Lothian.
 
 ### Incorporating later extract
 
 Data from these datasets has been merged and duplicates of data (same
 subject ID, measurement date, and recorded value) were removed. We also
-reduced the FC dataset to only describe subjects for whom IBD type and date of
-diagnosis are available for.
+reduced the FC dataset to only describe subjects for whom IBD type and
+date of diagnosis are available for.
 
-For the TRAK extract, times for test results are given in datetime format (where
-both date and time of the day are provided). The times have been dropped as this
-degree of granularity is not required.
+For the TRAK extract, times for test results are given in datetime
+format (where both date and time of the day are provided). The times
+have been dropped as this degree of granularity is not required.
 
 ```{R FCAL merge}
 fcal <- fcal[, c("ids", "calpro_date", "calpro_result")]
@@ -580,23 +634,24 @@ fcal <- merge(fcal,
 
 ### Test results
 
-FC data can be both left and right censored. FC recorded as "<20" were
-mapped to "20". FC recorded as ">1250", ">2500", or ">6000" were all mapped to
-"1250". Any FC tests given an error code by the laboratory have been removed. 
+FC data can be both left and right censored. FC recorded as "\<20" were
+mapped to "20". FC recorded as "\>1250", "\>2500", or "\>6000" were all
+mapped to "1250". Any FC tests given an error code by the laboratory
+have been removed.
 
 ::: {.callout-note collapse="true"}
 #### More information on FC censoring
 
-The lower limit of detection is
-$<20 \mu g/g$ ($20 \mu g$ of calprotectin per $g$ of stool). By reducing the
-upper limit, it is possible to run more tests in parallel. As a higher
-throughput has been required over time, the upper threshold for tests has
-become lower. Initially test results over $6000 \mu g/g$ were censored, then
-$2500 \mu g/g$ and now $1250 \mu g /g$ is the upper limit for FC tests.  This
-change has resulted in minimal impact in clinics as $1250 \mu g/g$ is still
-considered a high result. However, this change has potential
-implications for research. 
-::: 
+The lower limit of detection is $<20 \mu g/g$ ($20 \mu g$ of
+calprotectin per $g$ of stool). By reducing the upper limit, it is
+possible to run more tests in parallel. As a higher throughput has been
+required over time, the upper threshold for tests has become lower.
+Initially test results over $6000 \mu g/g$ were censored, then
+$2500 \mu g/g$ and now $1250 \mu g /g$ is the upper limit for FC tests.
+This change has resulted in minimal impact in clinics as $1250 \mu g/g$
+is still considered a high result. However, this change has potential
+implications for research.
+:::
 
 ```{R FCAL censor mapping}
 #| label: "fig-fcal-meas"
@@ -640,9 +695,9 @@ fcal %>%
   ylab("Density")
 ```
 
-FC test results on the original measurement scale are heavily right-skewed
-towards $100 \mu g/g$. These data will be log
-transformed- resulting in the multi-modal distribution seen in @fig-logfcal-meas. 
+FC test results on the original measurement scale are heavily
+right-skewed towards $100 \mu g/g$. These data will be log transformed-
+resulting in the multi-modal distribution seen in @fig-logfcal-meas.
 
 ```{R}
 #| label: "fig-logfcal-meas"
@@ -663,16 +718,17 @@ fcal %>%
 
 ### Observations per subject
 
-Although we explore the number of observations per subject in this section, we
-will not yet apply the inclusion criteria of having at least three FC
-measurements. This is because
-[we later](#at-least-three-measurements-maximum-followup) reduce the maximum
-follow-up which will impact the number of observations per subject. 
+Although we explore the number of observations per subject in this
+section, we will not yet apply the inclusion criteria of having at least
+three FC measurements. This is because [we
+later](#at-least-three-measurements-maximum-followup) reduce the maximum
+follow-up which will impact the number of observations per subject.
 
-The number of FC measurements per subject is right-skewed (@fig-fcal-dist).
-However, there are also subjects with many FC observations. These subjects
-were investigated and found to often have a complex disease course, such as
-acute severe ulcerative colitis, and required close monitoring as a result. 
+The number of FC measurements per subject is right-skewed
+(@fig-fcal-dist). However, there are also subjects with many FC
+observations. These subjects were investigated and found to often have a
+complex disease course, such as acute severe ulcerative colitis, and
+required close monitoring as a result.
 
 ```{R Number of FCAL observations per subject}
 #| label: fig-fcal-dist
@@ -689,10 +745,10 @@ FCcountsdf %>%
   ylab("Count")
 ```
 
-### Retiming 
+### Retiming
 
-Time of FC measurements were retimed and scaled to be the number of years
-since IBD diagnosis.
+Time of FC measurements were retimed and scaled to be the number of
+years since IBD diagnosis.
 
 ```{R FCAL time mapping}
 #| label: fig-fcal-spag-pre
@@ -724,20 +780,21 @@ fcal %>%
   ggtitle("")
 ```
 
-After retiming, it is clear some FC observations are earlier than diagnosis
-and in some cases substantially earlier (@fig-fcal-spag-pre). Tests taken
-close to reported date of diagnosis are likely "early" as a result of diagnostic
-delay whereas tests from much earlier were likely requested due to other
-conditions. 
+After retiming, it is clear some FC observations are earlier than
+diagnosis and in some cases substantially earlier (@fig-fcal-spag-pre).
+Tests taken close to reported date of diagnosis are likely "early" as a
+result of diagnostic delay whereas tests from much earlier were likely
+requested due to other conditions.
 
-As such, FC results earlier than 90 days prior to diagnosis will be discarded.
-If a subject has an FCAL within 90 days before diagnosis, then all of their
-FCAL tests will be retimed such that their earliest FC within this period is 
-equal to 0 and all later measurements are shifted accordingly to maintain the 
-same differences between measurement times. 
+As such, FC results earlier than 90 days prior to diagnosis will be
+discarded. If a subject has an FCAL within 90 days before diagnosis,
+then all of their FCAL tests will be retimed such that their earliest FC
+within this period is equal to 0 and all later measurements are shifted
+accordingly to maintain the same differences between measurement times.
 
-We also reduce the dataset to only subjects with a diagnostic FC which equates
-to subjects with a FCAL measurement within 3 months of diagnosis $t \leq 0.25$
+We also reduce the dataset to only subjects with a diagnostic FC which
+equates to subjects with a FCAL measurement within 3 months of diagnosis
+$t \leq 0.25$
 
 ```{R FCAL retiming}
 #| label: fig-fcal-spag-post
@@ -806,16 +863,17 @@ fcal %>%
   ggtitle("")
 ```
 
-There are `r length(diagnostic)` subjects with a diagnostic FCAL available. 
+There are `r length(diagnostic)` subjects with a diagnostic FCAL
+available.
 
 ### Minimum followup
 
 We do not require a minimum follow-up for a subject as this may bias our
-findings. For example, UC patients who undergo a proctocolectomy (surgical
-removal of the colon and rectum) are less likely to have FC measurements after
-their surgery than patients who did not require surgery. By applying criteria
-based on follow-up, we could indirectly exclude subjects based on disease
-outcomes. 
+findings. For example, UC patients who undergo a proctocolectomy
+(surgical removal of the colon and rectum) are less likely to have FC
+measurements after their surgery than patients who did not require
+surgery. By applying criteria based on follow-up, we could indirectly
+exclude subjects based on disease outcomes.
 
 ```{R}
 #| label: fig-fcal-follow-up
@@ -837,8 +895,9 @@ tab |>
   xlab("Followup (years)")
 ```
 
-We have also plotted number of FC measurements for each subject against their
-follow-up to explore the relationship between these two attributes (@fig-n-fcal).
+We have also plotted number of FC measurements for each subject against
+their follow-up to explore the relationship between these two attributes
+(@fig-n-fcal).
 
 ```{R}
 #| label: fig-n-fcal
@@ -869,24 +928,26 @@ fcal <- subset(
 )
 ```
 
-We require a subject has at least three FC measurements across the follow-up
-period to meet our inclusion criteria.
+We require a subject has at least three FC measurements across the
+follow-up period to meet our inclusion criteria.
 
-There are `r length(unique(fcal$ids))` subjects who have at least three FC 
-measurements available (before
-[reducing the maximum followup](#maximum-followup)).
+There are `r length(unique(fcal$ids))` subjects who have at least three
+FC measurements available (before [reducing the maximum
+followup](#maximum-followup)).
 
-### Maximum followup 
+### Maximum followup {#maximum-followup}
 
-A maximum follow-up should be specified in the interest of constructing robust
-models which are not heavily influenced by observations at the end of follow-up
-where observations are more sparse. We also ensure a subject is only included if
-they have at least three FC measurements during the restricted follow-up. 
+A maximum follow-up should be specified in the interest of constructing
+robust models which are not heavily influenced by observations at the
+end of follow-up where observations are more sparse. We also ensure a
+subject is only included if they have at least three FC measurements
+during the restricted follow-up.
 
-The decision for a specific cut-off is based upon two tables. @tbl-follow-up
-explores how increasing the follow-up changes the mean, median, and interquartile
-range of the number of observations per subject. @tbl-count-fcal investigates
-how many subjects have at least one FCAL after a set threshold. 
+The decision for a specific cut-off is based upon two tables.
+@tbl-follow-up explores how increasing the follow-up changes the mean,
+median, and interquartile range of the number of observations per
+subject. @tbl-count-fcal investigates how many subjects have at least
+one FCAL after a set threshold.
 
 ```{R}
 #| label: tbl-follow-up
@@ -942,10 +1003,10 @@ count.tab <- data.frame(
 kable(count.tab, col.names = c("Years", "Number of subjects"))
 ```
 
-From the above table, ten years of maximum follow-up appears to be the most 
-appropriate. However, we instead elect to use seven years of maximum follow-up
-in order to [be consistent with CRP](#maximum-followup-1)
-
+From the above table, ten years of maximum follow-up appears to be the
+most appropriate. However, we instead elect to use seven years of
+maximum follow-up in order to [be consistent with
+CRP](#maximum-followup-1)
 
 ```{R}
 fcal <- subset(fcal, calpro_time <= 7)
@@ -959,7 +1020,6 @@ fcal <- subset(
   )
 )
 ```
-
 
 ### Censored observations
 
@@ -985,10 +1045,11 @@ countsDF <- tibble(
 )
 ```
 
-We now explore censored FC observations and begin by considering FC results
-which have been left-censored ($\leq 20 \mu g/g$). From @fig-left-censor-fcal,
-we can clearly see there are subjects with entirely left-censored FC
-observations (n = `r nrow(subset(countsDF, censored.left/count ==1))`). 
+We now explore censored FC observations and begin by considering FC
+results which have been left-censored ($\leq 20 \mu g/g$). From
+@fig-left-censor-fcal, we can clearly see there are subjects with
+entirely left-censored FC observations (n =
+`r nrow(subset(countsDF, censored.left/count ==1))`).
 
 ```{R}
 #| label: fig-left-censor-fcal
@@ -1003,10 +1064,11 @@ countsDF %>%
   theme(legend.position = "none")
 ```
 
-Looking at right-censored observations (@fig-right-censor-fcal), we see there
-are fewer subjects with a high proportion (>50%  of censored observations).
-Nevertheless, there are still subjects with only right censored observations 
-(n = `r nrow(subset(countsDF, censored.right/count ==1))`). 
+Looking at right-censored observations (@fig-right-censor-fcal), we see
+there are fewer subjects with a high proportion (\>50% of censored
+observations). Nevertheless, there are still subjects with only right
+censored observations (n =
+`r nrow(subset(countsDF, censored.right/count ==1))`).
 
 ```{R}
 #| label: fig-right-censor-fcal
@@ -1024,9 +1086,8 @@ countsDF %>%
   theme(legend.position = "none")
 ```
 
-
-In line with our inclusion criteria, we exclude subjects with fewer than three
-non-censored observations.
+In line with our inclusion criteria, we exclude subjects with fewer than
+three non-censored observations.
 
 ```{R}
 keep <- countsDF[with(countsDF, count - (censored.left + censored.right) >= 3), ]
@@ -1036,7 +1097,7 @@ fcal <- subset(fcal, ids %in% keep$ids)
 This results in a cohort size of `r length(unique(fcal$ids))`
 (`r nrow(countsDF) - nrow(keep)` subjects removed).
 
-###
+### 
 
 ```{R}
 diag.time <- c()
@@ -1058,8 +1119,8 @@ data.frame(ids = fc.ids, diagnostic = diag.time) %>%
 
 ### Revisiting month of diagnosis
 
-After filtering by subjects who have a diagnostic FC available, January is
-no longer over-represented for month of diagnosis as we hypothesised
+After filtering by subjects who have a diagnostic FC available, January
+is no longer over-represented for month of diagnosis as we hypothesised
 (@fig-diag-month-redux)
 
 ```{R Month of diagnosis (postprocessed)}
@@ -1076,20 +1137,20 @@ dict.temp %>%
 
 ## C-reactive protein
 
-C-reactive protein (CRP) is a blood-based marker of inflammation. Unlike FCAL,
-which is highly specific to gastrointestinal inflammation, CRP levels are
-indicative of overall inflammation and are more likely to be affected by
-extra-intestinal factors such as infections. However, patient adherence to CRP
-testing is very strong, and CRP has seen historic usage in the field of IBD.
-Although CRP has been used for many years, we unfortunately only have test
-results from as early as 2008 due to the transition towards using TRAK for
-storing CRP results instead of the previous system. 
+C-reactive protein (CRP) is a blood-based marker of inflammation. Unlike
+FCAL, which is highly specific to gastrointestinal inflammation, CRP
+levels are indicative of overall inflammation and are more likely to be
+affected by extra-intestinal factors such as infections. However,
+patient adherence to CRP testing is very strong, and CRP has seen
+historic usage in the field of IBD. Although CRP has been used for many
+years, we unfortunately only have test results from as early as 2008 due
+to the transition towards using TRAK for storing CRP results instead of
+the previous system.
 
-As there is only one extract for CRP data (obtained from TRAK), merging multiple
-datasets is not required. As with the FCAL data, the recorded time of day for 
-each test has been discarded in favour of the date. Any potential duplicate
-results have been removed.
-
+As there is only one extract for CRP data (obtained from TRAK), merging
+multiple datasets is not required. As with the FCAL data, the recorded
+time of day for each test has been discarded in favour of the date. Any
+potential duplicate results have been removed.
 
 ```{R crp preprocess}
 crp <- crp[, c("ids", "COLLECTION_DATE", "TEST_DATA")] %>%
@@ -1120,10 +1181,11 @@ crp <- crp %>% distinct(ids,
 CRP is left-censored, but does not appear to be right-censored. Multiple
 cut-offs are reported
 (`r unique(as.numeric(gsub("<", "", names(table(crp$crp_result))[2:8])))`)
-with there also being variations for how  $< 1mg/L$ is reported
-(`r names(table(crp$crp_result))[3:5]`). We map every observation $< 1$ to 1
-and map <2, <3, and < 5 to 2, 3, and 5 respectively. Any failed tests (e.g 
-due to contamination or an insufficient sample being provided) are discarded.
+with there also being variations for how $< 1mg/L$ is reported
+(`r names(table(crp$crp_result))[3:5]`). We map every observation $< 1$
+to 1 and map \<2, \<3, and \< 5 to 2, 3, and 5 respectively. Any failed
+tests (e.g due to contamination or an insufficient sample being
+provided) are discarded.
 
 ```{R crp censor mapping}
 #| label: "fig-crp-meas"
@@ -1161,11 +1223,13 @@ crp %>%
   ylab("Density")
 ```
 
-As can be seen in @fig-crp-meas, extremely elevated CRP has been observed in
-some cases. These observations are physiologically valid. However, these data
-may skew our models and may be candidates for removal.  
+As can be seen in @fig-crp-meas, extremely elevated CRP has been
+observed in some cases. These observations are physiologically valid.
+However, these data may skew our models and may be candidates for
+removal.
 
-As with the FCAL data, the CRP data is also log transformed (@fig-logcrp-meas). 
+As with the FCAL data, the CRP data is also log transformed
+(@fig-logcrp-meas).
 
 ```{R}
 #| label: "fig-logcrp-meas"
@@ -1187,14 +1251,14 @@ crp %>%
   ylab("Density")
 ```
 
-Observing @fig-logcrp-meas, it would appear the influence of extremely elevated
-CRP results will be minimal. 
+Observing @fig-logcrp-meas, it would appear the influence of extremely
+elevated CRP results will be minimal.
 
 ### Observations per subject
 
-As with FCAL, we explore the number of observations per subject in this section.
-We do not yet apply the inclusion criteria of having at least three CRP
-measurements.
+As with FCAL, we explore the number of observations per subject in this
+section. We do not yet apply the inclusion criteria of having at least
+three CRP measurements.
 
 ```{R Number of CRP observations per subject}
 #| label: fig-crp-dist
@@ -1212,13 +1276,14 @@ CRPcountsdf %>%
 ```
 
 From @fig-crp-dist, we can see the strong patient adherence to CRP tests
-[referred to earlier](#crp). Very few subjects (n = `r sum(CRPcounts < 3)`) have
-fewer than three CRP measurements available. 
+[referred to earlier](#crp). Very few subjects (n =
+`r sum(CRPcounts < 3)`) have fewer than three CRP measurements
+available.
 
-### Retiming 
+### Retiming
 
-As with the FCAL data, the times of CRP measurements are retimed and scaled to
-be the number of years since IBD diagnosis.
+As with the FCAL data, the times of CRP measurements are retimed and
+scaled to be the number of years since IBD diagnosis.
 
 ```{R CRP time mapping}
 #| label: fig-crp-spag-pre
@@ -1250,25 +1315,26 @@ crp %>%
   ggtitle("")
 ```
 
-As should be expected given the ubiquitous nature of CRP testing, many CRP
-observations are earlier than diagnosis (@fig-crp-spag-pre). Tests taken
-close to reported date of diagnosis are likely "early" as a result of diagnostic
-delay whereas tests from much earlier were likely requested due to other
-conditions. 
+As should be expected given the ubiquitous nature of CRP testing, many
+CRP observations are earlier than diagnosis (@fig-crp-spag-pre). Tests
+taken close to reported date of diagnosis are likely "early" as a result
+of diagnostic delay whereas tests from much earlier were likely
+requested due to other conditions.
 
-As with FCAL, CRP results earlier than 90 days prior to diagnosis will be
-discarded. If a subject has a CRP within 90 days before diagnosis, then all of
-their CRP tests will be retimed such that their earliest CRP within this period
-is  equal to 0 and all later measurements are shifted accordingly to maintain
-the same differences between measurement times. 
+As with FCAL, CRP results earlier than 90 days prior to diagnosis will
+be discarded. If a subject has a CRP within 90 days before diagnosis,
+then all of their CRP tests will be retimed such that their earliest CRP
+within this period is equal to 0 and all later measurements are shifted
+accordingly to maintain the same differences between measurement times.
 
-::: {.callout-note}
-This may mean $t_0$ corresponds to slightly different dates across FCAL and CRP
-for the same subject.
+::: callout-note
+This may mean $t_0$ corresponds to slightly different dates across FCAL
+and CRP for the same subject.
 :::
 
-We also reduce the dataset to only subjects with a diagnostic CRP which equates
-to subjects with a CRP measurement within 3 months of diagnosis $t \leq 0.25$
+We also reduce the dataset to only subjects with a diagnostic CRP which
+equates to subjects with a CRP measurement within 3 months of diagnosis
+$t \leq 0.25$
 
 ```{R CRP retiming}
 #| label: fig-crp-spag-post
@@ -1283,7 +1349,6 @@ for (id in unique(crp$ids)) {
 
 crp <- subset(crp, ids %in% diagnostic)
 ```
-
 
 ```{R}
 diag.time <- c()
@@ -1335,12 +1400,13 @@ crp %>%
   ggtitle("")
 ```
 
-There are `r length(diagnostic)` subjects with a diagnostic CRP available.
+There are `r length(diagnostic)` subjects with a diagnostic CRP
+available.
 
 ### Minimum followup
 
-As a reminder, we do not require a minimum follow-up for a subject as this may
-bias our findings. 
+As a reminder, we do not require a minimum follow-up for a subject as
+this may bias our findings.
 
 ```{R}
 #| label: fig-crp-follow-up
@@ -1362,8 +1428,9 @@ tab |>
   xlab("Followup (years)")
 ```
 
-We have also plotted number of CRP measurements for each subject against their
-follow-up to explore the relationship between these two attributes (@fig-n-crp).
+We have also plotted number of CRP measurements for each subject against
+their follow-up to explore the relationship between these two attributes
+(@fig-n-crp).
 
 ```{R}
 #| label: fig-n-crp
@@ -1384,8 +1451,8 @@ tab.temp %>%
 
 ### Measurement frequency
 
-We require a subject to have at least three CRP measurements across the follow-up
-period to meet our inclusion criteria.
+We require a subject to have at least three CRP measurements across the
+follow-up period to meet our inclusion criteria.
 
 ```{R CRP frequency}
 crp <- subset(
@@ -1398,23 +1465,24 @@ crp <- subset(
 )
 ```
 
-There are `r length(unique(crp$ids))` subjects who have at least three CRP 
-measurements available (before
-[reducing the maximum followup](#maximum-followup-1)).
+There are `r length(unique(crp$ids))` subjects who have at least three
+CRP measurements available (before [reducing the maximum
+followup](#maximum-followup-1)).
 
+### Maximum followup {#maximum-followup-1}
 
-### Maximum followup 
+A maximum follow-up should be specified in the interest of constructing
+robust models which are not heavily influenced by observations at the
+end of follow-up where observations are more sparse. These two
+requirements are dependent on one another as the maximum follow-up
+affects whether or not a subject has at least three measurements taken
+within follow-up.
 
-A maximum follow-up should be specified in the interest of constructing robust
-models which are not heavily influenced by observations at the end of follow-up
-where observations are more sparse. These two requirements are dependent on one
-another as the maximum follow-up affects whether or not a subject has at least
-three measurements taken within follow-up. 
-
-As with FCAL, the decision for a specific cut-off is based upon how increasing
-follow-up changes the mean, median, and interquartile range of the number of
-observations per subject (@tbl-follow-up-crp) and how many subjects have CRP
-observations after set thresholds (@tbl-count-crp).
+As with FCAL, the decision for a specific cut-off is based upon how
+increasing follow-up changes the mean, median, and interquartile range
+of the number of observations per subject (@tbl-follow-up-crp) and how
+many subjects have CRP observations after set thresholds
+(@tbl-count-crp).
 
 ```{R}
 #| label: tbl-follow-up-crp
@@ -1468,8 +1536,8 @@ count.tab <- data.frame(years = years, count = count)
 kable(count.tab, col.names = c("Years", "Number of subjects"))
 ```
 
-From the above table, seven years of maximum follow-up appears to be the most 
-appropriate. 
+From the above table, seven years of maximum follow-up appears to be the
+most appropriate.
 
 ```{R}
 crp <- subset(crp, crp_time <= 7)
@@ -1486,11 +1554,12 @@ crp <- subset(
 
 ### Additional pre-processing
 
-As can be seen in @fig-crp-sample, the CRP data exhibits substantial noise and
-there are many data points which can substantially increase running times when
-fitting models. As such, we have taken the step to pre-process the data by
-grouping FCAL observations into time intervals for each subject and using the
-median where there are multiple observations. 
+As can be seen in @fig-crp-sample, the CRP data exhibits substantial
+noise and there are many data points which can substantially increase
+running times when fitting models. As such, we have taken the step to
+pre-process the data by grouping FCAL observations into time intervals
+for each subject and using the median where there are multiple
+observations.
 
 ```{R}
 #| label: fig-crp-sample
@@ -1579,11 +1648,11 @@ ggsave("plots/crp-med-traj.png", p, width = 10, height = 5, units = "in")
 print(p)
 ```
 
-It appears from @fig-crp-sample-ma that some subjects have the same median
-log-transformed CRP across all of their observations, effectively having a
-variance of 0. These subjects will be extracted and considered as their own 
-cluster, as they may cause numerical issues when model fitting but remain
-of note.
+It appears from @fig-crp-sample-ma that some subjects have the same
+median log-transformed CRP across all of their observations, effectively
+having a variance of 0. These subjects will be extracted and considered
+as their own cluster, as they may cause numerical issues when model
+fitting but remain of note.
 
 ```{R}
 var0.ids <- c()
@@ -1595,10 +1664,11 @@ for (id in unique(crp.ma$ids)) {
 }
 ```
 
-There are `r length(var0.ids)` subjects with no variation in their preprocessed
-CRP observations. Interestingly, these subjects typically exhibit substantial
-intra-subject heterogeneity for FC profiles (@fig-FC-sample-crp-var). The CRP
-for these subjects will not be modelled via LCMM.  
+There are `r length(var0.ids)` subjects with no variation in their
+preprocessed CRP observations. Interestingly, these subjects typically
+exhibit substantial intra-subject heterogeneity for FC profiles
+(@fig-FC-sample-crp-var). The CRP for these subjects will not be
+modelled via LCMM.
 
 ```{R}
 #| label: fig-FC-sample-crp-var
@@ -1650,7 +1720,7 @@ ggsave("plots/crp-dist-ma.pdf", p1 + p2, width = 8, height = 4.5, units = "in")
 ```
 
 There are `r nrow(crp.ma)` total data points after the additional
-preprocessing describing `r length(unique(crp.ma$ids))` subjects. 
+preprocessing describing `r length(unique(crp.ma$ids))` subjects.
 
 ```{R}
 #| label: tbl-crp-ma-freq
@@ -1661,12 +1731,11 @@ crp.ma %>%
   quantile()
 ```
 
-
 ### Revisiting month of diagnosis
 
-After filtering by subjects who have a diagnostic CRP available, January is
-no longer over-represented for month of diagnosis. This is a comparable finding
-to FC (@fig-diag-month-redux).
+After filtering by subjects who have a diagnostic CRP available, January
+is no longer over-represented for month of diagnosis. This is a
+comparable finding to FC (@fig-diag-month-redux).
 
 ```{R Month of diagnosis (postprocessed)}
 #| label: fig-diag-month-redux-crp
@@ -1683,7 +1752,8 @@ dict.temp %>%
 ## Updated density plots
 
 The following plots are updated versions of previous density plots
-(@fig-fcal-meas, @fig-logfcal-meas, @fig-crp-meas and @fig-logcrp-meas). These plots only include subjects who have met the inclusion criteria.
+(@fig-fcal-meas, @fig-logfcal-meas, @fig-crp-meas and @fig-logcrp-meas).
+These plots only include subjects who have met the inclusion criteria.
 
 ```{R Updated FCAL distribution}
 #| label: "fig-fcal-meas-update"
@@ -1704,7 +1774,6 @@ p1 <- fcal %>%
   ylab("Density")
 print(p1)
 ```
-
 
 ```{R}
 #| label: "fig-logfcal-meas-update"
@@ -1854,9 +1923,8 @@ fcal.sub %>%
   ylab("Log(FCAL (µg/g))") +
   ggtitle("")
 ```
-  
-  
-### CRP
+
+### CRP {#crp}
 
 ```{R}
 ids.sample <- sample(unique(crp$ids), 15)
@@ -1891,11 +1959,10 @@ crp.sub %>%
   ggtitle("")
 ```
 
-
 ## Data saving
 
-The processed subject dictionary and FC and CRP datasets have been saved to
-files, so they can be used for the primary analysis. 
+The processed subject dictionary and FC and CRP datasets have been saved
+to files, so they can be used for the primary analysis.
 
 ```{R}
 if (!dir.exists(paste0(prefix, "processed"))) {
@@ -1912,14 +1979,15 @@ saveRDS(crp.ma, paste0(prefix, "processed/median-crp.RDS"))
 
 ## Acknowledgments {.appendix}
 
-This work is funded by the Medical Research Council & University of Edinburgh
-via a Precision Medicine PhD studentship (MR/N013166/1, to **NC-C**).
+This work is funded by the Medical Research Council & University of
+Edinburgh via a Precision Medicine PhD studentship (MR/N013166/1, to
+**NC-C**).
 
 ## Author contributions {.appendix}
 
-**NC-C** performed the processing and wrote the text. **NP**, **ML**, curated
-and provided datasets. **KM-G**, **CWL**, and **CAV** provided supervisory
-support and assisted with revisions. 
+**NC-C** performed the processing and wrote the text. **NP**, **ML**,
+curated and provided datasets. **KM-G**, **CWL**, and **CAV** provided
+supervisory support and assisted with revisions.
 
 ## References {.appendix}
 
@@ -1928,18 +1996,17 @@ support and assisted with revisions.
 
 ## Reuse {.appendix}
 
-Licensed by 
-<a href="https://creativecommons.org/licenses/by/4.0/">CC BY</a>
- unless otherwise stated.
- 
-## {.appendix}
+Licensed by <a href="https://creativecommons.org/licenses/by/4.0/">CC
+BY</a> unless otherwise stated.
 
-<div class = "center">
-  <img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
-  <img src="../../images/cgem-logo.png" alt="Centre for Genomic & Experimental Medicine logo" height = 50px>
-</div>
+##  {.appendix}
 
----
+::: center
+<img src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" class="center" height="50px"/>
+<img src="../../images/cgem-logo.png" alt="Centre for Genomic &amp; Experimental Medicine logo" height="50px"/>
+:::
+
+------------------------------------------------------------------------
 
 ## Session info {.appendix}
 
