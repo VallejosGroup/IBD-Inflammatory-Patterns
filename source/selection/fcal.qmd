@@ -408,32 +408,47 @@ alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
 alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
     from = c(seq(1, 4)),
-    to = c(4, 2, 1, 3)
+    to = c(1, 4, 3, 2)
   )
 
 alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
     from = c(seq(1, 5)),
-    to = c(3, 4, 5, 1, 2)
+    to = c(5, 1, 2, 4, 3)
   )
 
 alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
     from = c(seq(1, 6)),
-    to = c(1, 4, 3, 5, 6, 2)
+    to = c(2, 6, 5, 3, 1, 4)
   )
 
 alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
     from = c(seq(1, 7)),
-    to = c(3, 1, 5, 4, 2, 7, 6)
+    to = c(5, 4, 6, 1, 7, 2, 3)
   )
 
 alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
     from = c(seq(1, 8)),
-    to = c(8, 1, 7, 4, 5, 2, 6, 3)
+    to = c(6, 1, 7, 5, 3, 4, 2, 8)
   )
+
+
+alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 9, "class"],
+    from = c(seq(1, 9)),
+    to = c(2, 1, 4, 8, 9, 3, 6, 5, 7)
+  )
+
+
+alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 10, "class"],
+    from = c(seq(1, 10)),
+    to = c(10, 5, 9, 2, 1, 7, 4, 6, 8, 3)
+  )
+
 
 
 p <- ggplot(
@@ -452,7 +467,7 @@ p <- ggplot(
   geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
   theme(legend.position = "none") +
-  scale_fill_manual(values = rainbow(8)) +
+  scale_fill_manual(values = rainbow(10)) +
   xlab("Assumed number of clusters") +
   ylab("Frequency")
 print(p)
@@ -739,6 +754,30 @@ spaghettiPlot(fcal,
 invisible(dev.off())
 ```
 
+```{R}
+#| include: false
+for (G in G.fcal) {
+  if(!dir.exists("plots/spaghetti")) dir.create("plots/spaghetti")
+  png(paste0("plots/spaghetti/fcal-ncs-", G, ".png"),
+    width = 8,
+    height = 8,
+    units = "in",
+    res = 300
+  )
+  grid::grid.newpage()
+  spaghettiPlot(fcal,
+    models.fcal,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = TRUE,
+    var.time = "calpro_time"
+  )
+  invisible(dev.off())
+}
+```
+
 :::
 
 
@@ -966,7 +1005,7 @@ spaghettiPlot(new.fc,
 ```{R}
 G.grbf <- numeric()
 models.grbf <- list()
-for (G.cand in G.cands) {
+for (G.cand in 1:8) {
   file.name <- paste0(prefix, "/cache/fcal/grbf/final/fcal-", G.cand, ".RDS")
   if (file.exists(file.name)) {
     G.grbf <- c(G.grbf, G.cand)
@@ -1073,38 +1112,38 @@ alluvial.df$class <- as.factor(alluvial.df$class)
 alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
     from = c(seq(1, 3)),
-    to = c(3, 1, 2)
+    to = c(3, 2, 1)
   )
 #
 alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
     from = c(seq(1, 4)),
-    to = c(2, 3, 1, 4)
+    to = c(4, 3, 2, 1)
   )
 
 alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
     from = c(seq(1, 5)),
-    to = c(1, 4, 5, 2, 3)
+    to = c(4, 1, 5, 3, 2)
   )
 
 alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
     from = c(seq(1, 6)),
-    to = c(3, 5, 1, 6, 2, 4)
+    to = c(6, 5, 3, 1, 2, 4)
   )
 
 alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
     from = c(seq(1, 7)),
-    to = c(6, 3, 2, 4, 5, 7, 1)
+    to = c(1, 4, 7, 6, 2, 3, 5)
   )
 #
-alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
-  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
-    from = c(seq(1, 8)),
-    to = c(1, 5, 3, 8, 6, 2, 4, 7)
-  )
+#alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
+#  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
+#    from = c(seq(1, 8)),
+#    to = c(1, 2, 3, 4, 5, 6, 7, 8)
+#  )
 
 
 p <- ggplot(
@@ -1210,7 +1249,7 @@ pprobs.4 <- c(); groups.4 <- models.grbf[[4]]
 pprobs.5 <- c(); groups.5 <- models.grbf[[5]]
 pprobs.6 <- c(); groups.6 <- models.grbf[[6]]
 pprobs.7 <- c(); groups.7 <- models.grbf[[7]]
-pprobs.8 <- c(); groups.8 <- models.grbf[[8]]
+#pprobs.8 <- c(); groups.8 <- models.grbf[[8]]
 
 
 for (i in 1:nrow(models.grbf[[2]]$pprob)){
@@ -1226,8 +1265,8 @@ for (i in 1:nrow(models.grbf[[2]]$pprob)){
   pprobs.6 <- c(pprobs.6, groups.6$pprob[i, class.6 + 2 ])
   class.7 <- groups.7$pprob[i, 2]
   pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2 ])
-  class.8 <- groups.8$pprob[i, 2]
-  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2 ])
+#  class.8 <- groups.8$pprob[i, 2]
+#  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2 ])
 }
 pprobs.2 <- tibble(prob = pprobs.2)
 pprobs.3 <- tibble(prob = pprobs.3)
@@ -1235,7 +1274,7 @@ pprobs.4 <- tibble(prob = pprobs.4)
 pprobs.5 <- tibble(prob = pprobs.5)
 pprobs.6 <- tibble(prob = pprobs.6)
 pprobs.7 <- tibble(prob = pprobs.7)
-pprobs.8 <- tibble(prob = pprobs.8)
+#pprobs.8 <- tibble(prob = pprobs.8)
 
 pprobs.2$Model <- as.factor(rep("Two clusters", nrow(pprobs.2)))
 pprobs.3$Model <- as.factor(rep("Three clusters", nrow(pprobs.3)))
@@ -1243,14 +1282,14 @@ pprobs.4$Model <- as.factor(rep("Four clusters", nrow(pprobs.4)))
 pprobs.5$Model <- as.factor(rep("Five clusters", nrow(pprobs.5)))
 pprobs.6$Model <- as.factor(rep("Six clusters", nrow(pprobs.6)))
 pprobs.7$Model <- as.factor(rep("Seven clusters", nrow(pprobs.7)))
-pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
+#pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
 pprobs <- rbind(pprobs.2,
                 pprobs.3,
                 pprobs.4,
                 pprobs.5,
                 pprobs.6,
-                pprobs.7,
-                pprobs.8)
+                pprobs.7)
+#                pprobs.8)
 
 p <- pprobs %>%
   ggplot(aes(x = prob, y = Model)) +
@@ -1375,7 +1414,7 @@ summaryplot(models.grbf[[2]],
   models.grbf[[5]],
   models.grbf[[6]],
   models.grbf[[7]],
-  models.grbf[[8]],
+#  models.grbf[[8]],
   which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
   mfrow = c(2, 3),
   axis = "Class"
@@ -1528,7 +1567,7 @@ pred.df$grbf3 <- exp(-1 * ((pred.df$calpro_time - centers[3])^2) / (2 * l^2))
 NCS.pred <- predictY(models.fcal[[6]], pred.df, "calpro_time", draws = TRUE)$pred
 GRBF.pred <- predictY(models.grbf[[6]], pred.df, "calpro_time", draws = TRUE)$pred
 
-NCS.switch <- c(3, 5, 1, 2, 6, 4)
+NCS.switch <- c(4, 1, 6, 2, 5, 3)
 
 for (g in 1:6) {
   plot.df <- data.frame(

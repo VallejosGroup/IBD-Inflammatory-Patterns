@@ -45,7 +45,6 @@ met the criteria for FC and CRP analyses. The  colours used in the plot are
 specific to either the FC or the CROP cohorts which are also under seperate
 tabs. 
 
-
 ## Descriptive analyses
 
 ```{R}
@@ -61,6 +60,11 @@ updated <- read.csv(paste0(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
 Categorical data is presented via barcharts and frequency tables whilst
 continuous data are presented via density plots and quantile tables. Missingness
 is not reported if there are no missing data. 
+
+```{R}
+quantile(table(fcal$ids))
+```
+
 
 ### Age at diagnosis
 
