@@ -501,8 +501,8 @@ This leaves `r nrow(dict)` for subsequent analyses.
 # no. subjects over upper bound
 max_fup <- max(labs$COLLECTION_DATE)
 max_fup <- as.Date(max_fup)
-
 n.upper <- nrow(subset(dict, max_fup - date.of.diag  < 5 * 365.25))
+
 # no. subjects under lower bound
 n.lower <- nrow(subset(dict, (year(date.of.diag) < 2004) |
   (year(date.of.diag) == 2004 & month(date.of.diag) <= 9)))
@@ -511,13 +511,18 @@ n.lower <- nrow(subset(dict, (year(date.of.diag) < 2004) |
 dict <- subset(dict, max_fup - date.of.diag >= 5 * 365.25)
 dict <- subset(dict, (year(date.of.diag) >= 2005) |
   (year(date.of.diag) == 2004 & month(date.of.diag) >= 10))
+
+dim(dict)
 ```
 
 As described in the [inclusion/exclusion criteria
-section](#inclusionexclusion-criteria-definitions), study subjects are
-required to be diagnosed between October 2004 and December 2017. As
+section](#inclusionexclusion-criteria-definitions), the inclusion criteria 
+considers upper and lower bounds for the diagnostic dates. In this case, we
+only consider subjects diagnosed after October 2004 and 13 August 2019 (this
+ensures individuals can be followed up by at least 5 year by the time of the
+last longitudinal measument obtained for the cohort; `r max_fup`). As
 such, subjects who do not meet this criteria will be excluded.
-`r n.upper` subjects were diagnosed in 2018 or later and were removed,
+`r n.upper` subjects were diagnosed on 13 August 2019 or later and were removed,
 and `r n.lower` subjects were diagnosed prior to October 2004 and were
 likewise removed. This results in a cohort size of `r nrow(dict)`
 subjects.
@@ -527,7 +532,10 @@ subjects.
 rm(n.upper, n.lower) # clean up
 ```
 
-#### Exploration
+
+## Exploration
+
+<!--- CAV: we should move this into an EDA script ---> 
 
 We now explore date of diagnosis to ensure data quality is at a suitable
 standard.
@@ -575,6 +583,17 @@ study should be minimal. However, we will revisit month of diagnosis
 after filtering by existence of diagnostic biomarker measurements to
 confirm our assumption.
 
+```{R Year of diagnosis (preprocessed)}
+#| label: fig-diag-year
+#| fig-cap: "Bar plot of year of diagnosis"
+dict %>%
+  ggplot(aes(x = as.factor(year(date.of.diag)))) +
+  geom_bar(color = "black", fill = "#FEC601", linewidth = 0.3) +
+  theme_minimal() +
+  ylab("Frequency") +
+  xlab("Year of IBD Diagnosis")
+```
+
 ```{R Month of diagnosis (preprocessed)}
 #| label: fig-diag-month
 #| fig-cap: "Bar plot of month of diagnosis"
@@ -584,6 +603,22 @@ dict %>%
   theme_minimal() +
   ylab("Frequency") +
   xlab("Month of IBD Diagnosis")
+```
+
+```{r diagnostic trend}
+diag.ts <- dict %>% 
+  mutate(date.of.diag.month = 
+           as.Date(paste0(format(date.of.diag, "%Y-%m"), "-01"), format = "%Y-%m-%d")) %>%
+  group_by(date.of.diag.month) %>%
+  summarise(count = n()) %>%
+  ungroup() 
+
+ggplot(diag.ts, aes(x = as.Date(date.of.diag.month, "%Y-%m"), y = count, group = 1)) +
+  geom_line() +
+  xlab("Diagnosis date") + 
+  ylab("Number of diagnosis") +
+  scale_x_date(date_labels = "%Y-%m") +
+  theme_minimal()
 ```
 
 ## Faecal calprotectin
@@ -627,7 +662,7 @@ fcal <- fcal %>% distinct(ids,
 )
 fcal <- subset(fcal, ids %in% dict$ids)
 fcal <- merge(fcal,
-              dict[, c("ids", "diagnosis")],
+              dict[, c("ids", "diagnosis", "date.of.diag")],
               by = "ids",
               all.x = TRUE)
 ```
@@ -657,29 +692,47 @@ implications for research.
 #| label: "fig-fcal-meas"
 #| fig-cap: "Density plot of FCAL measurements by observed value"
 #| warning: false
+
+## Some values cannot be directly coerced as numeric
+## CAV: need to remove this table as shows <5 counts
+table(fcal$calpro_result[which(is.na(as.numeric(fcal$calpro_result)))])
+
 fcal$calpro_result <- plyr::mapvalues(
   fcal$calpro_result,
   from = c(
     "<20",
+    "<25",
+    "<50",
     ">1250",
     ">2500",
+    ">3000",
     ">6000"
   ),
   to = c(
     "20",
+    "25",
+    "50",
     "1250",
     "2500",
-    "2500"
+    "3000",
+    "6000"
   )
 )
 
+## CAV: why is this needed?
 temp <- fcal[is.na(as.numeric(fcal[, "calpro_result"])), ]
 
+# Here, values that cannot be converted into a numeric value will be excluded
+# (they are converted to NA)
 fcal$calpro_result <- as.numeric(fcal$calpro_result) # Remove error codes
 fcal <- fcal[!is.na(fcal[, "calpro_result"]), ]
 
+# Apply limits of detection 
+range(fcal$calpro_result)
+fcal[fcal[, "calpro_result"] < 20, "calpro_result"] <- 20
 fcal[fcal[, "calpro_result"] > 1250, "calpro_result"] <- 1250
-fcal$calpro_result <- as.numeric(fcal$calpro_result)
+range(fcal$calpro_result)
+#fcal$calpro_result <- as.numeric(fcal$calpro_result)
 
 fcal %>%
   ggplot(aes(x = calpro_result)) +
@@ -692,7 +745,8 @@ fcal %>%
   theme_minimal() +
   theme(axis.text.y = element_blank()) +
   xlab("FCAL (µg/g)") +
-  ylab("Density")
+  ylab("Density") +
+  geom_vline(xintercept = 250, colour = "red")
 ```
 
 FC test results on the original measurement scale are heavily
@@ -713,7 +767,8 @@ fcal %>%
   theme_minimal() +
   theme(axis.text.y = element_blank()) +
   xlab("log(FCAL (µg/g))") +
-  ylab("Density")
+  ylab("Density") +
+  geom_vline(xintercept = log(250), colour = "red")
 ```
 
 ### Observations per subject
@@ -744,6 +799,78 @@ FCcountsdf %>%
   xlab("Number of FCAL observations per subject") +
   ylab("Count")
 ```
+
+### Number of FCAL measurements prior to diagnosis
+
+We consider measurements taken 30 days before diagnosis. As it can be seen in 
+
+```{r fcal before diagnosis}
+fcal.sorted <- fcal %>% 
+  mutate(days.from.diag = calpro_date - date.of.diag) %>%
+  arrange(ids, calpro_date)
+  
+
+mydf <- fcal.sorted %>% 
+  group_by(ids) %>%
+  summarise(n.before.diag = sum(days.from.diag < -3*30),
+            n.high.before.diag = sum(days.from.diag < -3*30 & calpro_result > 250)) %>%
+  arrange(desc(n.before.diag))
+
+mydf %>%
+  ggplot(aes(x = n.before.diag)) +
+  geom_histogram(fill = "#887C9B") +
+  theme_minimal() +
+  ggtitle("Pre-diagnosis (> 90 days) FCAL observations per subject") + 
+  xlab("Number of observations per subject") +
+  ylab("Frequency")
+
+mydf %>%
+  ggplot(aes(x = n.high.before.diag)) +
+  geom_histogram(fill = "#887C9B") +
+  theme_minimal() +
+  ggtitle("Pre-diagnosis (> 90 days) elevated FCAL observations per subject") + 
+  xlab("Number of observations per subject") +
+  ylab("Frequency")
+
+table(mydf$n.before.diag)
+table(mydf$n.high.before.diag)
+
+aux <- mydf$ids[mydf$n.high.before.diag == 7]
+
+fcal.sorted %>% subset(ids == 59302) 
+# lots of high results 7 years prior diagnosis
+# also: do we have duplicated measurements?
+# individual is included, but we lost many measurementss
+fcal.sorted %>% subset(ids %in% aux[1])
+fcal.sorted %>% subset(ids %in% aux[2])
+# high results about 1 year prior to diagnosis
+# individual is excluded as there is no diagnostic time
+fcal.sorted %>% subset(ids %in% aux[3]) 
+# like individual 1
+fcal.sorted %>% subset(ids %in% aux[4]) 
+fcal.sorted %>% subset(ids %in% aux[5]) 
+fcal.sorted %>% subset(ids %in% aux[6]) 
+fcal.sorted %>% subset(ids %in% aux[7]) 
+
+
+fcal.sorted %>% subset(ids %in% 9561) 
+fcal.sorted %>% subset(ids %in% 18532) 
+fcal.sorted %>% subset(ids %in% 35849) 
+
+dict %>% subset(date.of.diag.outcomes - date.of.diag.updated > 365)
+
+fcal.sorted %>% subset(ids %in% 778)  
+fcal.sorted %>% subset(ids %in% 901)  
+fcal.sorted %>% subset(ids %in% 1375)  
+fcal.sorted %>% subset(ids %in% 1599)  
+
+dict %>% subset(date.of.diag == as.Date("2000-01-01", "%Y-%m-%d"))
+
+
+
+view(dict %>% subset(ids %in% aux))
+```
+
 
 ### Retiming
 
