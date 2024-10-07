@@ -128,11 +128,19 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
   prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
 }
 
-fcal <- read.csv(file.path(prefix, "2024-10-03/fcal-cleaned.csv"))
+fcal.pheno <- read.csv(file.path(prefix, "2024-10-03/fcal-cleaned.csv"))
 
 # Extract from TRAK which also now introduces CRP.
 labs <- read.csv(file.path(prefix, "2024-10-03/markers-cleaned.csv"))
-labs.fcal <- subset(labs, TEST == "f-Calprotectin-ALP")
+fcal <- subset(labs, TEST == "f-Calprotectin-ALP")
+
+# Add sex and diagnosis type from fcal.pheno
+fcal <- fcal.pheno %>%
+  distinct(ids, .keep_all = TRUE) %>%
+  select(ids, sex, diagnosis, diagnosis_date) %>%
+  merge(x = fcal, by = "ids", all.x = TRUE, all.y = FALSE)
+
+
 # labs prefix not required for crp as labs is the only crp extract
 crp <- subset(labs, TEST == "C-Reactive Prot")
 updated <- read.csv(file.path(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
@@ -143,7 +151,7 @@ Multiple datasets are used in this report with varying degrees of
 previous curation.
 
 -   `markers.csv` is a 2024 extraction from TRAK describing
-    `r nrow(labs)` test results (FC: `r nrow(labs.fcal)`; CRP:
+    `r nrow(labs)` test results (FC: `r nrow(fcal)`; CRP:
     `r nrow(crp)`). Each row represents a test result with columns
     indicating the corresponding subject ID, the test type (FC or CRP),
     the time of the test, and the test result. This dataset contains the
@@ -288,7 +296,7 @@ dim(dict)
 
 ```{r add sex to dict}
 # Merge with fcal to add sex information
-dict <- fcal[,c("ids", "sex")] %>%
+dict <- fcal.pheno[,c("ids", "sex")] %>%
   distinct(ids,
            .keep_all = TRUE) %>%
   merge(x = dict, by = "ids", all.x = TRUE, all.y = FALSE)
@@ -584,7 +592,7 @@ after filtering by existence of diagnostic biomarker measurements to
 confirm our assumption.
 
 ```{R Year of diagnosis (preprocessed)}
-#| label: fig-diag-year
+#| label: fig-diag-year-processed
 #| fig-cap: "Bar plot of year of diagnosis"
 dict %>%
   ggplot(aes(x = as.factor(year(date.of.diag)))) +
@@ -640,27 +648,28 @@ format (where both date and time of the day are provided). The times
 have been dropped as this degree of granularity is not required.
 
 ```{R FCAL merge}
-fcal <- fcal[, c("ids", "calpro_date", "calpro_result")]
-labs.fcal <- labs.fcal[, c("ids", "COLLECTION_DATE", "TEST_DATA")] %>%
-  subset(ids %in% dict$ids)
+fcal <- fcal[, c("ids",
+                 "COLLECTION_DATE",
+                 "TEST_DATA",
+                 "sex",
+                 "diagnosis",
+                 "diagnosis_date")]
+
+fcal <- subset(fcal, ids %in% dict$ids)
 
 # Collection dates include collection times which are not required. Discarding.
 
-labs.fcal$COLLECTION_DATE <- readr::parse_date(
-  stringr::str_split_fixed(labs.fcal$COLLECTION_DATE, " ", n = 2)[, 1],
+fcal$COLLECTION_DATE <- readr::parse_date(
+  stringr::str_split_fixed(fcal$COLLECTION_DATE, " ", n = 2)[, 1],
   format = "%Y-%m-%d"
-)
+) 
 
+colnames(fcal)[1:3] <- c("ids", "calpro_date", "calpro_result")
 
-colnames(labs.fcal) <- c("ids", "calpro_date", "calpro_result")
-fcal <- rbind(fcal, labs.fcal)
-fcal <- fix_date_df(fcal, "calpro_date")
-fcal <- fcal %>% distinct(ids,
-  calpro_date,
-  calpro_result,
-  .keep_all = TRUE
-)
 fcal <- subset(fcal, ids %in% dict$ids)
+fcal <- fcal %>%
+  select(-diagnosis)
+
 fcal <- merge(fcal,
               dict[, c("ids", "diagnosis", "date.of.diag")],
               by = "ids",
@@ -719,6 +728,12 @@ fcal$calpro_result <- plyr::mapvalues(
   )
 )
 
+fcal <- fcal %>% distinct(ids,
+  calpro_date,
+  calpro_result,
+  .keep_all = TRUE
+)
+
 ## CAV: why is this needed?
 temp <- fcal[is.na(as.numeric(fcal[, "calpro_result"])), ]
 
@@ -771,6 +786,54 @@ fcal %>%
   geom_vline(xintercept = log(250), colour = "red")
 ```
 
+### Quality control for duplicates
+
+
+```{R}
+fuzzy.duplicated.ids <- c()
+
+for (id in unique(fcal$ids)) {
+  sub.fcal <- subset(fcal, ids == id) # Get FC data for a subject
+  sub.fcal <- sub.fcal[order(sub.fcal$calpro_date), ] # Order by dates
+  time.diff <- diff(sub.fcal$calpro_date) # Find time between ordered dates
+  value.diff <- diff(sub.fcal$calpro_result) # Find difference in observed values
+  # If two measurements are within 10 days of each other and have nearly same value
+  if (any(time.diff <= 10 & abs(value.diff) <= 20)) {
+    fuzzy.duplicated.ids <- c(fuzzy.duplicated.ids, id)
+  }
+}
+
+message("There are ",
+        length(fuzzy.duplicated.ids),
+        " subjects who appear to have fuzzy duplicated FC measurements")
+```
+
+
+```{R}
+duplicated.ids <- c()
+
+for (id in unique(fcal$ids)) {
+  sub.fcal <- subset(fcal, ids == id) # Get FC data for a subject
+  sub.fcal <- sub.fcal[order(sub.fcal$calpro_date), ] # Order by dates
+  time.diff <- diff(sub.fcal$calpro_date) # Find time between ordered dates
+  value.diff <- diff(sub.fcal$calpro_result) # Find difference in observed values
+  # If two measurements are within 10 days of each other and have the same value
+  if (any(time.diff <= 10 & value.diff == 0)) {
+    duplicated.ids <- c(duplicated.ids, id)
+    # Remove suspected duplicates (taking into account difference is lagged)
+    sub.fcal <- sub.fcal[c(TRUE, !(time.diff <= 10 & value.diff == 0)), ]
+    # Remove data for subject with duplicates
+    fcal <- subset(fcal, ids != id)
+    # Add non duplicated data back
+    fcal <- rbind(fcal, sub.fcal)
+  }
+}
+
+message("There are ",
+        length(duplicated.ids),
+        " subjects who appear to have duplicated FC measurements")
+```
+
 ### Observations per subject
 
 Although we explore the number of observations per subject in this
@@ -813,7 +876,10 @@ fcal.sorted <- fcal %>%
 mydf <- fcal.sorted %>% 
   group_by(ids) %>%
   summarise(n.before.diag = sum(days.from.diag < -3*30),
-            n.high.before.diag = sum(days.from.diag < -3*30 & calpro_result > 250)) %>%
+            n.high.before.diag = sum(
+              days.from.diag < -3*30 & calpro_result > 250
+              )
+            ) %>%
   arrange(desc(n.before.diag))
 
 mydf %>%
@@ -865,10 +931,6 @@ fcal.sorted %>% subset(ids %in% 1375)
 fcal.sorted %>% subset(ids %in% 1599)  
 
 dict %>% subset(date.of.diag == as.Date("2000-01-01", "%Y-%m-%d"))
-
-
-
-view(dict %>% subset(ids %in% aux))
 ```
 
 
@@ -1150,6 +1212,33 @@ fcal <- subset(
       table(fcal$ids)[table(fcal$ids) >= 3]
     )
   )
+)
+
+n.4 <- length(
+  unique(
+    subset(
+      fcal,
+      ids %in% as.numeric(
+        names(
+          table(fcal$ids)[table(fcal$ids) >= 4]
+          )
+        )
+      )$ids
+    )
+)
+
+
+n.5 <- length(
+  unique(
+    subset(
+      fcal,
+      ids %in% as.numeric(
+        names(
+          table(fcal$ids)[table(fcal$ids) >= 5]
+          )
+        )
+      )$ids
+    )
 )
 ```
 
