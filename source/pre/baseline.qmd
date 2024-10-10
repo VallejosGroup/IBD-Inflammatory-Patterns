@@ -624,7 +624,7 @@ cd.pheno %>%
 ```
 
 ```{R}
-write.csv(cd.pheno, paste0(prefix, "processed/cd-pheno.RDS"))
+saveRDS(cd.pheno, paste0(prefix, "processed/cd-pheno.RDS"))
 ```
 
 ### Advanced therapies in CD
