@@ -448,6 +448,185 @@ dict %>%
 :::
 
 
+### Crohn's disease only variables
+
+```{R}
+cd.pheno <- read_xlsx(paste0(prefix, "2024-10-10/CD-pheno.xlsx"))
+cd.pheno <- select(cd.pheno, -Alex)
+
+
+names(cd.pheno) <- c("ids",
+                     "diagosis",
+                     "Sex",
+                     "Smoke",
+                     "Location",
+                     "L4",
+                     "Behaviour",
+                     "Perianal",
+                     "Comments")
+```
+
+#### Smoking status
+
+```{R}
+cd.pheno$Smoke <- 
+  plyr::mapvalues(cd.pheno$Smoke,
+                  from = c("?",
+                           "0",
+                           "1",
+                           "current",
+                           "Current",
+                           "ex",
+                           "Ex",
+                           "EX",
+                           "N",
+                           "never",
+                           "Never",
+                           "NEVER",
+                           "Unknown", 
+                           "NA"), 
+                  to = c(NA,
+                         "No",
+                         "Yes",
+                         "Yes",
+                         "Yes",
+                         "Yes",
+                         "Yes",
+                         "Yes",
+                         "No",
+                         "No",
+                         "No",
+                         "No",
+                         NA,
+                         NA))
+
+counts <- data.frame(table(cd.pheno$Smoke, useNA = "ifany"))
+colnames(counts) <- c("Previously smoked", "Frequency")
+
+cd.pheno %>%
+    ggplot(aes(x = Smoke)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Previously smoked") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+
+#### Montreal location
+
+```{R}
+cd.pheno$Location <- 
+  plyr::mapvalues(cd.pheno$Location,
+                  from = c("1",
+                           "2",
+                           "3",
+                           "isolated vulval disease",
+                           "L1/L4",
+                           "L1+4",
+                           "L2/L4",
+                           "L3/L4",
+                           "L3+4",
+                           "NA"),
+                  to = c("L1",
+                         "L2",
+                         "L3",
+                         NA,
+                         "L1",
+                         "L1",
+                         "L2",
+                         "L3",
+                         "L3",
+                         NA))
+
+counts <- data.frame(table(cd.pheno$Location, useNA = "ifany"))
+colnames(counts) <- c("Montreal location", "Frequency")
+
+cd.pheno %>%
+    ggplot(aes(x = Location)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Montreal location") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+#### Upper GI inflammation
+
+```{R}
+cd.pheno$L4 <- plyr::mapvalues(cd.pheno$L4, 
+                               from = c("0", "1", "N"),
+                               to = c("No", "Yes", "No"))
+
+counts <- data.frame(table(cd.pheno$L4, useNA = "ifany"))
+colnames(counts) <- c("L4 present", "Frequency")
+
+cd.pheno %>%
+    ggplot(aes(x = L4)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("L4 present") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+#### Montreal behaviour
+
+```{R}
+cd.pheno$Behaviour <- plyr::mapvalues(cd.pheno$Behaviour,
+                                      from = c("0",
+                                               "1",
+                                               "2",
+                                               "3",
+                                               "B0",
+                                               "L2",
+                                               "L3",
+                                               "NA"),
+                                      to = c(NA,
+                                             "B1",
+                                             "B2",
+                                             "B3",
+                                             NA,
+                                             NA,
+                                             NA,
+                                             NA))
+
+counts <- data.frame(table(cd.pheno$Behaviour, useNA = "ifany"))
+colnames(counts) <- c("Montreal behaviour", "Frequency")
+
+cd.pheno %>%
+    ggplot(aes(x = Behaviour)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Montreal behaviour") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+#### Perianal disease
+
+```{R}
+cd.pheno$Perianal <- plyr::mapvalues(cd.pheno$Perianal,
+                                     from = c("0", "1", "n", "N", "NA", "Y" ),
+                                     to = c("No", "Yes", "No", "No", NA, "Yes"))
+
+counts <- data.frame(table(cd.pheno$Perianal, useNA = "ifany"))
+colnames(counts) <- c("Perianal disease present", "Frequency")
+
+cd.pheno %>%
+    ggplot(aes(x = Perianal)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Perianal disease present") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+
+```
+
+```{R}
+write.csv(cd.pheno, paste0(prefix, "processed/cd-pheno.RDS"))
+```
+
 ### Advanced therapies in CD
 
 Early advanced therapy in CD is particularly noteworthy given there is
@@ -464,7 +643,9 @@ cd.bio1.all <- cd.bio1[, c(1, 2, 5, 8, 11, 14, 17, 20, 23)]
 
 cd.bio1 <- cd.bio1[, c(1, 4, 5, 6)]
 names(cd.bio1) <- c("ids", "advancedT", "Treatment", "startDate")
-cd.bio1$startDate <- plyr::mapvalues(cd.bio1$startDate, c("2017  00:00:00", "?2018"), c("2017", "2018"))
+cd.bio1$startDate <- plyr::mapvalues(cd.bio1$startDate,
+                                     c("2017  00:00:00", "?2018"),
+                                     c("2017", "2018"))
 
 
 ineligble <-  c("(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
