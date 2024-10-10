@@ -446,14 +446,6 @@ alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
   )
 
 
-alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
-  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 10, "class"],
-    from = c(seq(1, 10)),
-    to = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-  )
-
-
-
 p <- ggplot(
   alluvial.df,
   aes(
@@ -493,7 +485,7 @@ saveRDS(p, paste0(prefix, "processed/plots/fc-alluvial.RDS"))
 
 
 ```{R}
-#| label: fig-fcal-alluvial
+#| label: fig-fcal-alluvial-unadjusted
 #| fig-cap: Alluvial plot of cluster membership across G for FC
 alluvial.df <- matrix(nrow = 0, ncol = 3)
 colnames(alluvial.df) <- c("ids", "class", "G")
@@ -504,10 +496,6 @@ alluvial.df <- as.data.frame(alluvial.df)
 
 alluvial.df$ids <- as.character(alluvial.df$ids)
 alluvial.df$class <- as.factor(alluvial.df$class)
-
-# eliminate label switching
-
-
 
 p <- ggplot(
   alluvial.df,
@@ -567,6 +555,7 @@ pprobs.5 <- c(); groups.5 <- models.fcal[[5]]
 pprobs.6 <- c(); groups.6 <- models.fcal[[6]]
 pprobs.7 <- c(); groups.7 <- models.fcal[[7]]
 pprobs.8 <- c(); groups.8 <- models.fcal[[8]]
+pprobs.9 <- c(); groups.9 <- models.fcal[[9]]
 
 
 for (i in 1:nrow(models.fcal[[2]]$pprob)){
@@ -584,6 +573,8 @@ for (i in 1:nrow(models.fcal[[2]]$pprob)){
   pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2 ])
   class.8 <- groups.8$pprob[i, 2]
   pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2 ])
+  class.9 <- groups.9$pprob[i, 2]
+  pprobs.9 <- c(pprobs.8, groups.9$pprob[i, class.8 + 2 ])
 }
 pprobs.2 <- tibble(prob = pprobs.2)
 pprobs.3 <- tibble(prob = pprobs.3)
@@ -592,6 +583,7 @@ pprobs.5 <- tibble(prob = pprobs.5)
 pprobs.6 <- tibble(prob = pprobs.6)
 pprobs.7 <- tibble(prob = pprobs.7)
 pprobs.8 <- tibble(prob = pprobs.8)
+pprobs.9 <- tibble(prob = pprobs.9)
 
 pprobs.2$Model <- as.factor(rep("Two clusters", nrow(pprobs.2)))
 pprobs.3$Model <- as.factor(rep("Three clusters", nrow(pprobs.3)))
@@ -600,13 +592,15 @@ pprobs.5$Model <- as.factor(rep("Five clusters", nrow(pprobs.5)))
 pprobs.6$Model <- as.factor(rep("Six clusters", nrow(pprobs.6)))
 pprobs.7$Model <- as.factor(rep("Seven clusters", nrow(pprobs.7)))
 pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
+pprobs.9$Model <- as.factor(rep("Nine clusters", nrow(pprobs.9)))
 pprobs <- rbind(pprobs.2,
                 pprobs.3,
                 pprobs.4,
                 pprobs.5,
                 pprobs.6,
                 pprobs.7,
-                pprobs.8)
+                pprobs.8,
+                pprobs.9)
 
 p <- pprobs %>%
   ggplot(aes(x = prob, y = Model)) +
@@ -655,7 +649,7 @@ for (G in G.fcal) {
 ```{R Assess FCAL NCS normality}
 #| label: fig-NCS-norm
 #| fig-cap: "Plots assessing normality for the distribution of residuals for the chosen NCS model for FCAL. (A) Histrogram; (B) Q-Q plot."
-p1 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
+p1 <- data.frame(residuals = resid(models.fcal[[8]])) %>%
   ggplot(aes(x = residuals)) +
   geom_histogram(aes(y = after_stat(density)),
     fill = "#D8829D",
@@ -669,7 +663,7 @@ p1 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
   xlab("Residuals") +
   ggtitle("A")
 
-p2 <- data.frame(residuals = resid(models.fcal[[6]])) %>%
+p2 <- data.frame(residuals = resid(models.fcal[[8]])) %>%
   ggplot(aes(sample = residuals)) +
   stat_qq_band() +
   stat_qq_line(color = "#D8829D") +
@@ -691,12 +685,12 @@ print(p1 / p2)
 ```{R}
 #| label: fig-NCS-norm-cluster
 #| fig-cap: "Q-Q plots assessing normality for the distribution of residuals stratifed by cluster assignment."
-predClass <- models.fcal[[6]]$pprob[, c("ids", "class")]
-temp <- merge(models.fcal[[6]]$pred, predClass, by = "ids")
-labels <- c("A", "B", "C", "D", "E", "F")
+predClass <- models.fcal[[8]]$pprob[, c("ids", "class")]
+temp <- merge(models.fcal[[8]]$pred, predClass, by = "ids")
+labels <- c("A", "B", "C", "D", "E", "F", "G", "H")
 p <- list()
 
-for (i in 1:6) {
+for (i in 1:8) {
   p[[i]] <- subset(temp, class == i) %>%
     ggplot(aes(sample = resid_ss)) +
     stat_qq_band() +
@@ -709,7 +703,10 @@ for (i in 1:6) {
     ggtitle(labels[i])
 }
 
-ArrangedPlot <- (p[[1]] + p[[2]]) / (p[[3]] + p[[4]]) / (p[[5]] + p[[6]])
+ArrangedPlot <- (p[[1]] + p[[2]]) /
+  (p[[3]] + p[[4]]) /
+  (p[[5]] + p[[6]]) /
+  (p[[7]] + p[[8]])
 
 ggsave("paper/cluster-resids-ncs.pdf",
   ArrangedPlot,
@@ -725,12 +722,13 @@ print(ArrangedPlot)
 
 ```{R FCAL metrics plot}
 #| label: fig-fcal-metrics
-#| fig-cap: "Model metrics for FCAL for G = 4-8"
+#| fig-cap: "Model metrics for FCAL for G = 4-9"
 summaryplot(models.fcal[[4]],
   models.fcal[[5]],
   models.fcal[[6]],
   models.fcal[[7]],
   models.fcal[[8]],
+  models.fcal[[9]],
   which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
   mfrow = c(2, 3),
   axis = "Class"
@@ -874,10 +872,9 @@ dict.fcal <- subset(dict, ids %in% unique(fcal$ids))
 for (id in dict.fcal$ids) {
   cluster <- c(
     cluster,
-    subset(models.fcal[[6]]$pprob, ids == id)$class
+    subset(models.fcal[[8]]$pprob, ids == id)$class
   )
 }
-
 
 dict.fcal$diagnosis <- as.factor(dict.fcal$diagnosis)
 dict.fcal$cluster <- as.factor(cluster)
@@ -922,6 +919,19 @@ describe_cat("diagnosis", subset(dict.fcal, cluster == 5))
 ```
 
 ##### Cluster = 6
+
+```{R}
+describe_cat("diagnosis", subset(dict.fcal, cluster == 6))
+```
+
+##### Cluster = 7
+
+```{R}
+describe_cat("diagnosis", subset(dict.fcal, cluster == 6))
+```
+
+
+##### Cluster = 8
 
 ```{R}
 describe_cat("diagnosis", subset(dict.fcal, cluster == 6))
