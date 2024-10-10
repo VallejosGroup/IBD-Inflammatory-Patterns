@@ -448,7 +448,7 @@ dict %>%
 :::
 
 
-### Crohn's disease only variables
+### Crohn's disease only data
 
 ```{R}
 cd.pheno <- read_xlsx(paste0(prefix, "2024-10-10/CD-pheno.xlsx"))
@@ -465,53 +465,6 @@ names(cd.pheno) <- c("ids",
                      "Perianal",
                      "Comments")
 ```
-
-#### Smoking status
-
-```{R}
-cd.pheno$Smoke <- 
-  plyr::mapvalues(cd.pheno$Smoke,
-                  from = c("?",
-                           "0",
-                           "1",
-                           "current",
-                           "Current",
-                           "ex",
-                           "Ex",
-                           "EX",
-                           "N",
-                           "never",
-                           "Never",
-                           "NEVER",
-                           "Unknown", 
-                           "NA"), 
-                  to = c(NA,
-                         "No",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "No",
-                         "No",
-                         "No",
-                         "No",
-                         NA,
-                         NA))
-
-counts <- data.frame(table(cd.pheno$Smoke, useNA = "ifany"))
-colnames(counts) <- c("Previously smoked", "Frequency")
-
-cd.pheno %>%
-    ggplot(aes(x = Smoke)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Previously smoked") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
-```
-
 
 #### Montreal location
 
@@ -621,6 +574,52 @@ cd.pheno %>%
     ylab("Frequency") +
   wrap_table(gt(counts), space = "free_y") 
 
+```
+
+#### Smoking status
+
+```{R}
+cd.pheno$Smoke <- 
+  plyr::mapvalues(cd.pheno$Smoke,
+                  from = c("?",
+                           "0",
+                           "1",
+                           "current",
+                           "Current",
+                           "ex",
+                           "Ex",
+                           "EX",
+                           "N",
+                           "never",
+                           "Never",
+                           "NEVER",
+                           "Unknown", 
+                           "NA"), 
+                  to = c(NA,
+                         "No",
+                         "Yes",
+                         "Yes",
+                         "Yes",
+                         "Yes",
+                         "Yes",
+                         "Yes",
+                         "No",
+                         "No",
+                         "No",
+                         "No",
+                         NA,
+                         NA))
+
+counts <- data.frame(table(cd.pheno$Smoke, useNA = "ifany"))
+colnames(counts) <- c("Previously smoked", "Frequency")
+
+cd.pheno %>%
+    ggplot(aes(x = Smoke)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Previously smoked") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
 ```
 
 ```{R}

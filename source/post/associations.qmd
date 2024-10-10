@@ -50,7 +50,7 @@ library(ggmosaic)
 
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
-model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-6.RDS"))
+model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
 crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
@@ -73,17 +73,17 @@ baseline FC in PREdiCCt.
 ```{R}
 dict.fc <- subset(dict, ids %in% model.fc$pprob$ids)
 dict.fc <- merge(dict.fc, model.fc$pprob[, c("ids", "class")])
+fcal <- select(fcal, -sex)
+
 fcal <- merge(fcal,
   dict.fc[, c("ids", "class", "sex")],
   all.x = TRUE,
-  all.y = FALSE
+  all.y = FALSE,
+  by = "ids"
 )
 
 
 
-fcal$sex <- factor(fcal$sex,
-  levels = c("Female", "Male")
-)
 
 chisq.test(dict.fc$class, dict.fc$sex) %>%
   pander()
@@ -111,14 +111,14 @@ if (!dir.exists("../../plots/sex-comparison/fc/original")) {
   dir.create("../../plots/sex-comparison/fc/original")
 }
 
-for (g in 1:6) {
+for (g in 1:8) {
   p <- fcal %>%
     filter(class == g) %>%
     ggplot(aes(x = calpro_time, y = calpro_result, color = as.factor(ids))) +
     geom_line(alpha = 0.2) +
     theme_bw() +
     theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_grid(. ~ sex) +
+    facet_grid(cols = vars(sex)) +
     scale_color_manual(values = rep("black", nrow(fcal))) +
     xlab("Time (years)") +
     ylab("Log (FCAL (\u03BCg/g))") +
@@ -139,7 +139,7 @@ for (g in 1:6) {
 #| column: "body-outset"
 #| fig-width: 10.6667
 #| fig-height: 6
-for (g in 1:6) {
+for (g in 1:8) {
   p <- fcal %>%
     filter(class == g) %>%
     ggplot(aes(
@@ -200,7 +200,7 @@ quantile(dict.fc$age, na.rm = TRUE)
 #| fig-width: 9.142857
 #| warning: false
 p1 <- dict.fc %>%
-  mutate(class = factor(class, labels = paste("FC", seq(1, 6)))) %>%
+  mutate(class = factor(class, labels = paste("FC", seq(1, 8)))) %>%
   ggplot(aes(x = class, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
@@ -236,7 +236,7 @@ if (!dir.exists("../../plots/age-comparison/fc/original")) {
   dir.create("../../plots/age-comparison/fc/original")
 }
 
-for (g in 1:6) {
+for (g in 1:8) {
   p <- fcal %>%
     filter(class == g) %>%
     ggplot(aes(x = calpro_time, y = calpro_result, color = as.factor(ids))) +
@@ -264,7 +264,7 @@ for (g in 1:6) {
 #| column: "body-outset"
 #| fig-width: 10.6667
 #| fig-height: 6
-for (g in 1:6) {
+for (g in 1:8) {
   p <- fcal %>%
     filter(class == g) %>%
     ggplot(aes(
@@ -301,7 +301,7 @@ cluster.
 ```{R}
 #| label: fig-fc-ibd
 #| fig-cap: "Forest plot of IBD type for the chosen FC model."
-n.clust <- 6
+n.clust <- 8
 id <- 1:length(model.fc$best)
 
 indice <- rep(id * (id + 1) / 2)
@@ -339,7 +339,7 @@ df %>%
   xlab("") +
   ylab("Estimate (95% CI)") +
   theme_bw() +
-  ylim(-3, 3) +
+  ylim(-6, 6) +
   scale_color_manual(values = c("black", "#FF007F")) +
   theme(legend.position = "none")
 ```
@@ -377,8 +377,8 @@ dict.fc$diagnosis <- factor(dict.fc$diagnosis,
 )
 
 dict.fc$class <- factor(dict.fc$class,
-  levels = seq(1, 6),
-  labels = paste0("FC ", seq(1, 6))
+  levels = seq(1, 8),
+  labels = paste0("FC ", seq(1, 8))
 )
 
 p1 <- dict.fc %>%
@@ -428,7 +428,7 @@ p5
 perc.table <- data.frame(diagnosis = character(),
                          cluster = character(),
                          perc = numeric())
-for (g in 1:6) {
+for (g in 1:8) {
   temp.1 <- subset(dict.fc, class == paste0("FC ", g))
   for (diag in c("Crohn's Disease", "Ulcerative Colitis", "IBDU")) {
     perc <- nrow(subset(temp.1, diagnosis == diag)) / nrow(temp.1)
@@ -483,6 +483,202 @@ ggsave("plots/ibd-type-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
 ```
 
+### Crohn's disease only data
+
+```{R}
+cd.pheno <- readRDS(paste0(prefix, "processed/cd-pheno.RDS"))
+cd.pheno <- merge(cd.pheno,
+                  dict.fc[, c("ids", "class")],
+                  by = "ids",
+                  all.x = TRUE,
+                  all.y = FALSE)
+```
+
+#### Montreal location
+
+```{R}
+chisq.test(cd.pheno$class, cd.pheno$Location) %>%
+  pander()
+```
+
+```{R}
+#| label: fig-fc-location-facet
+#| fig-cap: "Percentage of (A) L1, (B) L2, and (C) L3 within each FC cluster. Dotted lines indicate the overall percentage of each IBD type."
+perc.table <- data.frame(location = character(),
+                         cluster = character(),
+                         perc = numeric())
+for (g in 1:8) {
+  temp.1 <- subset(cd.pheno, class == paste0("FC ", g))
+  for (loc in c("L1", "L2", "L3")) {
+    perc <- nrow(subset(temp.1, Location == loc)) / nrow(temp.1)
+    perc.table <- rbind(perc.table, 
+                        data.frame(location = loc,
+                                   cluster = paste0("FC ", g),
+                                   perc = perc))
+    
+  }
+}
+
+totalL1Perc <- nrow(subset(cd.pheno, Location == "L1")) /
+  nrow(cd.pheno)
+
+p1 <- perc.table %>%
+  filter(location == "L1") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
+  geom_hline(yintercept = totalL1Perc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+totalL2Perc <- nrow(subset(cd.pheno, Location == "L2")) /
+  nrow(cd.pheno)
+
+p2 <- perc.table %>%
+  filter(location == "L2") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
+  geom_hline(yintercept = totalL2Perc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+
+totalL3Perc <- nrow(subset(cd.pheno, Location == "L3")) /
+  nrow(cd.pheno)
+
+p3 <- perc.table %>%
+  filter(location == "L3") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
+  geom_hline(yintercept = totalL3Perc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")
+ggsave("plots/cd-location-fc.png", p, width = 7.5, height = 7.5)
+ggsave("plots/cd-location-fc.pdf", p, width = 7.5, height = 7.5)
+print(p)
+```
+
+#### Upper GI inflammation
+
+```{R}
+fisher.test(cd.pheno$class, cd.pheno$L4, workspace = 200000000) %>%
+  pander()
+```
+
+```{R}
+cd.pheno %>%
+  drop_na(L4) %>%
+  ggplot(aes(x = class,  fill = L4, color = L4)) +
+   geom_bar(position="fill") +
+  scale_fill_manual(values = c("#F8766D", "#619CFF")) +
+  scale_color_manual(values = c("#CF544B", "#417BD2")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Cluster",
+    y = "",
+    fill = "L4 present",
+    color = "L4 present"
+  )
+```
+
+#### Montreal behaviour
+
+```{R}
+fisher.test(cd.pheno$class, cd.pheno$Behaviour, simulate.p.value = TRUE) %>%
+  pander()
+```
+
+```{R}
+#| label: fig-fc-behaviour-facet
+#| fig-cap: "Percentage of (A) B1, (B) B2, and (C) B3 within each FC cluster. Dotted lines indicate the overall percentage of each IBD type."
+perc.table <- data.frame(behaviour = character(),
+                         cluster = character(),
+                         perc = numeric())
+for (g in 1:8) {  
+  temp.1 <- subset(cd.pheno, class == paste0("FC ", g))
+  for (beh in c("B1", "B2", "B3")) {
+    perc <- nrow(subset(temp.1, Behaviour == beh)) / nrow(temp.1)
+    perc.table <- rbind(perc.table, 
+                        data.frame(behaviour = beh,
+                                   cluster = paste0("FC ", g),
+                                   perc = perc))
+    
+  }
+}
+
+totalB1Perc <- nrow(subset(cd.pheno, Behaviour == "B1")) /
+  nrow(cd.pheno)
+
+p1 <- perc.table %>%
+  filter(behaviour == "B1") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
+  geom_hline(yintercept = totalB1Perc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+totalB2Perc <- nrow(subset(cd.pheno, Behaviour == "B2")) /
+  nrow(cd.pheno)
+
+p2 <- perc.table %>%
+  filter(behaviour == "B2") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
+  geom_hline(yintercept = totalB2Perc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+
+totalB3Perc <- nrow(subset(cd.pheno, Behaviour == "B3")) /
+  nrow(cd.pheno)
+
+p3 <- perc.table %>%
+  filter(behaviour == "B3") %>%
+  ggplot(aes(x = cluster, y = perc)) +
+  geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
+  geom_hline(yintercept = totalB3Perc, linetype = "dashed", color = "#4D4730") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(x = "Cluster", y = "Percentage")
+
+p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")
+ggsave("plots/cd-behaviour-fc.png", p, width = 7.5, height = 7.5)
+ggsave("plots/cd-behaviour-fc.pdf", p, width = 7.5, height = 7.5)
+print(p)
+```
+
+#### Perianal disease
+
+```{R}
+fisher.test(cd.pheno$class, cd.pheno$Perianal, workspace = 20000000) %>%
+  pander()
+```
+
+```{R}
+cd.pheno %>%
+  drop_na(Perianal) %>%
+  ggplot(aes(x = class,  fill = Perianal, color = Perianal)) +
+   geom_bar(position="fill") +
+  scale_fill_manual(values = c("#F8766D", "#619CFF")) +
+  scale_color_manual(values = c("#CF544B", "#417BD2")) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Cluster",
+    y = "",
+    fill = "Perianal disease present",
+    color = "Perianal disease present"
+  )
+```
 
 ### Advanced therapy in CD
 
@@ -707,8 +903,13 @@ seen.
 ```{R}
 dict.crp <- subset(dict, ids %in% model.crp$pprob$ids)
 dict.crp <- merge(dict.crp, model.crp$pprob[, c("ids", "class")])
-crp.median <- merge(crp.median,
-  dict.crp[, c("ids", "class", "sex")],
+
+
+
+crp.median <-
+  crp.median %>%
+  select(-sex) %>%
+  merge(dict.crp[, c("ids", "class", "sex")],
   all.x = TRUE,
   all.y = FALSE
 )
