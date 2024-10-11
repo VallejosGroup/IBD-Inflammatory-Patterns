@@ -837,6 +837,21 @@ for (G in G.fcal) {
                 clusters = TRUE)
   dev.off()
   
+  cairo_pdf(paste0("plots/spaghetti/fcal-ncs-", G, ".pdf"),
+    width = 10,
+    height = 14)
+  grid::grid.newpage()
+  spaghettiPlot(new.fc,
+                models.fcal,
+                G = G,
+                log = TRUE,
+                tmax = 7,
+                sizes = TRUE,
+                knots = FALSE,
+                var.time = "calpro_time",
+                clusters = TRUE)
+  dev.off()
+  
   grid::grid.newpage()
   spaghettiPlot(new.fc,
                 models.fcal,
