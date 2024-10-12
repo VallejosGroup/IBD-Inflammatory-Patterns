@@ -1,5 +1,5 @@
 ---
-title: "Associations"
+title: "Associations with cluster membership"
 author:
   - name: "Nathan Constantine-Cooke"
     corresponding: true
@@ -57,19 +57,27 @@ crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
 ```
 
-To-date, the clustering of faecal calprotectin (FC) and CRP profiles have only
-considered the biomarker trajectories and IBD type. This report explores
-potential evidence for the need to incorporate sex and/or age at diagnosis into 
-the models by stratifying cluster profiles by either sex or age. 
+This page explores potential associations between information available at
+diagnosis, or shortly thereafter, and cluster membership. A descriptive analysis
+of baseline variables in described in a
+[previous page](../pre/baseline.qmd).
 
-::: {.callout-note}
-Sex and age (at recruitment) was found to be significantly associated with
-baseline FC in PREdiCCt.
-:::
+For univariate analyses, continuous data have been analysed via ANOVA, and
+categorical data have been analysed using chi-squared or Fisher's exact test as
+appropriate. Time-to-event data have been analysed using log-rank tests of 
+Kaplan-Meier curves.
 
-## Faecal calprotectin
+Multivariate analyses were also performed to potentially adjust for
+confounding factors. 
+
+As faecal calprotectin (FC) and C-reactive protein (CRP) were analysed
+independently, this page is split into FC and CRP sections. 
+
+## Faecal calprotectin analysis
 
 ### Sex
+
+A significant association was not found between sex and cluster membership. 
 
 ```{R}
 dict.fc <- subset(dict, ids %in% model.fc$pprob$ids)
@@ -83,116 +91,22 @@ fcal <- merge(fcal,
   by = "ids"
 )
 
-
-
-
 chisq.test(dict.fc$class, dict.fc$sex) %>%
   pander()
 ```
 
-::: {.panel-tabset group="scale"}
-
-#### Log-scale
-
-```{R}
-#| results: "hold"
-#| column: "body-outset"
-#| fig-width: 10.6667
-#| fig-height: 6
-
-if (!dir.exists("../../plots/sex-comparison/fc")) {
-  dir.create("../../plots/sex-comparison/fc", recursive = TRUE)
-}
-
-if (!dir.exists("../../plots/sex-comparison/fc/log")) {
-  dir.create("../../plots/sex-comparison/fc/log")
-}
-
-if (!dir.exists("../../plots/sex-comparison/fc/original")) {
-  dir.create("../../plots/sex-comparison/fc/original")
-}
-
-for (g in 1:8) {
-  p <- fcal %>%
-    filter(class == g) %>%
-    ggplot(aes(x = calpro_time, y = calpro_result, color = as.factor(ids))) +
-    geom_line(alpha = 0.2) +
-    theme_bw() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_grid(cols = vars(sex)) +
-    scale_color_manual(values = rep("black", nrow(fcal))) +
-    xlab("Time (years)") +
-    ylab("Log (FCAL (\u03BCg/g))") +
-    ggtitle(paste0("Cluster ", g))
-  ggsave(paste0("../../plots/sex-comparison/fc/log/g=", g, ".png"),
-    p,
-    width = 16 * 2 / 3,
-    height = 9 * 2 / 3
-  )
-  print(p)
-}
-```
-
-#### Original units scale
-
-```{R}
-#| results: "hold"
-#| column: "body-outset"
-#| fig-width: 10.6667
-#| fig-height: 6
-for (g in 1:8) {
-  p <- fcal %>%
-    filter(class == g) %>%
-    ggplot(aes(
-      x = calpro_time,
-      y = exp(calpro_result),
-      color = as.factor(ids)
-    )) +
-    geom_line(alpha = 0.2) +
-    theme_bw() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_grid(. ~ sex) +
-    scale_color_manual(values = rep("black", nrow(fcal))) +
-    xlab("Time (years)") +
-    ylab("FCAL (\u03BCg/g)") +
-    ggtitle(paste0("Cluster ", g))
-  ggsave(paste0("../../plots/sex-comparison/fc/original/g=", g, ".png"),
-    p,
-    width = 16 * 2 / 3,
-    height = 9 * 2 / 3
-  )
-  print(p)
-}
-```
-
-:::
-
 ### Age
 
+As a reminder, age has been calculated by subtracting year of diagnosis from
+year of birth and is therefore not 100% accurate. We will initially consider
+age as a continuous variable. 
+
 ```{R}
-ageLabels <- c("<18", "18-29", "30-49", "50-69", "\u226570")
-dict.fc$ageCat <- cut(dict.fc$age,
-  breaks = c(0, 18, 30, 50, 70, Inf),
-  labels = ageLabels,
-  include.lowest = TRUE,
-  right = FALSE
-)
-
-fcal <- merge(fcal,
-  dict.fc[, c("ids", "ageCat")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-)
-
 aov(class ~ age, data = dict.fc) %>%
   summary() %>%
   pander()
 ```
 
-```{R}
-quantile(dict.fc$age, na.rm = TRUE)
-```
 
 ```{R}
 #| label: fig-fc-age-dist
@@ -210,98 +124,55 @@ p1 <- dict.fc %>%
 print(p1)
 ```
 
-Age has been calculated by subtracting year of diagnosis from year of birth. Age
-is currently missing for some subjects meeting the FC criteria (but is not
-missing for subjects meeting the CRP criteria). Age has been grouped into the
-following categories, `r ageLabels`,
+#### Montreal classification of age for Crohn's disease
 
-::: {.panel-tabset group="scale"}
+Unlike ulcerative colitis, age at diagnosis is part of the Montreal
+classification for Crohn's disease.  As such, we will explore potential
+associations between Montreal age classification and cluster membership for
+subjects diagnosed with Crohn's disease. The Montreal age categories are as
+follows: 
 
-#### Log-scale
+* A1: $\leq$ 16 years
+* A2: 17—40 years
+* A3: $>$ 40 years
 
-```{R}
-#| results: "hold"
-#| column: "body-outset"
-#| fig-width: 10.6667
-#| fig-height: 6
-
-if (!dir.exists("../../plots/age-comparison/fc")) {
-  dir.create("../../plots/age-comparison/fc", recursive = TRUE)
-}
-
-if (!dir.exists("../../plots/age-comparison/fc/log")) {
-  dir.create("../../plots/age-comparison/fc/log")
-}
-
-if (!dir.exists("../../plots/age-comparison/fc/original")) {
-  dir.create("../../plots/age-comparison/fc/original")
-}
-
-for (g in 1:8) {
-  p <- fcal %>%
-    filter(class == g) %>%
-    ggplot(aes(x = calpro_time, y = calpro_result, color = as.factor(ids))) +
-    geom_line(alpha = 0.2) +
-    theme_bw() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_wrap(. ~ ageCat, ncol = 3) +
-    scale_color_manual(values = rep("black", nrow(fcal))) +
-    xlab("Time (years)") +
-    ylab("Log (FCAL (\u03BCg/g))") +
-    ggtitle(paste0("Cluster ", g))
-  ggsave(paste0("../../plots/age-comparison/fc/log/g=", g, ".png"),
-    p,
-    width = 16 * 2 / 3,
-    height = 9 * 2 / 3
-  )
-  print(p)
-}
-```
-
-#### Original units scale
+Montreal classification of age for Crohn's disease was not found to be
+significantly associated with cluster membership.
 
 ```{R}
-#| results: "hold"
-#| column: "body-outset"
-#| fig-width: 10.6667
-#| fig-height: 6
-for (g in 1:8) {
-  p <- fcal %>%
-    filter(class == g) %>%
-    ggplot(aes(
-      x = calpro_time,
-      y = exp(calpro_result),
-      color = as.factor(ids)
-    )) +
-    geom_line(alpha = 0.2) +
-    theme_bw() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_wrap(. ~ ageCat, ncol = 3) +
-    scale_color_manual(values = rep("black", nrow(fcal))) +
-    xlab("Time (years)") +
-    ylab("FCAL (\u03BCg/g)") +
-    ggtitle(paste0("Cluster ", g))
-  ggsave(paste0("../../plots/age-comparison/fc/original/g=", g, ".png"),
-    p,
-    width = 16 * 2 / 3,
-    height = 9 * 2 / 3
-  )
-  print(p)
-}
-```
+ageLabels <- c("\u226416", "17—40", "> 40")
 
-:::
+cd.dict.fc <- subset(dict.fc, diagnosis == "Crohn's Disease")
+
+cd.dict.fc$ageCat <- cut(cd.dict.fc$age,
+  breaks = c(0, 16, 40, Inf),
+  labels = ageLabels,
+  include.lowest = TRUE,
+  right = FALSE
+)
+
+cd.dict.fc %>%
+  with(chisq.test(class, ageCat)) %>%
+  pander()
+```
 
 ### IBD type
 
-IBD type has been included in the cluster assignment sub model as a covariate.
-Crohn's disease is the reference IBD type with cluster FC 6 being the reference
-cluster. 
+IBD type has been included in the cluster assignment sub model as a covariate
+and will therefore be analysed differently to the other variables considered.
+Instead of chi-squared tests, Wald tests of the model covariates were conducted.
+In these tests, Crohn's disease is the reference IBD type with cluster FC 8
+being the reference cluster. 
+
+The results of these tests are presented as both forest plots ([@fig-fc-ibd])
+and a summary table ([@tbl-fc-ibd]).
+
+Only ulcerative colitis in cluster 1 was found to be statistically significant. 
 
 
 ```{R}
 #| label: fig-fc-ibd
-#| fig-cap: "Forest plot of IBD type for the chosen FC model."
+#| fig-cap: "Forest plot of IBD type for the chosen FC model. Pink estimates denote a statistically different covariate at the 5% significance level."
 n.clust <- 8
 id <- 1:length(model.fc$best)
 
@@ -349,7 +220,7 @@ df %>%
 
 ```{R}
 #| label: tbl-fc-ibd
-#| fig-cap: "Table of β estimates and associated p-values obtained via univariate Wald tests."
+#| tbl-cap: "Table of β estimates and associated p-values obtained via univariate Wald tests."
 wald <- c()
 p.vals <- c()
 
@@ -369,61 +240,8 @@ df %>%
   knitr::kable(digits = 3, col.names = c("Estimate", "SE", "Wald", "p-value"))
 ```
 
+@fig-fc-ibd-facet shows the breakdown of IBD type within each cluster.
 
-```{R}
-dict.fc$diagnosis <- factor(dict.fc$diagnosis,
-  levels = c(
-    "Crohn's Disease",
-    "Ulcerative Colitis",
-    "IBDU"
-  )
-)
-
-dict.fc$class <- factor(dict.fc$class,
-  levels = seq(1, 8),
-  labels = paste0("FC ", seq(1, 8))
-)
-
-p1 <- dict.fc %>%
-  ggplot() +
-  geom_mosaic(aes(x = product(class), fill = diagnosis), show.legend = FALSE) +
-  scale_fill_manual(values = c("#F8766D", "#619CFF", "#00BA38")) +
-  theme_minimal() +
-  labs(
-    x = "Cluster",
-    y = "IBD type"
-  ) +
-  ggtitle(
-    "IBD type",
-    "Faecal calprotectin clustering"
-  )
-
-ggsave("plots/mosaic/fc-by-diag.png",
-  p1,
-  width = 7.5,
-  height = 5,
-  units = "in",
-  dpi = 300,
-  create.dir = TRUE
-)
-ggsave("plots/mosaic/fc-by-diag.pdf", p1, width = 7.5, height = 5)
-
-p5 <- dict.fc %>%
-  ggplot(aes(x = class, fill = diagnosis, color = diagnosis)) +
-  geom_bar(position = "fill") +
-  scale_fill_manual(values = c("#F8766D", "#619CFF", "#00BA38")) +
-  scale_color_manual(values = c("#CF544B", "#417BD2", "#01932A")) +
-  theme_minimal() +
-  theme(legend.position = "top") +
-  scale_y_continuous(labels = scales::percent) +
-  labs(
-    x = "Cluster",
-    y = "",
-    fill = "IBD type",
-    color = "IBD type"
-  )
-p5
-```
 
 ```{R}
 #| label: fig-fc-ibd-facet
@@ -493,12 +311,23 @@ print(p)
 
 ### Multivariate modelling
 
+For the multivariate analysis, multinomial logistic regression has been used to
+predict class membership via age (as a continuous variable), sex, and IBD type.
+
+Cluster FC 1, female sex, and Crohn's disease were used as the reference
+categories. @tbl-mlr-fc provides all p-values for all covariates.
+
 ```{R}
+#| label: tbl-mlr-fc
+#| tbl-cap: "Table of p-values for the Wald tests of the multinomial logistic regression model."
 mlr <- multinom(class ~ age + sex + diagnosis, data = dict.fc, trace = FALSE)
 z <- summary(mlr)$coefficients / summary(mlr)$standard.errors
 p <- (1 - pnorm(abs(z), 0, 1)) * 2
 knitr::kable(p)
 ```
+
+As estimates lie on  substantially different scales, these will be visualised
+using separate forest plots for each covariate. 
 
 ```{R}
 coeff <- summary(mlr)$coefficients
@@ -560,6 +389,9 @@ for (variable in unique(tab$Var2)) {
 
 ### Crohn's disease only data
 
+This section is concerned with data specific to Crohn's disease, namely the
+Montreal classification of Crohn's disease and advanced therapy prescribing. 
+
 ```{R}
 cd.pheno <- readRDS(paste0(prefix, "processed/cd-pheno.RDS"))
 cd.pheno <- merge(cd.pheno,
@@ -568,12 +400,26 @@ cd.pheno <- merge(cd.pheno,
   all.x = TRUE,
   all.y = FALSE
 )
+cd.pheno$class <- as.factor(cd.pheno$class)
 ```
 
 #### Montreal location
 
+Montreal location refers to where gastrointestinal inflammation is present and
+is categorised as:
+
+* L1: Ileal, limited to the ileum which is the final segment of the small
+  intestine.
+* L2: Colonic, limited to the colon/large intestine.
+* L3: Ileocolonic, inflammation is present in both the ileum and colon.
+
+A significant association was not found between cluster membership and Montreal
+location. 
+
+
 ```{R}
-chisq.test(cd.pheno$class, cd.pheno$Location) %>%
+cd.pheno %>%
+  with(chisq.test(class,Location)) %>%
   pander()
 ```
 
@@ -645,10 +491,21 @@ print(p)
 
 #### Upper GI inflammation
 
+Upper inflammation refers to any gastrointestinal inflammation further up than
+the ileum. Usually, upper inflammation is considered a _modifier_ for Montreal
+location and is denoted L4. 
+
+The presence of upper GI inflammation was found to be significantly associated
+with cluster membership. 
+
 ```{R}
-fisher.test(cd.pheno$class, cd.pheno$L4, workspace = 200000000) %>%
+cd.pheno %>%
+  with(fisher.test(class, L4, workspace = 200000000)) %>%
   pander()
 ```
+
+Cluster FC 2 appears to be enriched for CD subjects with L4 whilst a very low
+percentage of CD subjects in FC 4 have L4.
 
 ```{R}
 cd.pheno %>%
@@ -670,10 +527,26 @@ cd.pheno %>%
 
 #### Montreal behaviour
 
+Montreal behaviour describes another clinical phenotype and is defined as
+follows:
+
+* B1: Inflammatory, in other words non-stricturing and non-penetrating
+* B2: Stricturing, where the formation of fibrosis leads to the narrowing of the
+  intestine.
+* B3: Penetrating, where the inflammation causes the formation of fistulas or
+  abscesses.
+
+Montreal behaviour was found to be significantly associated with cluster
+membership at the 5% significance level.
+
 ```{R}
 fisher.test(cd.pheno$class, cd.pheno$Behaviour, simulate.p.value = TRUE) %>%
   pander()
 ```
+
+Whilst the inflammatory phenotype appears to be mostly evenly distributed across
+the clusters, substantial differences are seen for stricturing disease and even
+starker differences for penetrating. 
 
 ```{R}
 #| label: fig-fc-behaviour-facet
@@ -743,10 +616,18 @@ print(p)
 
 #### Perianal disease
 
+Perianal disease is considered a modifier for Montreal behaviour and is a severe
+complication of Crohn's disease involving inflammation around the anus.
+
+Presence of perianal disease was not found to be significantly associated with
+cluter membership for CD subjects. 
+
 ```{R}
-fisher.test(cd.pheno$class, cd.pheno$Perianal, workspace = 20000000) %>%
+cd.pheno %>%
+  with(fisher.test(class, Perianal, workspace = 20000000)) %>%
   pander()
 ```
+
 
 ```{R}
 cd.pheno %>%
