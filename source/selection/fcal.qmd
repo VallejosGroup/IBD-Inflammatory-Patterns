@@ -764,7 +764,7 @@ for (G in G.fcal) {
     ids.clust <- subset(models.fcal[[G]]$pprob, class == clust)$ids
     n.clust <- length(ids.clust)
     rand <- sample(n.clust, n.clust) # Randomise the order of the ids
-    iters <- floor(n.clust / 6) # How many groups of five are there? 
+    iters <- floor(n.clust / 6) # How many groups of six are there? 
     
     # Matrix to hold the smoothed data
     fcal.ma <- matrix(NA, nrow = iters, ncol = 7)

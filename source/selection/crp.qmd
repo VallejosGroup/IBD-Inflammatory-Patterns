@@ -354,56 +354,110 @@ buildDT(crp.metrics)
 
 #### Spaghetti plots per cluster
 
-::: {.panel-tabset}
 
-```{R Processed CRP spaghetti plots}
-#| results: "asis"
+
+```{R}
+
 for (G in G.crp) {
-  cat("\n\n")
-  cat(paste0("##### G = ", G, "\n\n"))
-  cat("###### Processed CRP \n\n")
-
-  if (G == 8) {
-    cairo_pdf("paper/crp-trajectories.pdf", width = 8, height = 12)
-    grid::grid.newpage()
-    spaghettiPlot(crp_median,
-      models.crp.ma,
-      G,
-      var.time = "crp_time",
-      tmax = 6.25,
-      knots = FALSE,
-      ylim = "data",
-      sizes = TRUE
+  # Data frame to hold processed data
+  new.crp <- data.frame(
+    ids = numeric(),
+    crp_result = numeric(),
+    crp_time = numeric(),
+    class = numeric()
+  )
+  
+  for (clust in 1:G) {
+    ids.clust <- subset(models.crp.ma[[G]]$pprob, class == clust)$ids
+    n.clust <- length(ids.clust)
+    rand <- sample(n.clust, n.clust) # Randomise the order of the ids
+    iters <- floor(n.clust / 6) # How many groups of six are there?
+  
+    # Matrix to hold the smoothed data
+    crp.ma <- matrix(NA, nrow = iters, ncol = 7)
+    for (i in 0:(iters - 1)) {
+      # Find ids for group of five
+      ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
+      crp.subset <- subset(crp_median, ids %in% ids.select)
+      # Median process as per CRP preprocessing
+      for (j in seq(0, 6)) {
+        if (j == 6) {
+          sub.obs <- subset(
+            crp.subset,
+            crp_time >= j - 0.5 & crp_time <= j + 1
+          )
+        } else {
+          sub.obs <- subset(
+            crp.subset,
+            crp_time >= j - 0.5 & crp_time < j + 0.5
+          )
+        }
+        if (nrow(sub.obs) > 0) {
+          crp.ma[i + 1, j + 1] <- median(sub.obs$crp_result)
+        }
+      }
+    }
+  
+    rownames(crp.ma) <- 1:iters
+    crp.ma <- reshape2::melt(t(crp.ma),
+                             id.vars = row.names(crp.ma),
+                             na.rm = TRUE
     )
-    dev.off()
+    colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
+    crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
+    crp.ma$crp_time <- crp.ma$crp_time - 1
+    # Take into account uneven spacing at start and end
+    crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+      from = c(0, 6),
+      to = c(0.25, 6.25)
+    )
+    crp.ma$class <- clust # Identify cluster assignment
+    new.crp <- rbind(new.crp, crp.ma)
   }
-
+  
+  cairo_pdf(paste0("plots/spaghetti/crp-", G, ".pdf"), width = 10, height = 14)
   grid::grid.newpage()
-  spaghettiPlot(crp_median,
+  spaghettiPlot(new.crp,
     models.crp.ma,
     G,
-    var.time = "crp_time",
+    clusters = TRUE,
     tmax = 6.25,
-    knots = TRUE,
+    sizes = TRUE,
+    var.time = "crp_time",
     ylim = "data"
   )
-  cat("\n\n")
-  cat("###### Unprocessed CRP \n\n")
+  invisible(dev.off())
+  
+  png(paste0("plots/spaghetti/crp-", G, ".png"),
+    width = 10,
+    height = 14,
+    units = "in",
+    res = 300
+  )
   grid::grid.newpage()
-  spaghettiPlot(crp,
+  spaghettiPlot(new.crp,
     models.crp.ma,
-    G = G,
-    log = TRUE,
-    tmax = 7,
+    G,
+    clusters = TRUE,
+    tmax = 6.25,
     sizes = TRUE,
-    knots = TRUE,
-    knot.type = "equal",
-    var.time = "crp_time"
+    var.time = "crp_time",
+    ylim = "data"
+  )
+  invisible(dev.off())
+  
+  grid::grid.newpage()
+  spaghettiPlot(new.crp,
+    models.crp.ma,
+    G,
+    clusters = TRUE,
+    tmax = 6.25,
+    sizes = TRUE,
+    var.time = "crp_time",
+    ylim = "data"
   )
 }
 ```
-
-:::
 
 
 ## IBD Association
@@ -533,108 +587,6 @@ aov(Cluster ~ Count, data = counts.by.clust) %>%
   summary() %>%
   pander()
 ```
-
-## Five-individual median trends
-
-Subjects grouped into pseudo-subjects derived from five subjects. 
-
-```{R}
-# Data frame to hold processed data
-new.crp <- data.frame(
-  ids = numeric(),
-  crp_result = numeric(),
-  crp_time = numeric(),
-  class = numeric()
-)
-
-for (clust in 1:8) {
-  ids.clust <- subset(dict.crp.median, cluster == clust)$ids
-  n.clust <- length(ids.clust)
-  rand <- sample(n.clust, n.clust) # Randomise the order of the ids
-  iters <- floor(n.clust / 5) # How many groups of five are there?
-
-  # Matrix to hold the smoothed data
-  crp.ma <- matrix(NA, nrow = iters, ncol = 7)
-  for (i in 0:(iters - 1)) {
-    # Find ids for group of five
-    ids.select <- ids.clust[rand[((i * 5) + 1):((i * 5) + 5)]]
-    crp.subset <- subset(crp_median, ids %in% ids.select)
-    # Median process as per CRP preprocessing
-    for (j in seq(0, 6)) {
-      if (j == 6) {
-        sub.obs <- subset(
-          crp.subset,
-          crp_time >= j - 0.5 & crp_time <= j + 1
-        )
-      } else {
-        sub.obs <- subset(
-          crp.subset,
-          crp_time >= j - 0.5 & crp_time < j + 0.5
-        )
-      }
-      if (nrow(sub.obs) > 0) {
-        crp.ma[i + 1, j + 1] <- median(sub.obs$crp_result)
-      }
-    }
-  }
-
-  rownames(crp.ma) <- 1:iters
-  crp.ma <- reshape2::melt(t(crp.ma),
-    id.vars = row.names(crp.ma),
-    na.rm = TRUE
-  )
-  colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
-  crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
-  crp.ma$crp_time <- crp.ma$crp_time - 1
-  # Take into account uneven spacing at start and end
-  crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
-    from = c(0, 6),
-    to = c(0.25, 6.25)
-  )
-  crp.ma$class <- clust # Identify cluster assignment
-  new.crp <- rbind(new.crp, crp.ma)
-}
-
-cairo_pdf("paper/CRP-8-cluster-smoothed.pdf", width = 8, height = 12)
-grid::grid.newpage()
-spaghettiPlot(new.crp,
-  models.crp.ma,
-  8,
-  clusters = TRUE,
-  tmax = 7,
-  var.time = "crp_time",
-  ylim = "data"
-)
-invisible(dev.off())
-
-png("paper/CRP-8-cluster-smoothed.png",
-  width = 8,
-  height = 12,
-  units = "in",
-  res = 300
-)
-grid::grid.newpage()
-spaghettiPlot(new.crp,
-  models.crp.ma,
-  8,
-  clusters = TRUE,
-  tmax = 7,
-  var.time = "crp_time",
-  ylim = "data"
-)
-invisible(dev.off())
-
-grid::grid.newpage()
-spaghettiPlot(new.crp,
-  models.crp.ma,
-  8,
-  clusters = TRUE,
-  tmax = 7,
-  var.time = "crp_time",
-  ylim = "data"
-)
-```
-
 
 ## Acknowledgments {.appendix}
 
