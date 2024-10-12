@@ -70,7 +70,7 @@ rm(G.cand, G.cands)
 
 
 ```{R}
-fcal.pprob <- models.fcal[[6]]$pprob
+fcal.pprob <- models.fcal[[8]]$pprob
 crp.pprob <- models.crp[[8]]$pprob
 
 fcal.ids <- fcal.pprob$ids
