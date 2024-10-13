@@ -424,6 +424,31 @@ dict %>%
   wrap_table(gt(quants), space = "free_y") 
 ```
 
+We will now consider baseline FC for the subset of subjects included in both 
+the FC and CRP analyses. 
+
+```{R}
+quants <- dict %>%
+  filter(!is.na(baseline_crp)) %>%
+  filter(!is.na(baseline_fc)) %>%
+  select(baseline_fc) %>%
+  quantile(na.rm = TRUE,
+           probs = c(0.25, 0.5, 0.75)) %>%
+  data.frame()
+quants <- cbind(rownames(quants), round(quants, 2))
+colnames(quants) <- c("Quantile", "Baseline FC")
+
+dict %>%
+  filter(!is.na(baseline_crp)) %>%
+  filter(!is.na(baseline_fc)) %>%
+  ggplot(aes(x = baseline_fc)) +
+  geom_density(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Baseline FC") +
+  ylab("Density") +
+  wrap_table(gt(quants), space = "free_y") 
+```
+
 #### CRP
 
 ```{R}
@@ -437,6 +462,32 @@ colnames(quants) <- c("Quantile", "Baseline CRP")
 
 dict %>%
   filter(!is.na(baseline_crp)) %>%
+  ggplot(aes(x = baseline_crp)) +
+  geom_density(fill = "#EF2D56", color =   "#BE2544") +
+  theme_minimal() +
+  xlab("Baseline CRP") +
+  ylab("Density") +
+  wrap_table(gt(quants), space = "free_y") 
+```
+
+We will now consider baseline CRP for the subset of subjects included in both 
+the FC and CRP analyses. 
+
+```{R}
+quants <- dict %>%
+  filter(!is.na(baseline_crp)) %>%
+  filter(!is.na(baseline_fc)) %>%
+  select(baseline_crp) %>%
+  quantile(na.rm = TRUE, probs = c(0.25, 0.5, 0.75)) %>%
+  data.frame()
+
+quants <- cbind(rownames(quants), round(quants, 2))
+colnames(quants) <- c("Quantile", "Baseline CRP")
+
+
+dict %>%
+  filter(!is.na(baseline_crp)) %>%
+  filter(!is.na(baseline_fc)) %>%
   ggplot(aes(x = baseline_crp)) +
   geom_density(fill = "#EF2D56", color =   "#BE2544") +
   theme_minimal() +
