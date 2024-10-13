@@ -252,7 +252,7 @@ perc.table <- data.frame(
   perc = numeric()
 )
 for (g in 1:8) {
-  temp.1 <- subset(dict.fc, class == paste0("FC ", g))
+  temp.1 <- subset(dict.fc, class == g)
   for (diag in c("Crohn's Disease", "Ulcerative Colitis", "IBDU")) {
     perc <- nrow(subset(temp.1, diagnosis == diag)) / nrow(temp.1)
     perc.table <- rbind(
@@ -432,7 +432,7 @@ perc.table <- data.frame(
   perc = numeric()
 )
 for (g in 1:8) {
-  temp.1 <- subset(cd.pheno, class == paste0("FC ", g))
+  temp.1 <- subset(cd.pheno, class ==  g)
   for (loc in c("L1", "L2", "L3")) {
     perc <- nrow(subset(temp.1, Location == loc)) / nrow(temp.1)
     perc.table <- rbind(
@@ -557,7 +557,7 @@ perc.table <- data.frame(
   perc = numeric()
 )
 for (g in 1:8) {
-  temp.1 <- subset(cd.pheno, class == paste0("FC ", g))
+  temp.1 <- subset(cd.pheno, class == g)
   for (beh in c("B1", "B2", "B3")) {
     perc <- nrow(subset(temp.1, Behaviour == beh)) / nrow(temp.1)
     perc.table <- rbind(
@@ -674,7 +674,7 @@ pred.fc.df.update <- predictY(model.fc, pred.fc.df,
 
 temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
 
-for (g in 1:6) {
+for (g in 1:8) {
   temp <- rbind(
     temp,
     data.frame(
@@ -687,7 +687,7 @@ for (g in 1:6) {
 
 dict.fc.cd$timeToTherapy <- with(dict.fc.cd, startDate - date.of.diag) / 365.25
 
-for (g in 1:6) {
+for (g in 1:8) {
   p1 <- temp %>%
     filter(Cluster == g) %>%
     ggplot(aes(x = Time, y = Value)) +
@@ -697,12 +697,12 @@ for (g in 1:6) {
     xlab("") +
     ylab("Log (FCAL (\u03BCg/g))")
   p2 <- dict.fc.cd %>%
-    filter(class == paste0("FC ", g)) %>%
+    filter(class == g) %>%
+    filter(timeToTherapy > 0) %>%
     ggplot(aes(x = timeToTherapy)) +
     geom_density(color = "#5D002F", fill = "#82204A") +
     theme_minimal() +
     xlim(0, 7) +
-    ylim(0, 0.7) +
     xlab("Time") +
     ylab("Density of time to first advanced therapy")
   p <- p1 / p2 + plot_annotation(
