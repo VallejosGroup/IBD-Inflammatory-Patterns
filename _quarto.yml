@@ -8,7 +8,6 @@ project:
     - "images/cgem-logo.png"
     - "images/GitHub-Mark-32px.png"
     - "images/MRC_HGU_Edinburgh RGB.png"
-    - "theme.css"
   render:
     - "index.qmd"
     - "source/pre/preprocessing.qmd"
@@ -24,9 +23,8 @@ project:
 format:
   html:
     theme:
-      light: [default]
+      light: [default, theme.scss]
       dark: [darkly]
-    css: theme.css
     code-fold: true
     code-link: true
     toc: true
@@ -40,14 +38,15 @@ format:
 
 website:
   title: "Analysis by Constantine-Cooke et al."
-  favicon: "favicon.png"
   twitter-card:
-    creator: "@nathansam"
+    creator: "@IBDNathan"
     site: "@EdinUni_IGC"
+  favicon: "favicon.png"
   page-navigation: true
   open-graph: true
   navbar:
-    background: "#004276"
+    background: "#F02D3A"
+    foreground: "white"
     search: true
     right:
       - href: index.qmd
@@ -73,13 +72,13 @@ website:
       - icon: github
         href: "https://github.com/VallejosGroup/Lothian-IBDR"
   page-footer:
+    background: "#F02D3A"
     right:
       - icon: twitter
         href: https://x.com/IBDNathan
   repo-url: https://github.com/VallejosGroup/Lothian-IBDR
   repo-actions: [issue]
   reader-mode: true
-
 bibliography: references.bib
 google-scholar: true
 date: "last-modified"

@@ -1,0 +1,95 @@
+
+/* base variables */
+
+  /* Edit the CSS properties in this file to create a custom theme.
+/* (adapted from distill CSS)
+
+/* Optional: embed custom fonts here with `@import`          */
+  /* This must remain at the top of this file.                 */
+
+
+/*-- scss:defaults --*/
+
+
+/*-- scss:rules --*/
+
+@import url('https://fonts.googleapis.com/css2?family=Mulish');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300');
+
+.code-tools-button {
+  background-color: #F02D3A !important;
+}
+
+.navbar {
+  font-family: 'Lato', sans-serif;
+}
+
+.title {
+  font-family: 'Lato', sans-serif;
+}
+
+div.center{
+  margin: auto;
+  width: 531px !important;
+}
+
+img.center{
+  padding-right: 20px;
+}
+
+h1, h2, h3, h4 {
+  color: #120D31 !important;
+}
+
+
+.navbar-title span {
+  color: white !important;
+}
+
+
+.b-twitter i {
+  color: white !important;
+}
+
+.dropdown-menu ul {
+  color: #120D31 !important;
+}
+
+
+h5 {
+  color: #dff1f3 !important;
+}
+
+.output {
+  padding-left: 30% !important;
+}
+
+
+.sidebar-menu-container a {
+  color: gray !important;
+}
+
+.sidebar-menu-container a.active {
+  color: #F02D3A !important;
+}
+
+
+.sidebar-menu-container a:hover {
+    color: #F02D3A !important;
+}
+
+
+.quarto-title-meta-author a {
+  color:gray !important;
+}
+
+
+.sidebar nav[role=doc-toc] ul>li>a.active, .sidebar nav[role=doc-toc] ul>li>ul>li>a.active {
+    border-left: 1px solid #F02D3A !important;
+    color: #F02D3A !important;
+}
+
+.sidebar nav[role=doc-toc] ul>li>a:hover, .sidebar nav[role=doc-toc] ul>li>ul>li>a:hover {
+    color: #F02D3A !important;
+}
