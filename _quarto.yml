@@ -19,6 +19,7 @@ project:
     - "source/post/FCALvsCRP.qmd"
     - "source/post/Diagnosis.qmd"
     - "not-found.qmd"
+  post-render: scripts/outline-traj.R
   execute-dir: project
 format:
   html:
