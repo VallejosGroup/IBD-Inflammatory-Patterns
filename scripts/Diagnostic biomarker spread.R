@@ -11,11 +11,11 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
 
 
 fc.dist <- readRDS(paste0(prefix, "processed/fc-diag-dist.RDS"))
-model.fcal <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-6.RDS"))
+model.fcal <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
 
 fc.dist <- subset(fc.dist, ids %in% model.fcal$pprob$ids)
 fc.dist <- merge(fc.dist, model.fcal$pprob[, c("ids", "class")], by = "ids")
-
+fc.dist$class <- paste("FC", fc.dist$class)
 
 p <- fc.dist %>%
   ggplot(aes(x = diagnostic * 365.25)) +
@@ -24,8 +24,13 @@ p <- fc.dist %>%
   labs(y = "Density",
        x = "Time from diagnosis to first faecal calprotectin (days)") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
-  facet_grid(rows = vars(class), scales = "free_y")
+  facet_grid(rows = vars(class))
 ggsave("plots/fc-diagnostic-dist-cluster.png",
+       p,
+       width = 16 * 2/3,
+       height = 18 * 2/3,
+       units = "in")
+ggsave("plots/fc-diagnostic-dist-cluster.pdf",
        p,
        width = 16 * 2/3,
        height = 18 * 2/3,
@@ -37,7 +42,7 @@ model.crp <- readRDS(paste0(prefix, "/cache/crp-ma/crp-8.RDS"))
 
 crp.dist <- subset(crp.dist, ids %in% model.crp$pprob$ids)
 crp.dist <- merge(crp.dist, model.crp$pprob[, c("ids", "class")], by = "ids")
-
+crp.dist$class <- paste("CRP", crp.dist$class)
 
 
 p <- crp.dist %>%
@@ -47,8 +52,13 @@ p <- crp.dist %>%
   labs(y = "Density",
        x = "Time from diagnosis to first CRP (days)") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
-  facet_grid(rows = vars(class), scales = "free_y")
+  facet_grid(rows = vars(class))
 ggsave("plots/crp-diagnostic-dist-cluster.png",
+       p,
+       width = 16 * 2/3,
+       height = 20 * 2/3,
+       units = "in")
+ggsave("plots/crp-diagnostic-dist-cluster.pdf",
        p,
        width = 16 * 2/3,
        height = 20 * 2/3,
