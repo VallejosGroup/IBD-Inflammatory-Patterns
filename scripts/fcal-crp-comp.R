@@ -164,7 +164,7 @@ col.vec.ibd <- c(
   "IBDU" = "#329F5B"
 )
 
-for (G in 2:7) { # No G = 8 for FCAL
+for (G in 2:8) { # No G = 8 for FCAL
   comp.mat <- compareClustering(G, models.fcal, models.crp)
 
   ids.fcal <- models.fcal[[G]]$pprob$ids
@@ -239,7 +239,7 @@ col.vec.ibd <- c(
   "IBDU" = "#329F5B"
 )
 
-for (G in 2:7) {
+for (G in 2:8) {
   comp.mat <- compareClustering(G, models.fcal, models.crp, cutoff = TRUE)
 
   ids.fcal <- models.fcal[[G]]$pprob[apply(models.fcal[[G]]$pprob[, c(-1, -2)] > 0.8, 1, any), ]$ids
@@ -305,7 +305,7 @@ for (G in 2:7) {
   dev.off()
 }
 
-fcal.pprob <- models.fcal[[6]]$pprob
+fcal.pprob <- models.fcal[[8]]$pprob
 crp.pprob <- models.crp[[8]]$pprob
 
 fcal.ids <- fcal.pprob$ids
