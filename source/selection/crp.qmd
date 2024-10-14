@@ -47,7 +47,6 @@ library(libdr)
 ## Modelling ##
 library(lcmm)
 library(kml) # K-means
-library(mice) # Imputation
 ## Presentation ##
 library(patchwork)
 library(ggdist)
@@ -184,6 +183,45 @@ for (format in c("png", "pdf")) {
 }
 
 saveRDS(p, paste0(prefix, "processed/plots/crp-alluvial.RDS"))
+```
+
+```{R Processed CRP alluvial no switching}
+#| label: fig-crp-alluvial-ma-noswitch
+#| fig-cap: Alluvial plot of cluster membership across G for CRP without label switching
+
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("ids", "class", "G")
+
+for (G in G.crp) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.crp.ma[[G]]$pprob[, 1:2],
+    G = G
+  ))
+}
+alluvial.df <- as.data.frame(alluvial.df)
+
+alluvial.df$ids <- as.character(alluvial.df$ids)
+alluvial.df$class <- as.factor(alluvial.df$class)
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = rainbow(10)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
 ```
 
 ## Posterior classifications

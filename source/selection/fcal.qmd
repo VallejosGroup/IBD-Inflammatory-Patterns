@@ -47,7 +47,6 @@ library(libdr)
 ## Modelling ##
 library(lcmm)
 library(kml) # K-means
-library(mice) # Imputation
 ## Presentation ##
 library(patchwork)
 library(ggdist)
@@ -446,6 +445,13 @@ alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
   )
 
 
+alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 10, "class"],
+    from = c(seq(1, 10)),
+    to = c(2, 4, 9, 1, 7, 10, 6, 8, 5, 3)
+  )
+
+
 p <- ggplot(
   alluvial.df,
   aes(
@@ -556,6 +562,7 @@ pprobs.6 <- c(); groups.6 <- models.fcal[[6]]
 pprobs.7 <- c(); groups.7 <- models.fcal[[7]]
 pprobs.8 <- c(); groups.8 <- models.fcal[[8]]
 pprobs.9 <- c(); groups.9 <- models.fcal[[9]]
+pprobs.10 <- c(); groups.10 <- models.fcal[[10]]
 
 
 for (i in 1:nrow(models.fcal[[2]]$pprob)){
@@ -574,7 +581,9 @@ for (i in 1:nrow(models.fcal[[2]]$pprob)){
   class.8 <- groups.8$pprob[i, 2]
   pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2 ])
   class.9 <- groups.9$pprob[i, 2]
-  pprobs.9 <- c(pprobs.8, groups.9$pprob[i, class.8 + 2 ])
+  pprobs.9 <- c(pprobs.9, groups.9$pprob[i, class.9 + 2 ])
+  class.10 <- groups.10$pprob[i, 2]
+  pprobs.10 <- c(pprobs.10, groups.10$pprob[i, class.10 + 2 ])
 }
 pprobs.2 <- tibble(prob = pprobs.2)
 pprobs.3 <- tibble(prob = pprobs.3)
@@ -584,6 +593,7 @@ pprobs.6 <- tibble(prob = pprobs.6)
 pprobs.7 <- tibble(prob = pprobs.7)
 pprobs.8 <- tibble(prob = pprobs.8)
 pprobs.9 <- tibble(prob = pprobs.9)
+pprobs.10 <- tibble(prob = pprobs.10)
 
 pprobs.2$Model <- as.factor(rep("Two clusters", nrow(pprobs.2)))
 pprobs.3$Model <- as.factor(rep("Three clusters", nrow(pprobs.3)))
@@ -593,6 +603,7 @@ pprobs.6$Model <- as.factor(rep("Six clusters", nrow(pprobs.6)))
 pprobs.7$Model <- as.factor(rep("Seven clusters", nrow(pprobs.7)))
 pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
 pprobs.9$Model <- as.factor(rep("Nine clusters", nrow(pprobs.9)))
+pprobs.10$Model <- as.factor(rep("Ten clusters", nrow(pprobs.10)))
 pprobs <- rbind(pprobs.2,
                 pprobs.3,
                 pprobs.4,
@@ -600,7 +611,8 @@ pprobs <- rbind(pprobs.2,
                 pprobs.6,
                 pprobs.7,
                 pprobs.8,
-                pprobs.9)
+                pprobs.9,
+                pprobs.10)
 
 p <- pprobs %>%
   ggplot(aes(x = prob, y = Model)) +
@@ -716,7 +728,7 @@ ggsave("paper/cluster-resids-ncs.pdf",
 )
 print(ArrangedPlot)
 ```
-:::
+
 
 #### Model metrics
 
@@ -748,10 +760,10 @@ The optimum AIC is <b>
 
 #### Spaghetti plots per cluster
 
-::: {.panel-tabset}
+
 
 ```{R FCAL spaghetti plots}
-#| results: "asis"
+
 
 for (G in G.fcal) {
   # Data frame to hold processed data
@@ -835,7 +847,7 @@ for (G in G.fcal) {
                 knots = FALSE,
                 var.time = "calpro_time",
                 clusters = TRUE)
-  dev.off()
+  invisible(dev.off())
   
   cairo_pdf(paste0("plots/spaghetti/fcal-ncs-", G, ".pdf"),
     width = 10,
@@ -850,10 +862,10 @@ for (G in G.fcal) {
                 knots = FALSE,
                 var.time = "calpro_time",
                 clusters = TRUE)
-  dev.off()
+  invisible(dev.off())
   
   grid::grid.newpage()
-  spaghettiPlot(new.fc,
+  print(spaghettiPlot(new.fc,
                 models.fcal,
                 G = G,
                 log = TRUE,
@@ -861,13 +873,10 @@ for (G in G.fcal) {
                 sizes = TRUE,
                 knots = FALSE,
                 var.time = "calpro_time",
-                clusters = TRUE)
+                clusters = TRUE))
   
 }
 ```
-
-:::
-
 
 
 #### IBD Association
@@ -1436,10 +1445,8 @@ The optimum AIC is <b>
 
 #### Spaghetti plots per cluster
 
-::: {.panel-tabset}
 
 ```{R grbf spaghetti plots}
-#| results: "asis"
 for (G in G.grbf) {
   cat(paste0("##### G = ", G, "\n\n"))
   cat("###### Log-scale, all subjects \n\n")
@@ -1458,7 +1465,6 @@ for (G in G.grbf) {
 }
 ```
 
-:::
 
 #### IBD Associations
 

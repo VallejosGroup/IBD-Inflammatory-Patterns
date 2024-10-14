@@ -34,26 +34,26 @@ x <- 1 # If there's no code block then inline R code below won't work.
 ## About
 
 This website presents the analyses carried out for
-*Large-scale clustering of longitudinal faecal calprotectin and CRP profiles in inflammatory bowel disease*
+*Large-scale clustering of longitudinal faecal calprotectin and C-reactive protein profiles in inflammatory bowel disease*
 by Constantine-Cooke et al. In this work, we expand upon our previous research
-which clustered faecal calprotectin profiles for a subset of Crohn's disease
-patients [@constantine-cooke2023] by clustering faecal
-calprotectin (FC) and CRP profiles across all both Crohn's disease and
-ulcerative colitis patients treated by the NHS Lothian health board. 
+which clustered faecal calprotectin (FC) profiles for a subset of Crohn's
+disease patients [@constantine-cooke2023] by clustering FC and C-reactive
+protein (CRP) profiles across Crohn's disease, ulcerative colitis, and
+inflammatory bowel disease unclassified patients treated by the
+[NHS Lothian health board](https://www.nhslothian.scot/). 
 
-This analysis is designed to be run either inside or outside of a Docker
-container. File paths will be adjusted based on the detected environment. 
+The analysis pipeline for this project can be categorised into three stages:
 
-The analysis pipeline for this project consists of three stages:
-
-1. [Preprocessing](source/preprocessing/preprocessing.qmd) where data obtained from clinicians are
-   reformatted and any data quality issues are dealt with.
-2. Model selection, where latent class mixed models are fitted with differing
-   numbers of assumed clusters and the most appropriate model is selected.
-   Separate pages are available for
-   [faecal calprotectin](source/selection/fcal.qmd) and
-   [CRP](source/selection/crp.qmd).
-3. Post hoc analyses.
+1. _Before model fitting_, where data obtained from clinicians are
+   reformatted and any data quality issues are dealt with. Additionally, 
+   baseline data (i.e data available at diagnosis) were explored via descriptive
+   analyses.
+2. _Model fitting_, where latent class mixed models are fitted with differing
+   numbers of assumed clusters and the most appropriate models are chosen for
+   FC and CRP. 
+3. _After model fitting_, where post hoc associations between baseline data and
+   cluster membership are explored. The relationship between FC and CRP
+   clustering is also analysed. 
    
 ## Using this website
 

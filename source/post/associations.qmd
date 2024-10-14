@@ -32,8 +32,6 @@ library(tidyverse)
 library(libdr)
 ## Modelling ##
 library(lcmm)
-library(kml) # K-means
-library(mice) # Imputation
 library(nnet) # Multinomial logistic regression
 ## Survival analysis
 library(survival)
