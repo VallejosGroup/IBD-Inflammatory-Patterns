@@ -672,13 +672,6 @@ fcal <- merge(fcal,
               dict[, c("ids", "diagnosis", "date.of.diag")],
               by = "ids",
               all.x = TRUE)
-
-# Removal of duplicates
-fcal <- fcal %>% distinct(ids,
-  calpro_date,
-  calpro_result,
-  .keep_all = TRUE
-)
 ```
 
 ### Test results
@@ -743,7 +736,7 @@ fcal <- fcal[!is.na(fcal[, "calpro_result"]), ]
 # range(fcal$calpro_result)
 fcal[fcal[, "calpro_result"] < 20, "calpro_result"] <- 20
 fcal[fcal[, "calpro_result"] > 1250, "calpro_result"] <- 1250
-range(fcal$calpro_result)
+#range(fcal$calpro_result)
 ```
 
 ```{r fig-fcal-meas}
@@ -789,8 +782,11 @@ fcal %>%
 
 ### Quality control for duplicates
 
-<!--- CAV: explain what you are doing here ---> 
+<!--- CAV: explain what you are doing in this section. Note that I removed the
+early code for duplicate removal, as it should be covered by the code below ---> 
 
+
+<!--- CAV: this chunk with fuzzy.duplicated.ids can be removed, no? --->  
 ```{R}
 fuzzy.duplicated.ids <- c()
 
@@ -867,7 +863,9 @@ FCcountsdf %>%
 
 ### Number of FCAL measurements prior to diagnosis
 
-We consider measurements taken 30 days before diagnosis. As it can be seen in 
+<!--- CAV: remove this code, but keep as a back-up elsewhere ---> 
+
+We consider measurements taken more than 90 days before diagnosis. As it can be seen in 
 
 ```{r fcal before diagnosis}
 fcal.sorted <- fcal %>% 
@@ -903,36 +901,9 @@ mydf %>%
 table(mydf$n.before.diag)
 table(mydf$n.high.before.diag)
 
-aux <- mydf$ids[mydf$n.high.before.diag == 7]
-
-fcal.sorted %>% subset(ids == 59302) 
-# lots of high results 7 years prior diagnosis
-# also: do we have duplicated measurements?
-# individual is included, but we lost many measurementss
+# examine some examples
+aux <- mydf$ids[mydf$n.high.before.diag == 5]
 fcal.sorted %>% subset(ids %in% aux[1])
-fcal.sorted %>% subset(ids %in% aux[2])
-# high results about 1 year prior to diagnosis
-# individual is excluded as there is no diagnostic time
-fcal.sorted %>% subset(ids %in% aux[3]) 
-# like individual 1
-fcal.sorted %>% subset(ids %in% aux[4]) 
-fcal.sorted %>% subset(ids %in% aux[5]) 
-fcal.sorted %>% subset(ids %in% aux[6]) 
-fcal.sorted %>% subset(ids %in% aux[7]) 
-
-
-fcal.sorted %>% subset(ids %in% 9561) 
-fcal.sorted %>% subset(ids %in% 18532) 
-fcal.sorted %>% subset(ids %in% 35849) 
-
-dict %>% subset(date.of.diag.outcomes - date.of.diag.updated > 365)
-
-fcal.sorted %>% subset(ids %in% 778)  
-fcal.sorted %>% subset(ids %in% 901)  
-fcal.sorted %>% subset(ids %in% 1375)  
-fcal.sorted %>% subset(ids %in% 1599)  
-
-dict %>% subset(date.of.diag == as.Date("2000-01-01", "%Y-%m-%d"))
 ```
 
 
@@ -985,7 +956,7 @@ accordingly to maintain the same differences between measurement times.
 
 We also reduce the dataset to only subjects with a diagnostic FC which
 equates to subjects with a FCAL measurement within 3 months of diagnosis
-$t \leq 0.25$
+$t \leq 0.25$.
 
 ```{R FCAL retiming}
 #| label: fig-fcal-spag-post
@@ -1001,6 +972,8 @@ for (id in unique(fcal$ids)) {
 
 fcal <- subset(fcal, ids %in% diagnostic)
 ```
+
+The following code is used to save the cleaned data generated so far. 
 
 ```{R}
 diag.time <- c()
@@ -1020,9 +993,13 @@ if (!dir.exists(paste0(prefix, "processed"))) {
 }
 
 saveRDS(fc.dist, paste0(prefix, "processed/fc-diag-dist.RDS"))
+```
 
+Here, we also show the distribution of the diagnostic FCAL measurement with
+respect to diagnosis date (in days). 
 
-p <- fc.dist %>%
+```{r fcal days before diag}
+p <- fcal %>%
   ggplot(aes(x = diagnostic * 365.25)) +
   geom_density(fill = "#20A39E", color = "#187370") +
   theme_minimal() +
@@ -1035,6 +1012,8 @@ ggsave("plots/fc-diagnostic-dist.png",
        height = 6,
        units = "in")
 ```
+
+And, finally, we retime measurements/diagnosis time as described above.
 
 ```{R}
 # Retime so that t_0 = 0.
@@ -1094,6 +1073,9 @@ tab |>
 We have also plotted number of FC measurements for each subject against
 their follow-up to explore the relationship between these two attributes
 (@fig-n-fcal).
+
+<!--- CAV: edit the plot below such that it doesn't show individual dots, you
+could e.g. use geom_hex ---> 
 
 ```{R}
 #| label: fig-n-fcal
