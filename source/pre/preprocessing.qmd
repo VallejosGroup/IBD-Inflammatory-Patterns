@@ -352,7 +352,7 @@ remaining individuals have not died by the date of data extraction.
 
 ## Exploration of data disagreements
 
-<!--- CAV: we may remove this from the final website as it shows small counts ---> 
+<!--- CAV: Remove this from the final website as it shows small counts ---> 
 
 ```{R Create subject dictionary alternative}
 # From outcomes
@@ -672,9 +672,11 @@ fcal <- merge(fcal,
               dict[, c("ids", "diagnosis", "date.of.diag")],
               by = "ids",
               all.x = TRUE)
+
+dim(fcal)
 ```
 
-### Test results
+### Pre-processing of test results
 
 FC data can be both left and right censored. FC recorded as "\<20" were
 mapped to "20". FC recorded as "\>1250", "\>2500", or "\>6000" were all
@@ -832,6 +834,7 @@ message("There are ",
         " subjects who appear to have duplicated FC measurements")
 ```
 
+<!--- CAV: remove as similar plot is shown below 
 ### Observations per subject
 
 Although we explore the number of observations per subject in this
@@ -861,9 +864,11 @@ FCcountsdf %>%
   ylab("Count")
 ```
 
-### Number of FCAL measurements prior to diagnosis
+--->
 
-<!--- CAV: remove this code, but keep as a back-up elsewhere ---> 
+<!--- CAV: remove this code, but keep as a back-up elsewhere 
+
+### Number of FCAL measurements prior to diagnosis
 
 We consider measurements taken more than 90 days before diagnosis. As it can be seen in 
 
@@ -906,6 +911,7 @@ aux <- mydf$ids[mydf$n.high.before.diag == 5]
 fcal.sorted %>% subset(ids %in% aux[1])
 ```
 
+--->
 
 ### Retiming - part 1
 
@@ -927,8 +933,10 @@ for (i in 1:nrow(fcal)) {
 # Dates have already been converted to Date class by fix_date_char() for dict
 fcal$calpro_time <- as.numeric(fcal$calpro_date - diagnosis_date) / 365.25
 rm(i, diagnosis_date) # Tidy up
+dim(fcal)
 
-fcal <- fcal[!is.na(fcal[, "calpro_time"]), ]
+# CAV: this line is not doing anything!
+#fcal <- fcal[!is.na(fcal[, "calpro_time"]), ]
 
 fcal %>%
   ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
@@ -956,6 +964,7 @@ accordingly to maintain the same differences between measurement times.
 
 ```{r remove prediag fcal}
 fcal <- subset(fcal, calpro_time >= -0.25)
+dim(fcal)
 ```
 
 ### Inclusion/exclusion: removal of subjects without a diagnostic FC test
@@ -972,6 +981,7 @@ for (id in unique(fcal$ids)) {
 }
 
 fcal <- subset(fcal, ids %in% diagnostic)
+dim(fcal)
 ```
 
 After this exclusion, `r length(unique(fcal$ids))` remain in the data. 
@@ -1017,6 +1027,8 @@ for (id in unique(fcal$ids)) {
   }
 }
 
+length(unique(fcal$ids))
+
 fcal %>%
   ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
   geom_line(alpha = 0.2) +
@@ -1029,11 +1041,25 @@ fcal %>%
   ggtitle("")
 ```
 
+At this stage, we also exclude FCAL measurements recorded beyond 7-years post
+diagnosis. 
 
+```{r remove fcal after 7 years}
+fcal <- subset(fcal, calpro_time <= 7)
+dim(fcal)
+length(unique(fcal$ids))
+```
 
-The following code is used to save the cleaned data generated so far. 
+At this point, the data contains `r nrow(fcal)` FCAL measurements across all
+`r length(unique(fcal$ids))` individuals. 
 
-```{R}
+<!--- CAV: not sure why do you need this code as we don't really use fc.dist
+anywhere else. If this is about saving the diagnostic FCAL values, you can 
+match that by looking at the measurement such that time = 0 (after retiming) 
+
+```{R, eval = FALSE}
+##The following code is used to save the cleaned data generated so far. 
+
 diag.time <- c()
 fc.ids <-  unique(fcal$ids)
 
@@ -1053,74 +1079,187 @@ if (!dir.exists(paste0(prefix, "processed"))) {
 saveRDS(fc.dist, paste0(prefix, "processed/fc-diag-dist.RDS"))
 ```
 
+---> 
 
-### Minimum followup
+### Inclusion/exclusion: a minimum number of FCAL measurements
 
-We do not require a minimum follow-up for a subject as this may bias our
-findings. For example, UC patients who undergo a proctocolectomy
+Here, we summarise the number of observations per individual (with and without
+considering censored values) as well as length of follow-up. The latter is 
+defined as the difference (in years) between diagnosis time and the time of the 
+latest FCAL measurement. 
+
+```{r}
+countsDF <- fcal %>%
+  group_by(ids) %>%
+  summarise(n.total = n(),
+            censored.left = sum(calpro_result == 20),
+            censored.right = sum(calpro_result == 1250),
+            n.noncensored = n.total - censored.left - censored.right,
+            n.negtime.nondiag = sum(calpro_time != 0 & calpro_date - date.of.diag < 0),
+            followup = max(calpro_time))
+```
+
+
+```{R fcal followup pre exclusions}
+#| label: fig-fcal-follow-up
+#| fig-cap: "(A) Histogram of the number of FCAL measurements per subject. (B) Histogram of FCAL follow-up per subject (before exclusions). (C) Scatterplot with number of FCAL measurements vs follow-up."
+p1 <- countsDF %>%
+  ggplot(aes(x = n.total)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Measurements per subject")
+# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
+p2 <- countsDF %>%
+  ggplot(aes(x = followup)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Follow-up (years)")
+p3 <- countsDF %>%
+  ggplot(aes(y = n.total, x = followup)) +
+  geom_point(color = "#FF4F79", size = 2) +
+  xlab("Follow-up (years since diagnosis)") + 
+  ylab("Number of FCAL measurements") +
+  theme_minimal() +
+  geom_hline(yintercept = 3)
+
+p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+```
+
+Summary observations:
+
+- The number of FC measurements per subject is skewed towards low values. 
+However, there are also subjects with many FC observations. These subjects were 
+investigated and found to often have a complex disease course, such as acute 
+severe ulcerative colitis, and required close monitoring as a result.
+- We do not directly require a minimum follow-up for a subject as this may bias 
+our findings. For example, UC patients who undergo a proctocolectomy
 (surgical removal of the colon and rectum) are less likely to have FC
 measurements after their surgery than patients who did not require
 surgery. By applying criteria based on follow-up, we could indirectly
 exclude subjects based on disease outcomes.
+- However, the requirement of at least 3 FCAL measurements (within 7 years
+from diagnosis) will indirectly remove individuals with a very short follow-up time. 
 
-```{R}
-#| label: fig-fcal-follow-up
-#| fig-cap: "Histogram of FCAL follow-up per subject"
-tab <- matrix(ncol = 2, nrow = 0)
-colnames(tab) <- c("ids", "Followup")
-for (id in unique(fcal$ids)) {
-  followup <- max(subset(fcal, ids == id)$calpro_time)
-  tab <- rbind(tab, c(id, followup))
-}
+Note that our inclusion criteria requires at least 3 non-censored FCAL 
+measurements per individual. As such, censoring needs to be taken into account
+before applying filtering out individuals.
 
-tab <- as.data.frame(tab)
 
-tab |>
-  ggplot(aes(x = Followup)) +
+```{r}
+p1 <- countsDF %>%
+  ggplot(aes(x = n.noncensored)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
-  xlab("Followup (years)")
+  xlab("Number of non-censored measurements per subject")
+
+p2 <- countsDF %>%
+  ggplot(aes(y = n.noncensored, x = followup)) +
+  geom_point(color = "#FF4F79", size = 2) +
+  xlab("Follow-up (years since diagnosis)") + 
+  ylab("Number of non-censored FCAL measurements") +
+  theme_minimal() +
+  geom_hline(yintercept = 3)
+
+p1 + p2 + plot_annotation(tag_levels = 'A')
 ```
 
-We have also plotted number of FC measurements for each subject against
-their follow-up to explore the relationship between these two attributes
-(@fig-n-fcal).
+```{R calculate number of non censored FCAL}
+# Number of individuals with at least 3 FCAL measurements
+sum(countsDF$n.total >= 3)
 
-<!--- CAV: edit the plot below such that it doesn't show individual dots, you
-could e.g. use geom_hex ---> 
+# Number of individuals with at least 3 non-censored FCAL measurements
+sum(countsDF$n.noncensored >= 3)
+
+# Number of individuals with at least 3 non-censored FCAL measurements after
+# discarding non-diagnostic values with negative calpro_time
+sum(countsDF$n.noncensored - countsDF$n.negtime.nondiag >= 3)
+```
+
+<!--- CAV: remove 
+
+We now explore censored FC observations and begin by considering FC
+results which have been left-censored ($\leq 20 \mu g/g$). From
+@fig-left-censor-fcal, we can clearly see there are subjects with
+entirely left-censored FC observations (n =
+`r nrow(subset(countsDF, censored.left/count ==1))`).
 
 ```{R}
-#| label: fig-n-fcal
-#| fig-cap: "Number of FCAL measurements against follow-up for each subject"
-tab.temp <- tab
-hmm <- data.frame(
-  ids = names(table(fcal$ids)),
-  n = as.vector(table(fcal$ids))
-)
-tab.temp <- merge(tab.temp, hmm, by = "ids")
-tab.temp %>%
-  ggplot(aes(y = n, x = Followup)) +
-  geom_point(color = "#FF4F79", size = 2) +
-  ylab("Number of FCAL measurements") +
-  theme_minimal()
+#| label: fig-left-censor-fcal
+#| fig-cap: "Left-censored observations per subject"
+#  Hold results for no. of measurements and no. of censored obs per subject
+countsDF %>%
+  ggplot(aes(x = censored.left / n.total, y = n.total)) +
+  geom_point(alpha = 0.5, size = 0.9, color = "#70A288") +
+  ylab("Total number of observations") +
+  xlab("Proportion of left-censored observations") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = 3)
 ```
 
-### Measurement frequency
+--->
+
+The following is used to select individuals with at least 3 non-censored FCAL 
+measurements. 
 
 ```{R FCAL frequency}
-fcal <- subset(
-  fcal,
-  ids %in% as.numeric(
-    names(
-      table(fcal$ids)[table(fcal$ids) >= 3]
-    )
-  )
-)
+fcal <- fcal %>% 
+  subset(ids %in% countsDF$ids[countsDF$n.noncensored >= 3])
+
+length(unique(fcal$ids))
 ```
 
-We require a subject has at least three FC measurements across the
-follow-up period to meet our inclusion criteria.
+This leaves a cohort with `r length(unique(fcal$ids))` individuals.
+
+```{r fcal followup post exclusions}
+#| label: fig-fcal-follow-up
+#| fig-cap: "(A) Histogram of the number of FCAL measurements per subject. (B) Histogram of FCAL follow-up per subject (before exclusions). (C) Scatterplot with number of FCAL measurements vs follow-up. In all cases, only individuals with at least 3 non-censored measurements are included."
+p1 <- countsDF %>%
+  subset(n.noncensored >= 3) %>% 
+  ggplot(aes(x = n.total)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Measurements per subject")
+# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
+p2 <- countsDF %>%
+  subset(n.noncensored >= 3) %>% 
+  ggplot(aes(x = followup)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Follow-up (years)")
+p3 <- countsDF %>%
+  subset(n.noncensored >= 3) %>% 
+  ggplot(aes(y = n.total, x = followup)) +
+  geom_point(color = "#FF4F79", size = 2) +
+  xlab("Follow-up (years since diagnosis)") + 
+  ylab("Number of FCAL measurements") +
+  theme_minimal() +
+  geom_hline(yintercept = 3)
+
+p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+```
+
+Review individuals with a very low followup
+
+```{r very low followup FCAL}
+# CAV: Nathan to check posterior probs for the subjects in this table
+countsDF1 <- countsDF %>% 
+  subset(n.noncensored >= 3 & followup < 0.5) %>% 
+  arrange(followup)
+countsDF1
+
+fcal %>% 
+  subset(ids %in% countsDF1$ids) %>% 
+  arrange(ids, calpro_time)
+```
+
+<!--- CAV: this code is not needed as we set the max follow-up to 7;
+save as a backup elsewhere
 
 There are `r length(unique(fcal$ids))` subjects who have at least three
 FC measurements available (before [reducing the maximum
@@ -1315,25 +1454,7 @@ fcal <- subset(fcal, ids %in% keep$ids)
 This results in a cohort size of `r length(unique(fcal$ids))`
 (`r nrow(countsDF) - nrow(keep)` subjects removed).
 
-### 
-
-```{R}
-diag.time <- c()
-fc.ids <-  unique(fcal$ids)
-
-for (id in fc.ids) {
-  temp <- subset(fcal, ids == id)
-  temp <- temp[order(temp$calpro_time), ]
-  diag.time <- c(diag.time, temp[1, "calpro_time"])
-}
-
-data.frame(ids = fc.ids, diagnostic = diag.time) %>%
-  ggplot(aes(x = diagnostic * 365.25)) +
-  geom_density(fill = "#20A39E", color = "#187370") +
-  theme_minimal() +
-  labs(y = "Density", x = "Time from diagnosis to first FC (days)") 
-
-```
+--->
 
 ### Revisiting month of diagnosis
 
