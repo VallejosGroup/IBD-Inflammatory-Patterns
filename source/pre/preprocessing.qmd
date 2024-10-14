@@ -780,7 +780,7 @@ fcal %>%
   geom_vline(xintercept = log(250), colour = "red")
 ```
 
-### Quality control for duplicates
+### Removal of duplicate FCAL measurements
 
 <!--- CAV: explain what you are doing in this section. Note that I removed the
 early code for duplicate removal, as it should be covered by the code below ---> 
@@ -907,7 +907,7 @@ fcal.sorted %>% subset(ids %in% aux[1])
 ```
 
 
-### Retiming
+### Retiming - part 1
 
 Time of FC measurements were retimed and scaled to be the number of
 years since IBD diagnosis.
@@ -954,16 +954,17 @@ then all of their FCAL tests will be retimed such that their earliest FC
 within this period is equal to 0 and all later measurements are shifted
 accordingly to maintain the same differences between measurement times.
 
-We also reduce the dataset to only subjects with a diagnostic FC which
-equates to subjects with a FCAL measurement within 3 months of diagnosis
-$t \leq 0.25$.
+```{r remove prediag fcal}
+fcal <- subset(fcal, calpro_time >= -0.25)
+```
+
+### Inclusion/exclusion: removal of subjects without a diagnostic FC test
+
+As indicated in our inclusion/exclusion criteria, we reduce the dataset to only 
+subjects with a diagnostic FC. This equates to subjects with at least one FCAL 
+measurement within 3 months of diagnosis $t \leq 0.25$.
 
 ```{R FCAL retiming}
-#| label: fig-fcal-spag-post
-#| fig-cap: "Spaghetti plot of FC trajectories (processed)"
-fcal <- subset(fcal, calpro_time >= -0.25)
-
-
 diagnostic <- numeric()
 for (id in unique(fcal$ids)) {
   temp <- subset(fcal, ids == id)
@@ -972,6 +973,63 @@ for (id in unique(fcal$ids)) {
 
 fcal <- subset(fcal, ids %in% diagnostic)
 ```
+
+After this exclusion, `r length(unique(fcal$ids))` remain in the data. 
+
+### Retiming - part 2
+
+Here, we show the distribution of the diagnostic FCAL measurement with
+respect to diagnosis date (in days). 
+
+```{r fcal days before diag}
+p <- fcal %>% 
+  group_by(ids) %>%
+  filter(calpro_time == min(calpro_time)) %>%
+  ggplot(aes(x = calpro_time * 365.25)) +
+  geom_density(fill = "#20A39E", color = "#187370") +
+  theme_minimal() +
+  labs(y = "Density",
+       x = "Time from diagnosis to first faecal calprotectin (days)") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+
+ggsave("plots/fc-diagnostic-dist.png",
+       p,
+       width = 16 * 2/3,
+       height = 6,
+       units = "in")
+```
+
+Although most diagnostic mearurements were observed around the recorded 
+diagnosis time (mode near zero), this is not always the case. As such, we
+decided to retime measurements/diagnosis time as described above (i.e. time = 0
+matches the time of first available FCAL measurement).
+
+```{R}
+#| label: fig-fcal-spag-post
+#| fig-cap: "Spaghetti plot of FC trajectories (processed)"
+# Retime so that t_0 = 0.
+for (id in unique(fcal$ids)) {
+  temp <- subset(fcal, ids == id)
+  if (any(temp$calpro_time < 0)) {
+    add <- sort(temp$calpro_time)[1]
+    fcal[fcal[, "ids"] == id, "calpro_time"] <-
+      fcal[fcal[, "ids"] == id, "calpro_time"] + abs(add)
+  }
+}
+
+fcal %>%
+  ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.6) +
+  theme_minimal() +
+  scale_color_manual(values = viridis::viridis(length(unique(fcal$ids)))) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(FCAL (µg/g))") +
+  ggtitle("")
+```
+
+
 
 The following code is used to save the cleaned data generated so far. 
 
@@ -995,51 +1053,6 @@ if (!dir.exists(paste0(prefix, "processed"))) {
 saveRDS(fc.dist, paste0(prefix, "processed/fc-diag-dist.RDS"))
 ```
 
-Here, we also show the distribution of the diagnostic FCAL measurement with
-respect to diagnosis date (in days). 
-
-```{r fcal days before diag}
-p <- fcal %>%
-  ggplot(aes(x = diagnostic * 365.25)) +
-  geom_density(fill = "#20A39E", color = "#187370") +
-  theme_minimal() +
-  labs(y = "Density",
-       x = "Time from diagnosis to first faecal calprotectin (days)") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "red")
-ggsave("plots/fc-diagnostic-dist.png",
-       p,
-       width = 16 * 2/3,
-       height = 6,
-       units = "in")
-```
-
-And, finally, we retime measurements/diagnosis time as described above.
-
-```{R}
-# Retime so that t_0 = 0.
-for (id in unique(fcal$ids)) {
-  temp <- subset(fcal, ids == id)
-  if (any(temp$calpro_time < 0)) {
-    add <- sort(temp$calpro_time)[1]
-    fcal[fcal[, "ids"] == id, "calpro_time"] <-
-      fcal[fcal[, "ids"] == id, "calpro_time"] + abs(add)
-  }
-}
-
-fcal %>%
-  ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
-  geom_line(alpha = 0.2) +
-  geom_point(alpha = 0.6) +
-  theme_minimal() +
-  scale_color_manual(values = viridis::viridis(length(unique(fcal$ids)))) +
-  guides(color = "none") +
-  xlab("Time (years)") +
-  ylab("Log(FCAL (µg/g))") +
-  ggtitle("")
-```
-
-There are `r length(diagnostic)` subjects with a diagnostic FCAL
-available.
 
 ### Minimum followup
 
