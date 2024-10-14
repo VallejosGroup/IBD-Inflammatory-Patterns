@@ -140,7 +140,6 @@ fcal <- fcal.pheno %>%
   select(ids, sex, diagnosis, diagnosis_date) %>%
   merge(x = fcal, by = "ids", all.x = TRUE, all.y = FALSE)
 
-
 # labs prefix not required for crp as labs is the only crp extract
 crp <- subset(labs, TEST == "C-Reactive Prot")
 updated <- read.csv(file.path(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
@@ -240,26 +239,26 @@ dict <- data.frame(
 
 rm(id, ids, diagnosis, date.of.diag) # clean up
 dict <- fix_date_df(dict, "date.of.diag")
-
-dim(dict)
 ```
 
-There are a total of `r nrow(dict)` subjects in our dictionary before
-filtering by inclusion/exclusion criteria. Amongst those, there are
+Before filtering by inclusion/exclusion criteria, there are
 `r sum(is.na(dict$date.of.diag))` individuals for which a diagnostic
 date is missing. However, `r sum(is.na(dict$diagnosis))` missing values
-are observed for diagnosis.
+are observed for diagnosis (IBD type). 
 
-As can be seen in the below frequency table, two spellings of Crohn's
-disease (with and without an apostrophe ("'")) and three names for IBDU
-are used. There is also a subject reported to not have IBD.
+As can be seen in the below table, two spellings of Crohn's disease (with and 
+without an apostrophe ("'")) and three names for IBDU are used. There are also 
+subjects reported to not have IBD. The latter will be removed, leaving 
+`r sum(dict$diagnosis != "Not IBD")` to be included in subsequent analyses.
 
 ```{R Frequency table to diagnosis pre-process}
 #| label: tbl-diag-pre
 #| tbl-cap: Frequency table of reported IBD type
-kable(table(dict$diagnosis, useNA = "always"),
-  col.names = c("Variable", "Frequency")
+kable(unique(dict$diagnosis),
+  col.names = c("Diagnosis")
 )
+
+dict <- dict %>% subset(diagnosis != "Not IBD")
 ```
 
 The Crohn's disease and IBDU names have been standardised (IBDU,
@@ -493,12 +492,10 @@ abline(a = 0, b = 1, col = "red")
 Date of diagnosis in an integral aspect of the inclusion criteria and
 also used to retime biomarker measurements.
 
-Firstly, we remove individuals that we classed as not IBD patients and those
-with a missing date of diagnosis. 
+Firstly, we remove `r sum(is.na(dict$date.of.diag))` individuals with a missing date of diagnosis. 
 
 ```{R Remove NA date of diagnosis}
 dict <- dict[!is.na(dict$date.of.diag), ]
-dict <- subset(dict, diagnosis != "Not IBD")
 
 dim(dict)
 ```
@@ -645,7 +642,8 @@ date of diagnosis are available for.
 
 For the TRAK extract, times for test results are given in datetime
 format (where both date and time of the day are provided). The times
-have been dropped as this degree of granularity is not required.
+have been dropped as this degree of granularity is not required. 
+Duplicate tests (same id, date and test value) are removed here. 
 
 ```{R FCAL merge}
 fcal <- fcal[, c("ids",
@@ -674,14 +672,21 @@ fcal <- merge(fcal,
               dict[, c("ids", "diagnosis", "date.of.diag")],
               by = "ids",
               all.x = TRUE)
+
+# Removal of duplicates
+fcal <- fcal %>% distinct(ids,
+  calpro_date,
+  calpro_result,
+  .keep_all = TRUE
+)
 ```
 
 ### Test results
 
 FC data can be both left and right censored. FC recorded as "\<20" were
 mapped to "20". FC recorded as "\>1250", "\>2500", or "\>6000" were all
-mapped to "1250". Any FC tests given an error code by the laboratory
-have been removed.
+mapped to "1250". Any FC tests given an error code (e.g. marked as an 
+insufficient sample by the laboratory) have been removed.
 
 ::: {.callout-note collapse="true"}
 #### More information on FC censoring
@@ -698,13 +703,10 @@ implications for research.
 :::
 
 ```{R FCAL censor mapping}
-#| label: "fig-fcal-meas"
-#| fig-cap: "Density plot of FCAL measurements by observed value"
-#| warning: false
-
 ## Some values cannot be directly coerced as numeric
-## CAV: need to remove this table as shows <5 counts
-table(fcal$calpro_result[which(is.na(as.numeric(fcal$calpro_result)))])
+#unique(fcal$calpro_result[which(is.na(as.numeric(fcal$calpro_result)))])
+unique(fcal$calpro_result[grepl("<", fcal$calpro_result)])
+unique(fcal$calpro_result[grepl(">", fcal$calpro_result)])
 
 fcal$calpro_result <- plyr::mapvalues(
   fcal$calpro_result,
@@ -728,14 +730,9 @@ fcal$calpro_result <- plyr::mapvalues(
   )
 )
 
-fcal <- fcal %>% distinct(ids,
-  calpro_date,
-  calpro_result,
-  .keep_all = TRUE
-)
-
-## CAV: why is this needed?
-temp <- fcal[is.na(as.numeric(fcal[, "calpro_result"])), ]
+# Sanity check to see that all values were converted
+unique(fcal$calpro_result[grepl("<", fcal$calpro_result)])
+unique(fcal$calpro_result[grepl(">", fcal$calpro_result)])
 
 # Here, values that cannot be converted into a numeric value will be excluded
 # (they are converted to NA)
@@ -743,12 +740,16 @@ fcal$calpro_result <- as.numeric(fcal$calpro_result) # Remove error codes
 fcal <- fcal[!is.na(fcal[, "calpro_result"]), ]
 
 # Apply limits of detection 
-range(fcal$calpro_result)
+# range(fcal$calpro_result)
 fcal[fcal[, "calpro_result"] < 20, "calpro_result"] <- 20
 fcal[fcal[, "calpro_result"] > 1250, "calpro_result"] <- 1250
 range(fcal$calpro_result)
-#fcal$calpro_result <- as.numeric(fcal$calpro_result)
+```
 
+```{r fig-fcal-meas}
+#| label: "fig-fcal-meas"
+#| fig-cap: "Density plot of FCAL measurements by observed value"
+#| warning: false
 fcal %>%
   ggplot(aes(x = calpro_result)) +
   geom_density(
@@ -788,6 +789,7 @@ fcal %>%
 
 ### Quality control for duplicates
 
+<!--- CAV: explain what you are doing here ---> 
 
 ```{R}
 fuzzy.duplicated.ids <- c()
