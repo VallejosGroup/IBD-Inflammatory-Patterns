@@ -133,7 +133,7 @@ alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
 alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
     from = c(seq(1, 8)),
-    to = c(7, 2, 1, 8, 3, 5, 6, 4)
+    to = c(8, 3, 7, 6, 1, 2, 5, 4)
   )
 
 
@@ -496,7 +496,6 @@ for (G in G.crp) {
   )
 }
 ```
-
 
 ## IBD Association
 
