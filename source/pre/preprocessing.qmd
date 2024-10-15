@@ -653,6 +653,7 @@ fcal <- fcal[, c("ids",
                  "diagnosis",
                  "diagnosis_date")]
 
+# Subset to only include those that passed the earlier inclusion/exclusion
 fcal <- subset(fcal, ids %in% dict$ids)
 
 # Collection dates include collection times which are not required. Discarding.
@@ -1451,6 +1452,8 @@ This results in a cohort size of `r length(unique(fcal$ids))`
 
 --->
 
+<!--- CAV: do we need this here? may remove and keep in an EDA file --->
+
 ### Revisiting month of diagnosis
 
 After filtering by subjects who have a diagnostic FC available, January
@@ -1815,10 +1818,6 @@ At this point, the data contains `r nrow(fcal)` FCAL measurements across all
 
 ### Additional pre-processing
 
-TBC
-
-### Inclusion/exclusion: a minimum number of CRP measurements
-
 Here, we summarise the number of observations per individual (with and without
 considering censored values) as well as length of follow-up. The latter is 
 defined as the difference (in years) between diagnosis time and the time of the 
@@ -1866,107 +1865,195 @@ Our observations are very similar to what we had for FCAL. However, as CRP
 measurement frequency is higher, we find a lower proportion of individuals with
 a low follow-up time. 
 
-Note that our inclusion criteria requires at least 3 non-censored FCAL 
-measurements per individual. As such, censoring needs to be taken into account
-before applying filtering out individuals.
+As CRP is not specific to gastrointestinal inflammation, a variety of factors 
+(e.g. infection) can affect the measurements. To focus on long-term trends, 
+further processing was applied to smooth out short-term fluctuations. 
+Measurements were grouped into intervals of t: [0, 0.5), [0.5, 1.5), [1.5, 2.5), 
+[2.5, 3.5), [3.5, 4.5), [4.5, 5.5), [5.5, 7], where t = 0 (years) is the time 
+of diagnosis. The median CRP for each interval was calculated for each subject
+and used as input for subsequent analyses. The center of each interval was used 
+as the corresponding observation time. 
 
+```{r crp additional preproc}
+id.list <- unique(crp$ids)
+crp.ma <- matrix(NA, nrow = length(id.list), ncol = 7)
+
+for (i in seq_along(id.list)) {
+  subject_data <- subset(crp, ids == id.list[i])
+  for (j in seq(0, 6)) {
+    if (j == 6) {
+      sub.obs <- subset(
+        subject_data,
+        crp_time >= j - 0.5 & crp_time <= j + 1
+      )
+    } else {
+      sub.obs <- subset(
+        subject_data,
+        crp_time >= j - 0.5 & crp_time < j + 0.5
+      )
+    }
+    if (nrow(sub.obs) > 0) {
+      crp.ma[i, j + 1] <- median(sub.obs$crp_result)
+    }
+  }
+}
+rownames(crp.ma) <- id.list
+
+# CAV: removed from here as filtering is applied in a separate section
+#crp.ma  <- crp.ma [rowSums(is.na(crp.ma)) <= 4, ]
+#id.list <- rownames(crp.ma)
+
+# Convert back to a long-format dataset and rename columns
+crp.ma <- reshape2::melt(t(crp.ma), id.vars = row.names(crp.ma), na.rm = TRUE)
+colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
+crp.ma  <- crp.ma[, c(2, 3, 1)]
+
+# Reset the time to start at zero
+crp.ma$crp_time <- crp.ma$crp_time - 1
+
+# Take into account uneven spacing at start and end
+crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+  from = c(0, 6),
+  to = c(0.25, 6.25)
+)
+
+# Add diagnosis type back
+crp.ma <- merge(crp.ma, dict[, -3], by = "ids", all.x = TRUE, all.y = FALSE)
+```
+
+
+<!--- CAV: remove to avoid showing patient-level data 
+
+As can be seen in @fig-crp-sample, the CRP data exhibits substantial
+noise and there are many data points which can substantially increase
+running times when fitting models. As such, we have taken the step to
+pre-process the data by grouping FCAL observations into time intervals
+for each subject and using the median where there are multiple
+observations.
+
+```{R}
+#| label: fig-crp-sample
+#| fig-cap: "CRP trajectories for a random sample of 15 subjects"
+ids.sample <- sample(unique(crp$ids), 15)
+crp.sub <- subset(crp, ids %in% ids.sample)
+
+crp.sub %>%
+  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = colorspace::darken(
+    rainbow(15), amount = 0.4)
+    ) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(CRP (mg/L))") +
+  ggtitle("")
+```
+ 
+--->
+
+
+### Inclusion/exclusion: a minimum number of CRP measurements
+
+Note that our inclusion criteria requires at least 3 CRP measurements per 
+individual. This is applied after the additional pre-processing applied in the
+previous section. Here, we re-calculate relevant summary statistics. 
 
 ```{r}
+countsDF <- crp.ma %>%
+  group_by(ids) %>%
+  summarise(n.total = n(),
+            censored.left = sum(crp_result == 0), # 0 because it was log transformed
+            n.noncensored = n.total - censored.left,
+            followup = max(crp_time), 
+            crp.var = var(crp_result, na.rm = TRUE))
+```
+
+```{R crp followup pre exclusions post processed}
+#| label: fig-fcal-follow-up-postproc
+#| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of CRP follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up."
 p1 <- countsDF %>%
-  ggplot(aes(x = n.noncensored)) +
+  ggplot(aes(x = n.total)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
-  xlab("Number of non-censored measurements per subject")
-
+  xlab("Measurements per subject")
+# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
 p2 <- countsDF %>%
-  ggplot(aes(y = n.noncensored, x = followup)) +
+  ggplot(aes(x = followup)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Follow-up (years)")
+p3 <- countsDF %>%
+  ggplot(aes(y = n.total, x = followup)) +
   geom_point(color = "#FF4F79", size = 2) +
   xlab("Follow-up (years since diagnosis)") + 
-  ylab("Number of non-censored FCAL measurements") +
+  ylab("Number of FCAL measurements") +
   theme_minimal() +
   geom_hline(yintercept = 3)
 
-p1 + p2 + plot_annotation(tag_levels = 'A')
+p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
 ```
 
-```{R calculate number of non censored FCAL}
-# Number of individuals with at least 3 FCAL measurements
+```{R calculate number of non censored CRP}
+# Number of individuals with at least 3 CRP measurements
 sum(countsDF$n.total >= 3)
+
+# Number of individuals with at least 3 CRP measurements and non zero variance
+sum(countsDF$n.total >= 3 & countsDF$crp.var != 0)
 
 # Number of individuals with at least 3 non-censored FCAL measurements
 sum(countsDF$n.noncensored >= 3)
-
-# Number of individuals with at least 3 non-censored FCAL measurements after
-# discarding non-diagnostic values with negative calpro_time
-sum(countsDF$n.noncensored - countsDF$n.negtime.nondiag >= 3)
 ```
 
-### Minimum followup
-
-As a reminder, we do not require a minimum follow-up for a subject as
-this may bias our findings.
-
-```{R}
-#| label: fig-crp-follow-up
-#| fig-cap: "Histogram of CRP follow-up per subject"
-tab <- matrix(ncol = 2, nrow = 0)
-colnames(tab) <- c("ids", "Followup")
-for (id in unique(crp$ids)) {
-  followup <- max(subset(crp, ids == id)$crp_time)
-  tab <- rbind(tab, c(id, followup))
-}
-
-tab <- as.data.frame(tab)
-
-tab |>
-  ggplot(aes(x = Followup)) +
-  geom_histogram(color = "black", fill = "#B38D97", binwidth = 1) +
-  theme_minimal() +
-  ylab("Count") +
-  xlab("Followup (years)")
-```
-
-We have also plotted number of CRP measurements for each subject against
-their follow-up to explore the relationship between these two attributes
-(@fig-n-crp).
-
-```{R}
-#| label: fig-n-crp
-#| fig-cap: "Number of CRP measurements against follow-up for each subject"
-tab.temp <- tab
-hmm <- data.frame(
-  ids = names(table(crp$ids)),
-  n = as.vector(table(crp$ids))
-)
-tab.temp <- merge(tab.temp, hmm, by = "ids")
-tab.temp %>%
-  ggplot(aes(y = n, x = Followup)) +
-  geom_point(color = "#216869", size = 2) +
-  ylab("Number of CRP measurements") +
-  xlab("Follow-up (years)") +
-  theme_minimal()
-```
-
-### Measurement frequency
-
-We require a subject to have at least three CRP measurements across the
-follow-up period to meet our inclusion criteria.
+The following is used to select individuals with at least 3 CRP measurements
+and non-zero variance.
 
 ```{R CRP frequency}
-crp <- subset(
-  crp,
-  ids %in% as.numeric(
-    names(
-      table(crp$ids)[table(crp$ids) >= 3]
-    )
-  )
-)
+crp.ma <- crp.ma %>% 
+  subset(ids %in% countsDF$ids[countsDF$n.total >= 3 & countsDF$crp.var != 0])
+
+length(unique(crp.ma$ids))
 ```
 
-There are `r length(unique(crp$ids))` subjects who have at least three
-CRP measurements available (before [reducing the maximum
-followup](#maximum-followup-1)).
+This leaves a cohort with `r length(unique(crp$ids))` individuals.
+
+<!--- CAV: I think we could include the nonzero variance subjects here --->
+
+```{r crp followup post exclusions}
+#| label: fig-crp-follow-up
+#| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of FCAL follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up. In all cases, only individuals with at least 3 measurements  and non-zero variance are included."
+p1 <- countsDF %>%
+  subset(n.total >= 3 & crp.var != 0) %>% 
+  ggplot(aes(x = n.total)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Measurements per subject")
+# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
+p2 <- countsDF %>%
+  subset(n.total >= 3 & crp.var != 0) %>% 
+  ggplot(aes(x = followup)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Follow-up (years)")
+p3 <- countsDF %>%
+  subset(n.total >= 3 & crp.var != 0) %>% 
+  ggplot(aes(y = n.total, x = followup)) +
+  geom_point(color = "#FF4F79", size = 2) +
+  xlab("Follow-up (years since diagnosis)") + 
+  ylab("Number of FCAL measurements") +
+  theme_minimal() +
+  geom_hline(yintercept = 3)
+
+p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+```
+
+
+<!--- CAV: remove this but keep elsewhere. No needed as max followup is fixed
 
 ### Maximum followup {#maximum-followup-1}
 
@@ -2051,101 +2138,9 @@ crp <- subset(
 )
 ```
 
+--->
+
 ### Additional pre-processing
-
-As can be seen in @fig-crp-sample, the CRP data exhibits substantial
-noise and there are many data points which can substantially increase
-running times when fitting models. As such, we have taken the step to
-pre-process the data by grouping FCAL observations into time intervals
-for each subject and using the median where there are multiple
-observations.
-
-```{R}
-#| label: fig-crp-sample
-#| fig-cap: "CRP trajectories for a random sample of 15 subjects"
-ids.sample <- sample(unique(crp$ids), 15)
-crp.sub <- subset(crp, ids %in% ids.sample)
-
-crp.sub %>%
-  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
-  geom_line(alpha = 0.2) +
-  geom_point(alpha = 0.3) +
-  theme_minimal() +
-  scale_color_manual(values = colorspace::darken(
-    rainbow(15), amount = 0.4)
-    ) +
-  guides(color = "none") +
-  xlab("Time (years)") +
-  ylab("Log(CRP (mg/L))") +
-  ggtitle("")
-```
-
-```{R}
-#| label: fig-crp-sample-ma
-#| fig-cap: "CRP trajectories after additional pre-processing for a random sample of 15 subjects"
-
-id.list <- unique(crp$ids)
-crp.ma <- matrix(NA, nrow = length(id.list), ncol = 7)
-
-for (i in seq_along(id.list)) {
-  subject_data <- subset(crp, ids == id.list[i])
-  for (j in seq(0, 6)) {
-    if (j == 6) {
-      sub.obs <- subset(
-        subject_data,
-        crp_time >= j - 0.5 & crp_time <= j + 1
-      )
-    } else {
-      sub.obs <- subset(
-        subject_data,
-        crp_time >= j - 0.5 & crp_time < j + 0.5
-      )
-    }
-    if (nrow(sub.obs) > 0) {
-      crp.ma[i, j + 1] <- median(sub.obs$crp_result)
-    }
-  }
-}
-
-rownames(crp.ma) <- id.list
-
-crp.ma  <- crp.ma [rowSums(is.na(crp.ma)) <= 4, ]
-
-id.list <- rownames(crp.ma)
-
-crp.ma <- reshape2::melt(t(crp.ma ), id.vars = row.names(crp.ma ), na.rm = TRUE)
-colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
-crp.ma  <- crp.ma[, c(2, 3, 1)]
-
-
-crp.ma$crp_time <- crp.ma$crp_time - 1
-
-# Take into account uneven spacing at start and end
-crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
-  from = c(0, 6),
-  to = c(0.25, 6.25)
-)
-
-
-# Add diagnosis type back
-crp.ma <- merge(crp.ma, dict[, -3], by = "ids", all.x = TRUE, all.y = FALSE)
-
-
-##########################
-#--     Plotting       --#
-##########################
-
-p <- subset(crp.ma, ids %in% sample(unique(crp.ma$ids), 20)) %>%
-  ggplot(aes(x = crp_time, y = crp_result, color = as.factor(ids))) +
-  geom_point(alpha = 0.6) +
-  geom_line(alpha = 0.6) +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  ylab("Median Log (CRP)") +
-  xlab("Time")
-ggsave("plots/crp-med-traj.png", p, width = 10, height = 5, units = "in")
-print(p)
-```
 
 It appears from @fig-crp-sample-ma that some subjects have the same
 median log-transformed CRP across all of their observations, effectively
