@@ -922,17 +922,11 @@ years since IBD diagnosis.
 #| label: fig-fcal-spag-pre
 #| fig-cap: "Spaghetti plot of FC trajectories (preprocessed)"
 
-diagnosis_date <- as.Date(NULL)
-for (i in 1:nrow(fcal)) {
-  diagnosis_date <- c(
-    diagnosis_date,
-    subset(dict, ids == fcal[i, "ids"])$date.of.diag
-  )
-}
+fcal <- merge(fcal, dict[,c("ids", "date.of.diag")], 
+              by = "ids", all.x = TRUE, all.y = FALSE)
 
 # Dates have already been converted to Date class by fix_date_char() for dict
-fcal$calpro_time <- as.numeric(fcal$calpro_date - diagnosis_date) / 365.25
-rm(i, diagnosis_date) # Tidy up
+fcal$calpro_time <- as.numeric(fcal$calpro_date - fcal$date.of.diag) / 365.25
 dim(fcal)
 
 # CAV: this line is not doing anything!
@@ -974,13 +968,12 @@ subjects with a diagnostic FC. This equates to subjects with at least one FCAL
 measurement within 3 months of diagnosis $t \leq 0.25$.
 
 ```{R FCAL retiming}
-diagnostic <- numeric()
-for (id in unique(fcal$ids)) {
-  temp <- subset(fcal, ids == id)
-  if (any(temp$calpro_time < 0.25)) diagnostic <- c(diagnostic, id)
-}
+diagnostic <- fcal %>%
+  group_by(ids) %>%
+  summarise(n = sum(calpro_time < 0.25)) %>%
+  subset(n > 0)
 
-fcal <- subset(fcal, ids %in% diagnostic)
+fcal <- subset(fcal, ids %in% diagnostic$ids)
 dim(fcal)
 ```
 
@@ -988,7 +981,7 @@ After this exclusion, `r length(unique(fcal$ids))` remain in the data.
 
 ### Retiming - part 2
 
-Here, we show the distribution of the diagnostic FCAL measurement with
+Here, we show the distribution of the diagnostic FCAL measurements with
 respect to diagnosis date (in days). 
 
 ```{r fcal days before diag}
@@ -1012,7 +1005,9 @@ ggsave("plots/fc-diagnostic-dist.png",
 Although most diagnostic mearurements were observed around the recorded 
 diagnosis time (mode near zero), this is not always the case. As such, we
 decided to retime measurements/diagnosis time as described above (i.e. time = 0
-matches the time of first available FCAL measurement).
+matches the time of first available FCAL measurement). This is only applied to
+individuals for which the first available CRP is prior to the recorded diagnosis
+time.
 
 ```{R}
 #| label: fig-fcal-spag-post
@@ -1508,16 +1503,9 @@ crp <- merge(crp,
              by = "ids",
              all.x = TRUE)
 dim(crp)
-# Remove potential duplicates
-crp <- crp %>% distinct(ids,
-  crp_date,
-  crp_result,
-  .keep_all = TRUE
-)
-dim(crp)
 ```
 
-### Test results
+### Pre-processing of test results
 
 CRP is left-censored, but does not appear to be right-censored. Multiple
 cut-offs are reported
@@ -1526,23 +1514,28 @@ with there also being variations for how $< 1mg/L$ is reported
 (`r names(table(crp$crp_result))[3:5]`). We map every observation $< 1$
 to 1 and map \<2, \<3, and \< 5 to 2, 3, and 5 respectively. Any failed
 tests (e.g due to contamination or an insufficient sample being
-provided) are discarded.
+provided) are discarded. As such, $1mg/L$ is used as a left censoring value 
+for CRP.
 
 ```{R crp censor mapping}
 #| label: "fig-crp-meas"
 #| fig-cap: "Density plot of FC measurements by observed value"
 #| warning: false
 
+unique(crp$crp_result[grepl("<", crp$crp_result)])
+unique(crp$crp_result[grepl(">", crp$crp_result)])
 
 # Remove censoring indicators
 crp$crp_result <- as.numeric(
   plyr::mapvalues(
     crp$crp_result,
-    from = c("<0.2", "<1", "<1.", "<1.0", "<2", "<3", "<5"),
-    to = c(1, 1, 1, 1, 2, 3, 5)
+    from = c("<0.2", "<1", "<1.", "<1.0", "<2", "<3", "<3.0", "<5",
+             ">90", ">320"),
+    to = c(1, 1, 1, 1, 2, 3, 3, 5, 90, 320)
   )
 )
 
+# Lower-bound censoring
 crp <- crp %>%
   mutate(crp_result = if_else(crp_result < 1, 1, crp_result))
 
@@ -1576,6 +1569,9 @@ As with the FCAL data, the CRP data is also log transformed
 #| label: "fig-logcrp-meas"
 #| fig-cap: "Density plot of logged CRP test results"
 
+# CAV: mode this to the end, at the same place in which you apply log-transform
+# for FCAL. This means that you will need to change x = log(crp_result) in the
+# used to generate the plot below.
 crp$crp_result <- log(crp$crp_result)
 
 crp %>%
@@ -1594,6 +1590,24 @@ crp %>%
 
 Observing @fig-logcrp-meas, it would appear the influence of extremely
 elevated CRP results will be minimal.
+
+### Removal of duplicates
+
+As multiple CRP measurements are possible within a short time-frame, we only 
+consider as duplicates those with an exact match by `ids`, `crp_date` and
+`crp_result`. 
+
+```{r}
+crp <- crp %>% distinct(ids,
+  crp_date,
+  crp_result,
+  .keep_all = TRUE
+)
+dim(crp)
+```
+
+<!--- CAV: removed as similar analysis provided later. This follows the same 
+structure as FCAL
 
 ### Observations per subject
 
@@ -1621,7 +1635,10 @@ From @fig-crp-dist, we can see the strong patient adherence to CRP tests
 `r sum(CRPcounts < 3)`) have fewer than three CRP measurements
 available.
 
-### Retiming
+---> 
+
+
+### Retiming - part 1
 
 As with the FCAL data, the times of CRP measurements are retimed and
 scaled to be the number of years since IBD diagnosis.
@@ -1630,19 +1647,16 @@ scaled to be the number of years since IBD diagnosis.
 #| label: fig-crp-spag-pre
 #| fig-cap: "Spaghetti plot of CRP trajectories (preprocessed)"
 
-diagnosis_date <- as.Date(NULL)
-for (i in 1:nrow(crp)) {
-  diagnosis_date <- c(
-    diagnosis_date,
-    subset(dict, ids == crp[i, "ids"])$date.of.diag
-  )
-}
+dim(crp)
+crp <- merge(crp, dict[,c("ids", "date.of.diag")], 
+             by = "ids", all.x = TRUE, all.y = FALSE)
+dim(crp)
 
 # Dates have already been converted to Date class by fix_date_char() for dict
-crp$crp_time <- as.numeric(crp$crp_date - diagnosis_date) / 365.25
-rm(i, diagnosis_date) # Tidy up
+crp$crp_time <- as.numeric(crp$crp_date - crp$date.of.diag) / 365.25
 
-crp <- crp[!is.na(crp[, "crp_time"]), ]
+# CAV: this is doing nothing?
+#crp <- crp[!is.na(crp[, "crp_time"]), ]
 
 crp %>%
   ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
@@ -1677,19 +1691,61 @@ We also reduce the dataset to only subjects with a diagnostic CRP which
 equates to subjects with a CRP measurement within 3 months of diagnosis
 $t \leq 0.25$
 
-```{R CRP retiming}
-#| label: fig-crp-spag-post
-#| fig-cap: "Spaghetti plot of CRP trajectories (processed)"
+```{r}
 crp <- subset(crp, crp_time >= -0.25)
-
-diagnostic <- numeric()
-for (id in unique(crp$ids)) {
-  temp <- subset(crp, ids == id)
-  if (any(temp$crp_time < 0.25)) diagnostic <- c(diagnostic, id)
-}
-
-crp <- subset(crp, ids %in% diagnostic)
+dim(crp)
 ```
+
+### Inclusion/exclusion: removal of subjects without a diagnostic CRP test
+
+As indicated in our inclusion/exclusion criteria, we reduce the dataset to only 
+subjects with a diagnostic FC. This equates to subjects with at least one FCAL 
+measurement within 3 months of diagnosis $t \leq 0.25$.
+
+```{R CRP retiming}
+diagnostic <- crp %>%
+  group_by(ids) %>%
+  summarise(n = sum(crp_time < 0.25)) %>%
+  subset(n > 0)
+
+crp <- subset(crp, ids %in% diagnostic$ids)
+dim(crp)
+```
+
+After this exclusion, `r length(unique(crp$ids))` remain in the data. 
+
+### Retiming - part 2
+
+Here, we show the distribution of the diagnostic CRP measurements with
+respect to diagnosis date (in days). 
+
+```{r crp days before diag}
+p <- crp %>% 
+  group_by(ids) %>%
+  filter(crp_time == min(crp_time)) %>%
+  ggplot(aes(x = crp_time * 365.25)) +
+  geom_density(fill = "#415A77", color = "#1B263B") +
+  theme_minimal() +
+  labs(y = "Density",
+       x = "Time from diagnosis to first CRP (days)") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+
+ggsave("plots/crp-diagnostic-dist.png",
+       p,
+       width = 16 * 2/3,
+       height = 6,
+       units = "in")
+```
+
+Similar to what was observed for FCAL, most diagnostic measurements were around 
+the recorded diagnosis time (mode near zero). Here, we also retime 
+measurements/diagnosis time as described above (i.e. time = 0
+matches the time of first available CRP measurement). This is only applied to
+individuals for which the first available CRP is prior to the recorded diagnosis
+time.
+
+<!--- CAV: this code is no longer needed, but I didn't remove it in case you
+are for any reason using the saved "processed/crp-diag-dist.RDS" file
 
 ```{R}
 diag.time <- c()
@@ -1718,6 +1774,8 @@ ggsave("plots/crp-diagnostic-dist.png",
        units = "in")
 ```
 
+---> 
+
 ```{R}
 # Retime so that t_0 = 0.
 for (id in unique(crp$ids)) {
@@ -1728,6 +1786,8 @@ for (id in unique(crp$ids)) {
       crp[crp[, "ids"] == id, "crp_time"] + abs(add)
   }
 }
+
+length(unique(crp$ids))
 
 crp %>%
   ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
@@ -1741,8 +1801,106 @@ crp %>%
   ggtitle("")
 ```
 
-There are `r length(diagnostic)` subjects with a diagnostic CRP
-available.
+At this stage, we also exclude CRP measurements recorded beyond 7-years post
+diagnosis. 
+
+```{r remove crp after 7 years}
+crp <- subset(crp, crp_time <= 7)
+dim(crp)
+length(unique(crp$ids))
+```
+
+At this point, the data contains `r nrow(fcal)` FCAL measurements across all
+`r length(unique(fcal$ids))` individuals. 
+
+### Additional pre-processing
+
+TBC
+
+### Inclusion/exclusion: a minimum number of CRP measurements
+
+Here, we summarise the number of observations per individual (with and without
+considering censored values) as well as length of follow-up. The latter is 
+defined as the difference (in years) between diagnosis time and the time of the 
+latest CRP measurement. 
+
+```{r}
+countsDF <- crp %>%
+  group_by(ids) %>%
+  summarise(n.total = n(),
+            censored.left = sum(crp_result == 1),
+            n.noncensored = n.total - censored.left,
+            n.negtime.nondiag = sum(crp_time != 0 & crp_date - date.of.diag < 0),
+            followup = max(crp_time))
+```
+
+
+```{R crp followup pre exclusions}
+#| label: fig-fcal-follow-up
+#| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of CRP follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up."
+p1 <- countsDF %>%
+  ggplot(aes(x = n.total)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Measurements per subject")
+# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
+p2 <- countsDF %>%
+  ggplot(aes(x = followup)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Follow-up (years)")
+p3 <- countsDF %>%
+  ggplot(aes(y = n.total, x = followup)) +
+  geom_point(color = "#FF4F79", size = 2) +
+  xlab("Follow-up (years since diagnosis)") + 
+  ylab("Number of FCAL measurements") +
+  theme_minimal() +
+  geom_hline(yintercept = 3)
+
+p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+```
+
+Our observations are very similar to what we had for FCAL. However, as CRP
+measurement frequency is higher, we find a lower proportion of individuals with
+a low follow-up time. 
+
+Note that our inclusion criteria requires at least 3 non-censored FCAL 
+measurements per individual. As such, censoring needs to be taken into account
+before applying filtering out individuals.
+
+
+```{r}
+p1 <- countsDF %>%
+  ggplot(aes(x = n.noncensored)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Number of non-censored measurements per subject")
+
+p2 <- countsDF %>%
+  ggplot(aes(y = n.noncensored, x = followup)) +
+  geom_point(color = "#FF4F79", size = 2) +
+  xlab("Follow-up (years since diagnosis)") + 
+  ylab("Number of non-censored FCAL measurements") +
+  theme_minimal() +
+  geom_hline(yintercept = 3)
+
+p1 + p2 + plot_annotation(tag_levels = 'A')
+```
+
+```{R calculate number of non censored FCAL}
+# Number of individuals with at least 3 FCAL measurements
+sum(countsDF$n.total >= 3)
+
+# Number of individuals with at least 3 non-censored FCAL measurements
+sum(countsDF$n.noncensored >= 3)
+
+# Number of individuals with at least 3 non-censored FCAL measurements after
+# discarding non-diagnostic values with negative calpro_time
+sum(countsDF$n.noncensored - countsDF$n.negtime.nondiag >= 3)
+```
 
 ### Minimum followup
 
