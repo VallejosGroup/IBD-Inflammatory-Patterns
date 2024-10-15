@@ -1415,8 +1415,8 @@ provided) are discarded.
 crp$crp_result <- as.numeric(
   plyr::mapvalues(
     crp$crp_result,
-    from = c("<0.2", "<1", "<1.", "<1.0", "<2", "<3", "<5"),
-    to = c(1, 1, 1, 1, 2, 3, 5)
+    from = c("<0.2", "<1", "<1.", "<1.0", "<2", "<3", "<3.0", "<5"),
+    to = c(1, 1, 1, 1, 2, 3, 3, 5)
   )
 )
 
