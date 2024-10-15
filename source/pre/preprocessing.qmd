@@ -1507,12 +1507,14 @@ crp <- merge(crp,
              dict[, c("ids", "diagnosis")],
              by = "ids",
              all.x = TRUE)
+dim(crp)
 # Remove potential duplicates
 crp <- crp %>% distinct(ids,
   crp_date,
   crp_result,
   .keep_all = TRUE
 )
+dim(crp)
 ```
 
 ### Test results
