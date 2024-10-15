@@ -7,6 +7,10 @@ author:
     affiliations:
       - ref: CGEM
       - ref: HGU
+  - name: "Catalina A. Vallejos"
+    url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
+    affiliations:
+      - ref: HGU
 ---
 
 ## Introduction

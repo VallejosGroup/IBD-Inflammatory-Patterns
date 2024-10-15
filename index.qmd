@@ -23,7 +23,6 @@ author:
     url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
     affiliations:
       - ref: HGU
-      - ref: Turing
 ---
 
 ```{R}
