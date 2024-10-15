@@ -56,7 +56,7 @@ fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
 model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
 crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
-model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
+model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-9.RDS"))
 ```
 
 This page explores potential associations between information available at
@@ -76,6 +76,67 @@ As faecal calprotectin (FC) and C-reactive protein (CRP) were analysed
 independently, this page is split into FC and CRP sections. 
 
 ## Faecal calprotectin analysis
+
+In order to reliably ssess associations between clusters and baseline data, we
+will focus on subjects with posterior probabilities for cluster assignment above
+a set threshold. 
+
+```{R}
+pprobs <- c()
+
+temp <- model.fc$pprob
+for (i in 1:nrow(temp)) {
+  pprobs <- c(pprobs, temp[i, temp[i, "class"] + 2])
+}
+
+pprob.df <- data.frame(ids = temp$ids, pprobs = pprobs)
+
+fup <- c()
+
+for (id in unique(fcal$ids)) {
+  temp <- subset(fcal, ids == id)
+  temp <- temp[order(temp$calpro_time, decreasing = TRUE), ]
+  fup <- c(fup, temp[1, "calpro_time"])
+}
+
+df <- data.frame(ids = unique(fcal$ids), fup = fup)
+p <- merge(df, pprob.df, by = "ids") %>%
+  ggplot(aes(x = fup, y = pprobs)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y ~ x") +
+  theme_minimal() +
+  xlab("Follow-up time (years)") +
+  ylab("Posterior probability") +
+  ylim(0, NA)
+
+ggsave("plots/postprob-fup.png", p, width = 10, height = 8, units = "in")
+ggsave("plots/postprob-fup.pdf", p, width = 10, height = 8, units = "in")
+p
+```
+
+```{R}
+included <- c()
+percs <- seq(0.5, 0.8, by = 0.05)
+
+for (perc in percs) {
+  included <- c(included,
+                paste0(round(sum(pprob.df$pprobs > perc) / nrow(pprob.df), 4) * 100, "%"))
+}
+
+included.df <- data.frame(perc = percs, included = included)
+included.df %>%
+  knitr::kable(col.names = c("Posterior prob cutoff", "Percentage included"),
+               align = c("c", "c"))
+
+```
+
+
+```{R}
+pprob.df <- subset(pprob.df, pprobs > 0.5)
+model.fc$pprob <- subset(model.fc$pprob, ids %in% pprob.df$ids)
+```
+
+We will use a threshold of greater than 0.5. 
 
 ### Sex
 
@@ -154,7 +215,10 @@ cd.dict.fc$ageCat <- cut(cd.dict.fc$age,
 )
 
 cd.dict.fc %>%
-  with(chisq.test(class, ageCat)) %>%
+  with(fisher.test(class,
+                   ageCat,
+                   workspace = 2000000,
+                   simulate.p.value = TRUE)) %>%
   pander()
 ```
 
@@ -403,6 +467,8 @@ cd.pheno <- merge(cd.pheno,
   all.y = FALSE
 )
 cd.pheno$class <- as.factor(cd.pheno$class)
+
+cd.pheno <- subset(cd.pheno, ids %in% model.fc$pprob$ids)
 ```
 
 #### Montreal location
@@ -454,7 +520,7 @@ totalL1Perc <- nrow(subset(cd.pheno, Location == "L1")) /
 p1 <- perc.table %>%
   filter(location == "L1") %>%
   ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
+  geom_bar(stat = "identity", fill = "#C2F8CB", color = "#82C68F") +
   geom_hline(yintercept = totalL1Perc, linetype = "dashed", color = "#4D4730") +
   scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
@@ -466,7 +532,7 @@ totalL2Perc <- nrow(subset(cd.pheno, Location == "L2")) /
 p2 <- perc.table %>%
   filter(location == "L2") %>%
   ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
+  geom_bar(stat = "identity", fill = "#EFC7E5", color = "#C795BB") +
   geom_hline(yintercept = totalL2Perc, linetype = "dashed", color = "#4D4730") +
   scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
@@ -479,7 +545,7 @@ totalL3Perc <- nrow(subset(cd.pheno, Location == "L3")) /
 p3 <- perc.table %>%
   filter(location == "L3") %>%
   ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
+  geom_bar(stat = "identity", fill = "#F6BD60", color = "#C89216") +
   geom_hline(yintercept = totalL3Perc, linetype = "dashed", color = "#4D4730") +
   scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
@@ -579,7 +645,7 @@ totalB1Perc <- nrow(subset(cd.pheno, Behaviour == "B1")) /
 p1 <- perc.table %>%
   filter(behaviour == "B1") %>%
   ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
+  geom_bar(stat = "identity", fill = "#FF7700", color = "#C56025") +
   geom_hline(yintercept = totalB1Perc, linetype = "dashed", color = "#4D4730") +
   scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
@@ -591,7 +657,7 @@ totalB2Perc <- nrow(subset(cd.pheno, Behaviour == "B2")) /
 p2 <- perc.table %>%
   filter(behaviour == "B2") %>%
   ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
+  geom_bar(stat = "identity", fill = "#004777", color = "#003A62") +
   geom_hline(yintercept = totalB2Perc, linetype = "dashed", color = "#4D4730") +
   scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
@@ -604,7 +670,7 @@ totalB3Perc <- nrow(subset(cd.pheno, Behaviour == "B3")) /
 p3 <- perc.table %>%
   filter(behaviour == "B3") %>%
   ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
+  geom_bar(stat = "identity", fill = "#4E937A", color = "#447361") +
   geom_hline(yintercept = totalB3Perc, linetype = "dashed", color = "#4D4730") +
   scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
@@ -876,6 +942,18 @@ with(
 
 ## CRP
 
+```{R}
+model.crp$pprob$class <- plyr::mapvalues(
+  model.crp$pprob$class,
+  from = c(8, 9),
+  to = c(7, 8)
+)
+```
+
+As Cluster CRP2 and CRP4 are characterised by very similar longitudinal
+profiles, we have elected to merge these clusters. All subjects in cluster
+4 have been migrated to cluster 2 with clusters 5-9 renumbered accordingly.
+
 For CRP, we visualise the processed (median averaged) CRP instead of the
 pre-transformed data. This allows patterns and differences to be more easily
 seen.  
@@ -885,7 +963,6 @@ seen.
 ```{R}
 dict.crp <- subset(dict, ids %in% model.crp$pprob$ids)
 dict.crp <- merge(dict.crp, model.crp$pprob[, c("ids", "class")])
-
 
 
 crp.median <-
@@ -900,87 +977,9 @@ chisq.test(dict.crp$class, dict.crp$sex) %>%
   pander()
 ```
 
-::: {.panel-tabset group="scale"}
-
-#### Log-scale
-
-```{R}
-#| results: "hold"
-#| column: "body-outset"
-#| fig-width: 10.6667
-#| fig-height: 6
-
-if (!dir.exists("../../plots/sex-comparison/crp")) {
-  dir.create("../../plots/sex-comparison/crp", recursive = TRUE)
-}
-
-if (!dir.exists("../../plots/sex-comparison/crp/log")) {
-  dir.create("../../plots/sex-comparison/crp/log")
-}
-
-if (!dir.exists("../../plots/sex-comparison/crp/original")) {
-  dir.create("../../plots/sex-comparison/crp/original")
-}
-
-for (g in 1:8) {
-  p <- crp.median %>%
-    filter(class == g) %>%
-    ggplot(aes(x = crp_time, y = crp_result, color = as.factor(ids))) +
-    geom_line(alpha = 0.2) +
-    theme_bw() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_grid(. ~ sex) +
-    scale_color_manual(values = rep("black", nrow(crp))) +
-    xlab("Time (years)") +
-    ylab("Log (CRP (\u03BCg/mL))") +
-    ggtitle(paste0("Cluster ", g))
-  ggsave(paste0("../../plots/sex-comparison/crp/log/g=", g, ".png"),
-    p,
-    width = 16 * 2 / 3,
-    height = 9 * 2 / 3
-  )
-  print(p)
-}
-```
-
-#### Original units scale
-
-```{R}
-#| results: "hold"
-#| column: "body-outset"
-#| fig-width: 10.6667
-#| fig-height: 6
-for (g in 1:8) {
-  p <- crp.median %>%
-    filter(class == g) %>%
-    ggplot(aes(x = crp_time, y = exp(crp_result), color = as.factor(ids))) +
-    geom_line(alpha = 0.2) +
-    theme_bw() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_grid(. ~ sex) +
-    scale_color_manual(values = rep("black", nrow(crp))) +
-    xlab("Time (years)") +
-    ylab("CRP (\u03BCg/mL)") +
-    ggtitle(paste0("Cluster ", g))
-  ggsave(paste0("../../plots/sex-comparison/crp/original/g=", g, ".png"),
-    p,
-    width = 16 * 2 / 3,
-    height = 9 * 2 / 3
-  )
-  print(p)
-}
-```
-
-:::
-
 ### Age
 
 Age has been calculated by subtracting year of diagnosis from year of birth. 
-
-
-```{R}
-quantile(dict.crp$age, na.rm = TRUE)
-```
 
 ```{R}
 dict.crp$ageCat <- cut(dict.crp$age,
