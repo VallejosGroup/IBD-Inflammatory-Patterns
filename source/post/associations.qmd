@@ -174,6 +174,23 @@ ggsave("plots/postprob-fup-clusters.pdf",
 p
 ```
 
+```{r}
+myDF <- fcal %>%
+  group_by(ids) %>%
+  summarise(n.total = n(),
+            followup = max(calpro_time)) %>%
+  mutate(followup_cut = cut(followup, breaks = seq(0, 7, by = 1)))
+  
+myDF <- merge(myDF, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
+myDF <- myDF %>% pivot_longer(cols = starts_with("prob"), names_to = "prob")
+
+myDF %>% subset(class = 7, followup_cut == "(0,1]") |>
+  ggplot(aes(x = prob, y = value)) +
+  geom_violin()
+
+plot(my)
+```
+
 
 ```{R}
 included <- c()
