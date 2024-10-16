@@ -179,16 +179,71 @@ myDF <- fcal %>%
   group_by(ids) %>%
   summarise(n.total = n(),
             followup = max(calpro_time)) %>%
-  mutate(followup_cut = cut(followup, breaks = seq(0, 7, by = 1)))
+  mutate(followup_cut = cut(followup, breaks = seq(0, 8, by = 2)),
+         n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
   
 myDF <- merge(myDF, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
+myDF <- myDF %>% 
+  mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
+                        prob5, prob6, prob7, prob7))
+
+myDF_means <- myDF %>% 
+  group_by(class, followup_cut) %>%
+  summarise(across(starts_with("prob"), mean, na.rm = TRUE)) %>%
+  pivot_longer(cols = starts_with("prob"), names_to = "prob")
+
+myDF_means %>% subset(prob != "probmax") |>
+ggplot(aes(fill = prob, y = value, x = followup_cut)) +
+  geom_bar(position="fill", stat="identity") +
+  facet_wrap(.~class, ncol = 4) + 
+  theme_classic()
+  
+
+
 myDF <- myDF %>% pivot_longer(cols = starts_with("prob"), names_to = "prob")
 
-myDF %>% subset(class = 7, followup_cut == "(0,1]") |>
-  ggplot(aes(x = prob, y = value)) +
-  geom_violin()
+myDF %>% subset(class == 7) 
 
-plot(my)
+
+myDF %>% subset(prob == "probmax") |>
+  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
+  geom_violin(drop = FALSE) + 
+  xlab("Cluster") +
+  ylab("Cluster assignment probability") +
+  facet_wrap(.~n.total_cut, ncol = 4) +
+  theme_classic()
+
+myDF %>% subset(class == 7) |>
+  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
+  geom_violin() + 
+  xlab("Cluster") +
+  ylab("Cluster assignment probability") +
+  ggtitle("FC 7") +
+  theme_classic()
+
+myDF %>% subset(class == 1) |>
+  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
+  geom_violin() + 
+  xlab("Cluster") +
+  ylab("Cluster assignment probability") +
+  ggtitle("FC 1") +
+  theme_classic()
+
+myDF %>% subset(class == 2) |>
+  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
+  geom_violin() + 
+  xlab("Cluster") +
+  ylab("Cluster assignment probability") +
+  ggtitle("FC 2") +
+  theme_classic()
+
+myDF |>
+  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
+  geom_violin() + 
+  xlab("Cluster") +
+  ylab("Cluster assignment probability") +
+  facet_wrap(.~class, ncol = 4, nrow = 2) +
+  theme_classic()
 ```
 
 
