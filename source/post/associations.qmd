@@ -77,11 +77,19 @@ independently, this page is split into FC and CRP sections.
 
 ## Faecal calprotectin analysis
 
-In order to reliably ssess associations between clusters and baseline data, we
+In order to reliably assess associations between clusters and baseline data, we
 will focus on subjects with posterior probabilities for cluster assignment above
-a set threshold. 
+a set threshold. This ensures subjects which were not confidently assigned to a
+cluster do not affect potential associations. 
+
+Subjects with little follow-up typically have low posterior probabilities as 
+there is less of a temporal trend to rely upon when assigning a cluster. As
+such, subjects with short follow-up available will typically be removed from
+the association testing when filtering by posterior probabilities (@fig-pprob-fup-fc). 
 
 ```{R}
+#| label: fig-pprob-fup-fc
+#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period)."
 pprobs <- c()
 
 temp <- model.fc$pprob
@@ -92,27 +100,80 @@ for (i in 1:nrow(temp)) {
 pprob.df <- data.frame(ids = temp$ids, pprobs = pprobs)
 
 fup <- c()
+n.obs <- c()
 
 for (id in unique(fcal$ids)) {
   temp <- subset(fcal, ids == id)
   temp <- temp[order(temp$calpro_time, decreasing = TRUE), ]
   fup <- c(fup, temp[1, "calpro_time"])
+  n.obs <- c(n.obs, nrow(temp))
 }
 
-df <- data.frame(ids = unique(fcal$ids), fup = fup)
+df <- data.frame(ids = unique(fcal$ids), fup = fup, n.obs = n.obs)
 p <- merge(df, pprob.df, by = "ids") %>%
-  ggplot(aes(x = fup, y = pprobs)) +
+  filter(n.obs <= 20) %>%
+  ggplot(aes(x = fup, y = pprobs, color = n.obs)) +
   geom_point() +
   geom_smooth(method = "lm", formula = "y ~ x") +
   theme_minimal() +
   xlab("Follow-up time (years)") +
   ylab("Posterior probability") +
-  ylim(0, NA)
+  ylim(0, NA) + viridis::scale_color_viridis(option = "viridis") 
 
 ggsave("plots/postprob-fup.png", p, width = 10, height = 8, units = "in")
 ggsave("plots/postprob-fup.pdf", p, width = 10, height = 8, units = "in")
 p
 ```
+
+```{R}
+#| label: fig-pprob-fup-fc-cluster
+#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period) by cluster."
+
+
+temp <- model.fc$pprob
+for (i in 1:nrow(temp)) {
+  pprobs <- c(pprobs, temp[i, temp[i, "class"] + 2])
+}
+
+
+pprob.df <- data.frame(ids = temp$ids, pprobs = pprobs, clusters = temp$class)
+
+fup <- c()
+n.obs <- c()
+
+for (id in unique(fcal$ids)) {
+  temp <- subset(fcal, ids == id)
+  temp <- temp[order(temp$calpro_time, decreasing = TRUE), ]
+  fup <- c(fup, temp[1, "calpro_time"])
+  n.obs <- c(n.obs, nrow(temp))
+}
+
+df <- data.frame(ids = unique(fcal$ids), fup = fup, n.obs = n.obs)
+p <- merge(df, pprob.df, by = "ids") %>%
+  filter(n.obs <= 20) %>%
+  ggplot(aes(x = fup, y = pprobs, color = n.obs)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y ~ x") +
+  theme_minimal() +
+  xlab("Follow-up time (years)") +
+  ylab("Posterior probability") +
+  ylim(0, NA) +
+  viridis::scale_color_viridis(option = "viridis") +
+  facet_grid(rows = vars(clusters))
+
+ggsave("plots/postprob-fup-clusters.png",
+       p,
+       width = 10,
+       height = 16,
+       units = "in")
+ggsave("plots/postprob-fup-clusters.pdf",
+       p,
+       width = 10,
+       height = 16,
+       units = "in")
+p
+```
+
 
 ```{R}
 included <- c()
@@ -954,9 +1015,11 @@ As Cluster CRP2 and CRP4 are characterised by very similar longitudinal
 profiles, we have elected to merge these clusters. All subjects in cluster
 4 have been migrated to cluster 2 with clusters 5-9 renumbered accordingly.
 
-For CRP, we visualise the processed (median averaged) CRP instead of the
-pre-transformed data. This allows patterns and differences to be more easily
-seen.  
+Similar to FC, we will explore associations only for subjects with a
+sufficiently high posterior probability of being in their assigned cluster. As 
+cluster assignment is exclusive, we are able to add the posterior probabilities
+for the merged clusters together to determine the posterior probability for
+CRP2 after the merge. 
 
 ### Sex
 
@@ -1024,82 +1087,6 @@ ggsave("plots/age-dist.pdf", p, width = 16 * 4 / 7, height = 8)
 print(p2)
 ```
 
-::: {.panel-tabset group="scale"}
-
-#### Log-scale
-
-```{R}
-#| results: "hold"
-#| column: "body-outset"
-#| fig-width: 10.6667
-#| fig-height: 6
-
-if (!dir.exists("../../plots/age-comparison/crp")) {
-  dir.create("../../plots/age-comparison/crp", recursive = TRUE)
-}
-
-if (!dir.exists("../../plots/age-comparison/crp/log")) {
-  dir.create("../../plots/age-comparison/crp/log")
-}
-
-if (!dir.exists("../../plots/age-comparison/crp/original")) {
-  dir.create("../../plots/age-comparison/crp/original")
-}
-
-for (g in 1:8) {
-  p <- crp.median %>%
-    filter(class == g) %>%
-    ggplot(aes(x = crp_time, y = crp_result, color = as.factor(ids))) +
-    geom_line(alpha = 0.2) +
-    theme_bw() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_wrap(. ~ ageCat, ncol = 3) +
-    scale_color_manual(values = rep("black", nrow(fcal))) +
-    xlab("Time (years)") +
-    ylab("Log (FCAL (\u03BCg/g))") +
-    ggtitle(paste0("Cluster ", g))
-  ggsave(paste0("../../plots/age-comparison/crp/log/g=", g, ".png"),
-    p,
-    width = 16 * 2 / 3,
-    height = 9 * 2 / 3
-  )
-  print(p)
-}
-```
-
-#### Original units scale
-
-```{R}
-#| results: "hold"
-#| column: "body-outset"
-#| fig-width: 10.6667
-#| fig-height: 6
-for (g in 1:8) {
-  p <- crp.median %>%
-    filter(class == g) %>%
-    ggplot(aes(
-      x = crp_time,
-      y = exp(crp_result),
-      color = as.factor(ids)
-    )) +
-    geom_line(alpha = 0.2) +
-    theme_bw() +
-    theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
-    facet_wrap(. ~ ageCat, ncol = 3) +
-    scale_color_manual(values = rep("black", nrow(fcal))) +
-    xlab("Time (years)") +
-    ylab("FCAL (\u03BCg/g)") +
-    ggtitle(paste0("Cluster ", g))
-  ggsave(paste0("../../plots/age-comparison/crp/original/g=", g, ".png"),
-    p,
-    width = 16 * 2 / 3,
-    height = 9 * 2 / 3
-  )
-  print(p)
-}
-```
-
-:::
 
 ### IBD type
 
@@ -1316,10 +1303,10 @@ dict.crp.cd <- merge(dict.crp.cd,
 
 ```{R}
 pred.crp.df <- data.frame(
-  crp_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
+  crp_time = c(seq(0, 6.25, 0.01), seq(0, 6.25, 0.01)),
   diagnosis = c(
-    rep("Crohn's Disease", 701),
-    rep("Ulcerative Colitis", 701)
+    rep("Crohn's Disease", 626),
+    rep("Ulcerative Colitis", 626)
   )
 )
 pred.crp.df.update <- predictY(model.crp, pred.crp.df,
@@ -1333,7 +1320,7 @@ for (g in 1:8) {
   temp <- rbind(
     temp,
     data.frame(
-      Time = seq(0, 7, 0.01),
+      Time = seq(0, 6.25, 0.01),
       Cluster = g,
       Value = pred.crp.df.update[, g]
     )
@@ -1354,11 +1341,12 @@ for (g in 1:8) {
     ylab("Log (CRP (\u03BCg/mL))")
   p2 <- dict.crp.cd %>%
     filter(class == paste0("CRP ", g)) %>%
+    filter(timeToTherapy > 0) %>%
     ggplot(aes(x = timeToTherapy)) +
     geom_density(color = "#5D002F", fill = "#82204A") +
     theme_minimal() +
     xlim(0, 7) +
-    ylim(0, 0.3) +
+    ylim(0, NA) +
     xlab("Time") +
     ylab("Density of time to first advanced therapy")
   p <- p1 / p2 + plot_annotation(
