@@ -42,6 +42,7 @@ editor_options:
 ```{R Package load}
 #| message: false
 #| warning: false
+#| cache: false
 set.seed(123)
 ### Required packages
 library(tidyverse) # ggplot2, dplyr, and magrittr
@@ -139,7 +140,6 @@ fcal <- fcal.pheno %>%
   select(ids, sex, diagnosis, diagnosis_date) %>%
   merge(x = fcal, by = "ids", all.x = TRUE, all.y = FALSE)
 
-# labs prefix not required for crp as labs is the only crp extract
 crp <- subset(labs, TEST == "C-Reactive Prot")
 updated <- read.csv(file.path(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
 outcomes <- read.csv(file.path(prefix, "2024-10-03/cd-cleaned.csv"))
@@ -148,7 +148,7 @@ outcomes <- read.csv(file.path(prefix, "2024-10-03/cd-cleaned.csv"))
 Multiple datasets are used in this report with varying degrees of
 previous curation.
 
--   `markers.csv` is a 2024 extraction from TRAK describing
+-   `markers.csv` is a 2024 extraction from TRAKcare describing
     `r nrow(labs)` test results (FC: `r nrow(fcal)`; CRP:
     `r nrow(crp)`). Each row represents a test result with columns
     indicating the corresponding subject ID, the test type (FC or CRP),
@@ -157,9 +157,7 @@ previous curation.
     no manual curation of these data, and no information about the
     patient's characteristics are available (other than their ID).
 -   `fcal-cleaned.csv` does not describe CRP data. However, these data
-    have been curated by the Lees group and includes additional FC
-    results. These are likely from other studies which involved FC data,
-    such as [PREdiCCt](https://www.predicct.co.uk). In addition to
+    have been curated by the Lees group. In addition to
     `r nrow(fcal)` FC test results, each row also provides the sex, IBD
     type, date of diagnosis, and date of death (if applicable) for the
     corresponding subject.
@@ -246,9 +244,10 @@ date is missing. However, `r sum(is.na(dict$diagnosis))` missing values
 are observed for diagnosis (IBD type). 
 
 As can be seen in the below table, two spellings of Crohn's disease (with and 
-without an apostrophe ("'")) and three names for IBDU are used. There are also 
-subjects reported to not have IBD. The latter will be removed, leaving 
-`r sum(dict$diagnosis != "Not IBD")` to be included in subsequent analyses.
+without an apostrophe (')) and three names for IBDU are used. There are also 
+subjects reported to not have IBD. These will be removed, leaving 
+`r sum(dict$diagnosis != "Not IBD")` subjects included in the subsequent
+analyses.
 
 ```{R Frequency table to diagnosis pre-process}
 #| label: tbl-diag-pre
@@ -678,29 +677,9 @@ dim(fcal)
 
 ### Pre-processing of test results
 
-FC data can be both left and right censored. FC recorded as "\<20" were
-mapped to "20". FC recorded as "\>1250", "\>2500", or "\>6000" were all
-mapped to "1250". Any FC tests given an error code (e.g. marked as an 
-insufficient sample by the laboratory) have been removed.
-
-::: {.callout-note collapse="true"}
-#### More information on FC censoring
-
-The lower limit of detection is $<20 \mu g/g$ ($20 \mu g$ of
-calprotectin per $g$ of stool). By reducing the upper limit, it is
-possible to run more tests in parallel. As a higher throughput has been
-required over time, the upper threshold for tests has become lower.
-Initially test results over $6000 \mu g/g$ were censored, then
-$2500 \mu g/g$ and now $1250 \mu g /g$ is the upper limit for FC tests.
-This change has resulted in minimal impact in clinics as $1250 \mu g/g$
-is still considered a high result. However, this change has potential
-implications for research.
-:::
-
 ```{R FCAL censor mapping}
+#| warning: false
 ## Some values cannot be directly coerced as numeric
-#unique(fcal$calpro_result[grepl("<", fcal$calpro_result)])
-#unique(fcal$calpro_result[grepl(">", fcal$calpro_result)])
 
 fcal$calpro_result <- plyr::mapvalues(
   fcal$calpro_result,
@@ -733,6 +712,28 @@ fcal <- fcal[!is.na(fcal[, "calpro_result"]), ]
 fcal[fcal[, "calpro_result"] < 20, "calpro_result"] <- 20
 fcal[fcal[, "calpro_result"] > 1250, "calpro_result"] <- 1250
 ```
+
+FC data can be both left and right censored. FC recorded as "\<20" were
+mapped to "20". FC recorded as "\>1250", "\>2500", or "\>6000" were all
+mapped to "1250". Any FC tests given an error code (e.g. marked as an 
+insufficient sample by the laboratory) have been removed.
+
+::: {.callout-note collapse="true"}
+#### More information on FC censoring
+
+
+
+The lower limit of detection is $<20 \mu g/g$ ($20 \mu g$ of
+calprotectin per $g$ of stool). By reducing the upper limit, it is
+possible to run more tests in parallel. As a higher throughput has been
+required over time, the upper threshold for tests has become lower.
+Initially test results over $6000 \mu g/g$ were censored, then
+$2500 \mu g/g$ and now $1250 \mu g /g$ is the upper limit for FC tests.
+This change has resulted in minimal impact in clinics as $1250 \mu g/g$
+is still considered a high result. However, this change has potential
+implications for research.
+:::
+
 
 ```{r fig-fcal-meas}
 #| label: "fig-fcal-meas"
@@ -777,15 +778,6 @@ fcal %>%
 
 ### Removal of duplicate FCAL measurements
 
-Given FC was retrospectively collected from observational data, it is possible
-duplicate tests have been recorded in the extract. As it is NHS Lothian policy
-to not test FC days apart, we can assume that any tests with the same
-observation within a small time frame are likely to be duplicates. This may
-occur when collection dates and testing dates have been used interchangeably.
-
-If a subsequent FC test for a subject was dated within 10 days of a previous
-test and has the same observed value, this observation was dropped. 
-
 ```{R}
 duplicated.ids <- c()
 
@@ -805,7 +797,18 @@ for (id in unique(fcal$ids)) {
     fcal <- rbind(fcal, sub.fcal)
   }
 }
+```
 
+Given FC was retrospectively collected from observational data, it is possible
+duplicate tests have been recorded in the extract. As it is NHS Lothian policy
+to not test FC days apart, we can assume that any tests with the same
+observation within a small time frame are likely to be duplicates. This may
+occur when collection dates and testing dates have been used interchangeably.
+
+If a subsequent FC test for a subject was dated within 10 days of a previous
+test and has the same observed value, this observation was dropped. 
+
+```{R}
 htmltools::p(paste("There are",
                    length(duplicated.ids),
                    "subjects who appear to have duplicated FC measurements"))
@@ -820,9 +823,6 @@ years since IBD diagnosis.
 ```{R FCAL time mapping}
 #| label: fig-fcal-spag-pre
 #| fig-cap: "Spaghetti plot of FC trajectories (preprocessed)"
-
-fcal <- merge(fcal, dict[,c("ids", "date.of.diag")], 
-              by = "ids", all.x = TRUE, all.y = FALSE)
 
 # Dates have already been converted to Date class by fix_date_char() for dict
 fcal$calpro_time <- as.numeric(fcal$calpro_date - fcal$date.of.diag) / 365.25
@@ -967,13 +967,14 @@ countsDF <- fcal %>%
 ```{R fcal followup pre exclusions}
 #| label: fig-fcal-follow-up
 #| fig-cap: "(A) Histogram of the number of FCAL measurements per subject. (B) Histogram of FCAL follow-up per subject (before exclusions). (C) Scatterplot with number of FCAL measurements vs follow-up."
+#| fig-width: 12
+#| column: body-outset
 p1 <- countsDF %>%
   ggplot(aes(x = n.total)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
   xlab("Measurements per subject")
-# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
 p2 <- countsDF %>%
   ggplot(aes(x = followup)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
@@ -982,11 +983,11 @@ p2 <- countsDF %>%
   xlab("Follow-up (years)")
 p3 <- countsDF %>%
   ggplot(aes(y = n.total, x = followup)) +
-  geom_point(color = "#FF4F79", size = 2) +
+  geom_hex() +
   xlab("Follow-up (years since diagnosis)") + 
-  ylab("Number of FCAL measurements") +
+  ylab("Number of FC measurements") +
   theme_minimal() +
-  geom_hline(yintercept = 3)
+  labs(fill = "Count")
 
 p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
 ```
@@ -1057,6 +1058,8 @@ This leaves a cohort with `r length(unique(fcal$ids))` individuals.
 ```{r fcal followup post exclusions}
 #| label: fig-fcal-follow-up-post
 #| fig-cap: "(A) Histogram of the number of FCAL measurements per subject. (B) Histogram of FCAL follow-up per subject (before exclusions). (C) Scatterplot with number of FCAL measurements vs follow-up. In all cases, only individuals with at least 3 non-censored measurements are included."
+#| fig-width: 12
+#| column: body-outset
 p1 <- countsDF %>%
   subset(n.noncensored >= 3) %>% 
   ggplot(aes(x = n.total)) +
@@ -1064,7 +1067,6 @@ p1 <- countsDF %>%
   theme_minimal() +
   ylab("Count") +
   xlab("Measurements per subject")
-# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
 p2 <- countsDF %>%
   subset(n.noncensored >= 3) %>% 
   ggplot(aes(x = followup)) +
@@ -1075,230 +1077,17 @@ p2 <- countsDF %>%
 p3 <- countsDF %>%
   subset(n.noncensored >= 3) %>% 
   ggplot(aes(y = n.total, x = followup)) +
-  geom_point(color = "#FF4F79", size = 2) +
+  geom_hex() +
   xlab("Follow-up (years since diagnosis)") + 
-  ylab("Number of FCAL measurements") +
+  ylab("Number of FC measurements") +
   theme_minimal() +
-  geom_hline(yintercept = 3)
+  labs(fill = "Count")
 
 p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
 ```
 
-Review individuals with a very low followup
-
-```{r very low followup FCAL}
-# CAV: Nathan to check posterior probs for the subjects in this table
-countsDF1 <- countsDF %>% 
-  subset(n.noncensored >= 3 & followup < 0.5) %>% 
-  arrange(followup)
-countsDF1
-
-fcal %>% 
-  subset(ids %in% countsDF1$ids) %>% 
-  arrange(ids, calpro_time)
-```
-
-
-<!--- CAV: this code is not needed as we set the max follow-up to 7;
-save as a backup elsewhere
-
-There are `r length(unique(fcal$ids))` subjects who have at least three
-FC measurements available (before [reducing the maximum
-followup](#maximum-followup)).
-
-### Maximum followup {#maximum-followup}
-
-A maximum follow-up should be specified in the interest of constructing
-robust models which are not heavily influenced by observations at the
-end of follow-up where observations are more sparse. We also ensure a
-subject is only included if they have at least three FC measurements
-during the restricted follow-up.
-
-The decision for a specific cut-off is based upon two tables.
-@tbl-follow-up explores how increasing the follow-up changes the mean,
-median, and interquartile range of the number of observations per
-subject. @tbl-count-fcal investigates how many subjects have at least
-one FCAL after a set threshold.
-
-```{R}
-#| label: tbl-follow-up
-#| tbl-cap: Statistics for number of observations across a range of maximum follow-up
-years <- seq(1, 15, by = 1)
-mean.n <- c()
-median.n <- c()
-IQR.n <- c()
-freq <- c()
-
-for (year in years) {
-  # restrict to measurements within threshold
-  temp <- subset(fcal, calpro_time <= year)
-  # restrict to subjects with at least three measurements within threshold
-  temp <- subset(temp, ids %in% as.numeric(names(table(temp$ids)[table(temp$ids) >= 3])))
-  counts <- table(temp$ids)
-  mean.n <- c(mean.n, round(mean(counts), 2))
-  median.n <- c(median.n, median(counts))
-  IQR.n <- c(IQR.n, paste(quantile(counts)[c(2, 4)], collapse = "-"))
-  freq <- c(freq, length(names(counts)))
-}
-
-knitr::kable(
-  data.frame(
-    years = years,
-    freq = freq,
-    mean.n = mean.n,
-    median.n = median.n,
-    IQR.n = IQR.n
-  )[5:15, ],
-  col.names = c(
-    "Year cut-off",
-    "Number of subjects",
-    "Mean",
-    "Median",
-    "IQR"
-  )
-)
-```
-
-```{R}
-#| label: tbl-count-fcal
-#| tbl-cap: "How many subjects have an FC available after a given number of years?"
-count <- numeric()
-for (year in years) {
-  count <- c(count, length(unique(subset(fcal, calpro_time > year)$ids)))
-}
-
-count.tab <- data.frame(
-  years = years,
-  count = count
-)
-kable(count.tab, col.names = c("Years", "Number of subjects"))
-```
-
-From the above table, ten years of maximum follow-up appears to be the
-most appropriate. However, we instead elect to use seven years of
-maximum follow-up in order to [be consistent with
-CRP](#maximum-followup-1)
-
-```{R}
-fcal <- subset(fcal, calpro_time <= 7)
-# restrict to subjects with at least three measurements within threshold
-fcal <- subset(
-  fcal,
-  ids %in% as.numeric(
-    names(
-      table(fcal$ids)[table(fcal$ids) >= 3]
-    )
-  )
-)
-
-n.4 <- length(
-  unique(
-    subset(
-      fcal,
-      ids %in% as.numeric(
-        names(
-          table(fcal$ids)[table(fcal$ids) >= 4]
-          )
-        )
-      )$ids
-    )
-)
-
-
-n.5 <- length(
-  unique(
-    subset(
-      fcal,
-      ids %in% as.numeric(
-        names(
-          table(fcal$ids)[table(fcal$ids) >= 5]
-          )
-        )
-      )$ids
-    )
-)
-```
-
-### Censored observations
-
-```{R Generate FCAL counts}
-id.vector <- numeric()
-count <- numeric()
-censored.left <- numeric()
-censored.right <- numeric()
-
-for (id in unique(fcal$ids)) {
-  fcal.subject <- subset(fcal, ids == id)
-  id.vector <- c(id.vector, id)
-  count <- c(count, nrow(fcal.subject))
-  censored.left <- c(censored.left, sum(fcal.subject$calpro_result == 20))
-  censored.right <- c(censored.right, sum(fcal.subject$calpro_result == 1250))
-}
-
-countsDF <- tibble(
-  ids = id.vector,
-  count = count,
-  censored.left = censored.left,
-  censored.right = censored.right
-)
-```
-
-We now explore censored FC observations and begin by considering FC
-results which have been left-censored ($\leq 20 \mu g/g$). From
-@fig-left-censor-fcal, we can clearly see there are subjects with
-entirely left-censored FC observations (n =
-`r nrow(subset(countsDF, censored.left/count ==1))`).
-
-```{R}
-#| label: fig-left-censor-fcal
-#| fig-cap: "Left-censored observations per subject"
-#  Hold results for no. of measurements and no. of censored obs per subject
-countsDF %>%
-  ggplot(aes(x = censored.left / count, y = count)) +
-  geom_point(alpha = 0.5, size = 0.9, color = "#70A288") +
-  ylab("Total number of observations") +
-  xlab("Proportion of left-censored observations") +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
-
-Looking at right-censored observations (@fig-right-censor-fcal), we see
-there are fewer subjects with a high proportion (\>50% of censored
-observations). Nevertheless, there are still subjects with only right
-censored observations (n =
-`r nrow(subset(countsDF, censored.right/count ==1))`).
-
-```{R}
-#| label: fig-right-censor-fcal
-#| fig-cap: "Right-censored observations per subject"
-countsDF %>%
-  ggplot(aes(
-    x = censored.right / count, # Proportion censored
-    y = count
-  )) + # Total censored
-  # Add jitter to better show distribution
-  geom_point(alpha = 0.5, size = 0.9, color = "#D5896F") +
-  ylab("Total number of observations") +
-  xlab("Proportion of right-censored observations") +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
-
-In line with our inclusion criteria, we exclude subjects with fewer than
-three non-censored observations.
-
-```{R}
-keep <- countsDF[with(countsDF, count - (censored.left + censored.right) >= 3), ]
-fcal <- subset(fcal, ids %in% keep$ids)
-```
-
-This results in a cohort size of `r length(unique(fcal$ids))`
-(`r nrow(countsDF) - nrow(keep)` subjects removed).
-
---->
 
 <!--- CAV: do we need this here? may remove and keep in an EDA file --->
-
 
 ### Revisiting month of diagnosis
 
@@ -1320,21 +1109,6 @@ dict.temp %>%
 
 ## C-reactive protein
 
-C-reactive protein (CRP) is a blood-based marker of inflammation. Unlike
-FCAL, which is highly specific to gastrointestinal inflammation, CRP
-levels are indicative of overall inflammation and are more likely to be
-affected by extra-intestinal factors such as infections. However,
-patient adherence to CRP testing is very strong, and CRP has seen
-historic usage in the field of IBD. Although CRP has been used for many
-years, we unfortunately only have test results from as early as 2008 due
-to the transition towards using TRAK for storing CRP results instead of
-the previous system.
-
-As there is only one extract for CRP data (obtained from TRAK), merging
-multiple datasets is not required. As with the FCAL data, the recorded
-time of day for each test has been discarded in favour of the date. Any
-potential duplicate results have been removed.
-
 ```{R crp preprocess}
 crp <- crp[, c("ids", "COLLECTION_DATE", "TEST_DATA")] %>%
   subset(ids %in% dict$ids)
@@ -1351,30 +1125,31 @@ crp <- merge(crp,
              dict[, c("ids", "diagnosis")],
              by = "ids",
              all.x = TRUE)
+```
+
+C-reactive protein (CRP) is a blood-based marker of inflammation. Unlike
+FCAL, which is highly specific to gastrointestinal inflammation, CRP
+levels are indicative of overall inflammation and are more likely to be
+affected by extra-intestinal factors such as infections. However,
+patient adherence to CRP testing is very strong, and CRP has seen
+historic usage in the field of IBD. Although CRP has been used for many
+years, we unfortunately only have test results from as early as 2008 due
+to the transition towards using TRAK for storing CRP results instead of
+the previous system.
+
+As there is only one extract for CRP data (obtained from TRAK), merging
+multiple datasets is not required. As with the FCAL data, the recorded
+time of day for each test has been discarded in favour of the date. Any
+potential duplicate results have been removed.
+
+```{R}
 dim(crp)
 ```
 
 ### Pre-processing of test results
 
-CRP is left-censored, but does not appear to be right-censored. Multiple
-cut-offs are reported
-(`r unique(as.numeric(gsub("<", "", names(table(crp$crp_result))[2:8])))`)
-with there also being variations for how $< 1mg/L$ is reported
-(`r names(table(crp$crp_result))[3:5]`). We map every observation $< 1$
-to 1 and map \<2, \<3, and \< 5 to 2, 3, and 5 respectively. Any failed
-tests (e.g due to contamination or an insufficient sample being
-provided) are discarded. As such, $1mg/L$ is used as a left censoring value 
-for CRP.
-
 ```{R crp censor mapping}
-#| label: "fig-crp-meas"
-#| fig-cap: "Density plot of FC measurements by observed value"
 #| warning: false
-
-unique(crp$crp_result[grepl("<", crp$crp_result)])
-unique(crp$crp_result[grepl(">", crp$crp_result)])
-
-# Remove censoring indicators
 crp$crp_result <- as.numeric(
   plyr::mapvalues(
     crp$crp_result,
@@ -1391,6 +1166,27 @@ crp <- crp %>%
 # Remove error test results
 crp <- crp[!is.na(crp[, "crp_result"]), ]
 # Map numerical <1 test results (e.g 0.2) to 1.
+```
+
+CRP is left-censored, but does not appear to be right-censored. Multiple
+cut-offs are reported
+(`r unique(as.numeric(gsub("<", "", names(table(crp$crp_result))[2:8])))`)
+with there also being variations for how $< 1mg/L$ is reported
+(`r names(table(crp$crp_result))[3:5]`). We map every observation $< 1$
+to 1 and map \<2, \<3, and \< 5 to 2, 3, and 5 respectively. Any failed
+tests (e.g due to contamination or an insufficient sample being
+provided) are discarded. As such, $1mg/L$ is used as a left censoring value 
+for CRP.
+
+As can be seen in @fig-crp-meas, extremely elevated CRP has been
+observed in some cases. These observations are physiologically valid.
+However, these data may skew our models and may be candidates for
+removal.
+
+
+```{R}
+#| label: "fig-crp-meas"
+#| fig-cap: "Density plot of FC measurements by observed value"
 
 crp %>%
   ggplot(aes(x = crp_result)) +
@@ -1406,25 +1202,15 @@ crp %>%
   ylab("Density")
 ```
 
-As can be seen in @fig-crp-meas, extremely elevated CRP has been
-observed in some cases. These observations are physiologically valid.
-However, these data may skew our models and may be candidates for
-removal.
-
-As with the FCAL data, the CRP data is also log transformed
+As with the FC data, the CRP data is also log transformed
 (@fig-logcrp-meas).
 
 ```{R}
 #| label: "fig-logcrp-meas"
 #| fig-cap: "Density plot of logged CRP test results"
 
-# CAV: mode this to the end, at the same place in which you apply log-transform
-# for FCAL. This means that you will need to change x = log(crp_result) in the
-# used to generate the plot below.
-crp$crp_result <- log(crp$crp_result)
-
 crp %>%
-  ggplot(aes(x = crp_result)) +
+  ggplot(aes(x = log(crp_result))) +
   geom_density(
     linewidth = 0.8,
     alpha = 0.5,
@@ -1442,50 +1228,22 @@ elevated CRP results will be minimal.
 
 ### Removal of duplicates
 
-As multiple CRP measurements are possible within a short time-frame, we only 
-consider as duplicates those with an exact match by `ids`, `crp_date` and
-`crp_result`. 
-
-```{r}
+```{R}
 crp <- crp %>% distinct(ids,
   crp_date,
   crp_result,
   .keep_all = TRUE
 )
+```
+
+
+As multiple CRP measurements are possible within a short time-frame, we only 
+consider as duplicates those with an exact match by `ids`, `crp_date` and
+`crp_result`. 
+
+```{r}
 dim(crp)
 ```
-
-<!--- CAV: removed as similar analysis provided later. This follows the same 
-structure as FCAL
-
-### Observations per subject
-
-As with FCAL, we explore the number of observations per subject in this
-section. We do not yet apply the inclusion criteria of having at least
-three CRP measurements.
-
-```{R Number of CRP observations per subject}
-#| label: fig-crp-dist
-#| fig-cap: "Distribution of number of CRP measurements per subject. The pink line indicates the required minimum number of observations for inclusion"
-
-CRPcounts <- as.vector(table(crp$ids))
-CRPcountsdf <- tibble(counts = CRPcounts)
-CRPcountsdf %>%
-  ggplot(aes(x = counts)) +
-  geom_histogram(binwidth = 1, fill = "#0081A7") +
-  geom_vline(xintercept = 2.5, color = "#FF88DC") +
-  theme_minimal() +
-  xlab("Number of CRP observations per subject") +
-  ylab("Count")
-```
-
-From @fig-crp-dist, we can see the strong patient adherence to CRP tests
-[referred to earlier](#crp). Very few subjects (n =
-`r sum(CRPcounts < 3)`) have fewer than three CRP measurements
-available.
-
----> 
-
 
 ### Retiming - part 1
 
@@ -1504,11 +1262,8 @@ dim(crp)
 # Dates have already been converted to Date class by fix_date_char() for dict
 crp$crp_time <- as.numeric(crp$crp_date - crp$date.of.diag) / 365.25
 
-# CAV: this is doing nothing?
-#crp <- crp[!is.na(crp[, "crp_time"]), ]
-
 crp %>%
-  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
+  ggplot(aes(x = crp_time, y = log(crp_result), color = factor(ids))) +
   geom_line(alpha = 0.2) +
   geom_point(alpha = 0.3) +
   theme_minimal() +
@@ -1586,44 +1341,12 @@ ggsave("plots/crp-diagnostic-dist.png",
        units = "in")
 ```
 
-Similar to what was observed for FCAL, most diagnostic measurements were around 
-the recorded diagnosis time (mode near zero). Here, we also retime 
+Similar to what was observed for FC, most diagnostic measurements were around 
+the recorded diagnosis time (near zero). Here, we also retime 
 measurements/diagnosis time as described above (i.e. time = 0
 matches the time of first available CRP measurement). This is only applied to
 individuals for which the first available CRP is prior to the recorded diagnosis
 time.
-
-<!--- CAV: this code is no longer needed, but I didn't remove it in case you
-are for any reason using the saved "processed/crp-diag-dist.RDS" file
-
-```{R}
-diag.time <- c()
-crp.ids <-  unique(crp$ids)
-
-for (id in crp.ids) {
-  temp <- subset(crp, ids == id)
-  temp <- temp[order(temp$crp_time), ]
-  diag.time <- c(diag.time, temp[1, "crp_time"])
-}
-
-crp.dist <- data.frame(ids = crp.ids, diagnostic = diag.time)
-saveRDS(crp.dist, paste0(prefix, "processed/crp-diag-dist.RDS"))
-
-p <-  crp.dist %>%
-  ggplot(aes(x = diagnostic * 365.25)) +
-  geom_density(fill = "#415A77", color = "#1B263B") +
-  theme_minimal() +
-  labs(y = "Density",
-       x = "Time from diagnosis to first CRP (days)") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "red")
-ggsave("plots/crp-diagnostic-dist.png",
-       p,
-       width = 16 * 2/3,
-       height = 6,
-       units = "in")
-```
-
----> 
 
 ```{R}
 # Retime so that t_0 = 0.
@@ -1639,7 +1362,7 @@ for (id in unique(crp$ids)) {
 length(unique(crp$ids))
 
 crp %>%
-  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
+  ggplot(aes(x = crp_time, y = log(crp_result), color = factor(ids))) +
   geom_line(alpha = 0.2) +
   geom_point(alpha = 0.3) +
   theme_minimal() +
@@ -1669,7 +1392,12 @@ considering censored values) as well as length of follow-up. The latter is
 defined as the difference (in years) between diagnosis time and the time of the 
 latest CRP measurement. 
 
-```{r}
+```{R crp followup pre exclusions}
+#| label: fig-crp-follow-up
+#| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of CRP follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up."
+#| fig-width: 12
+#| column: body-outset
+
 countsDF <- crp %>%
   group_by(ids) %>%
   summarise(n.total = n(),
@@ -1677,19 +1405,13 @@ countsDF <- crp %>%
             n.noncensored = n.total - censored.left,
             n.negtime.nondiag = sum(crp_time != 0 & crp_date - date.of.diag < 0),
             followup = max(crp_time))
-```
 
-
-```{R crp followup pre exclusions}
-#| label: fig-fcal-follow-up
-#| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of CRP follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up."
 p1 <- countsDF %>%
   ggplot(aes(x = n.total)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
   xlab("Measurements per subject")
-# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
 p2 <- countsDF %>%
   ggplot(aes(x = followup)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
@@ -1698,11 +1420,11 @@ p2 <- countsDF %>%
   xlab("Follow-up (years)")
 p3 <- countsDF %>%
   ggplot(aes(y = n.total, x = followup)) +
-  geom_point(color = "#FF4F79", size = 2) +
+  geom_hex() +
   xlab("Follow-up (years since diagnosis)") + 
-  ylab("Number of FCAL measurements") +
+  ylab("Number of CRP measurements") +
   theme_minimal() +
-  geom_hline(yintercept = 3)
+  labs(fill = "Count")
 
 p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
 ```
@@ -1717,7 +1439,7 @@ further processing was applied to smooth out short-term fluctuations.
 Measurements were grouped into intervals of t: [0, 0.5), [0.5, 1.5), [1.5, 2.5), 
 [2.5, 3.5), [3.5, 4.5), [4.5, 5.5), [5.5, 7], where t = 0 (years) is the time 
 of diagnosis. The median CRP for each interval was calculated for each subject
-and used as input for subsequent analyses. The center of each interval was used 
+and used as input for subsequent analyses. The centre of each interval was used 
 as the corresponding observation time. 
 
 ```{r crp additional preproc}
@@ -1745,10 +1467,6 @@ for (i in seq_along(id.list)) {
 }
 rownames(crp.ma) <- id.list
 
-# CAV: removed from here as filtering is applied in a separate section
-#crp.ma  <- crp.ma [rowSums(is.na(crp.ma)) <= 4, ]
-#id.list <- rownames(crp.ma)
-
 # Convert back to a long-format dataset and rename columns
 crp.ma <- reshape2::melt(t(crp.ma), id.vars = row.names(crp.ma), na.rm = TRUE)
 colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
@@ -1767,46 +1485,19 @@ crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
 crp.ma <- merge(crp.ma, dict[, -3], by = "ids", all.x = TRUE, all.y = FALSE)
 ```
 
-
-<!--- CAV: remove to avoid showing patient-level data 
-
-As can be seen in @fig-crp-sample, the CRP data exhibits substantial
-noise and there are many data points which can substantially increase
-running times when fitting models. As such, we have taken the step to
-pre-process the data by grouping FCAL observations into time intervals
-for each subject and using the median where there are multiple
-observations.
-
-```{R}
-#| label: fig-crp-sample
-#| fig-cap: "CRP trajectories for a random sample of 15 subjects"
-ids.sample <- sample(unique(crp$ids), 15)
-crp.sub <- subset(crp, ids %in% ids.sample)
-
-crp.sub %>%
-  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
-  geom_line(alpha = 0.2) +
-  geom_point(alpha = 0.3) +
-  theme_minimal() +
-  scale_color_manual(values = colorspace::darken(
-    rainbow(15), amount = 0.4)
-    ) +
-  guides(color = "none") +
-  xlab("Time (years)") +
-  ylab("Log(CRP (mg/L))") +
-  ggtitle("")
-```
- 
---->
-
-
 ### Inclusion/exclusion: a minimum number of CRP measurements
 
 Note that our inclusion criteria requires at least 3 CRP measurements per 
 individual. This is applied after the additional pre-processing applied in the
 previous section. Here, we re-calculate relevant summary statistics. 
 
-```{r}
+
+```{R crp followup pre exclusions post processed}
+#| label: fig-crp-follow-up-postproc
+#| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of CRP follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up."
+#| fig-width: 12
+#| column: body-outset
+
 countsDF <- crp.ma %>%
   group_by(ids) %>%
   summarise(n.total = n(),
@@ -1814,18 +1505,13 @@ countsDF <- crp.ma %>%
             n.noncensored = n.total - censored.left,
             followup = max(crp_time), 
             crp.var = var(crp_result, na.rm = TRUE))
-```
 
-```{R crp followup pre exclusions post processed}
-#| label: fig-fcal-follow-up-postproc
-#| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of CRP follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up."
 p1 <- countsDF %>%
   ggplot(aes(x = n.total)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
   xlab("Measurements per subject")
-# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
 p2 <- countsDF %>%
   ggplot(aes(x = followup)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
@@ -1834,11 +1520,11 @@ p2 <- countsDF %>%
   xlab("Follow-up (years)")
 p3 <- countsDF %>%
   ggplot(aes(y = n.total, x = followup)) +
-  geom_point(color = "#FF4F79", size = 2) +
+  geom_hex() +
   xlab("Follow-up (years since diagnosis)") + 
-  ylab("Number of FCAL measurements") +
+  ylab("Number of CRP measurements") +
   theme_minimal() +
-  geom_hline(yintercept = 3)
+  labs(fill = "Count")
 
 p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
 ```
@@ -1869,7 +1555,7 @@ This leaves a cohort with `r length(unique(crp$ids))` individuals.
 <!--- CAV: I think we could include the nonzero variance subjects here --->
 
 ```{r crp followup post exclusions}
-#| label: fig-crp-follow-up
+#| label: fig-crp-follow-up-post-exclusions
 #| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of FCAL follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up. In all cases, only individuals with at least 3 measurements  and non-zero variance are included."
 p1 <- countsDF %>%
   subset(n.total >= 3 & crp.var != 0) %>% 
@@ -1878,7 +1564,6 @@ p1 <- countsDF %>%
   theme_minimal() +
   ylab("Count") +
   xlab("Measurements per subject")
-# CAV: edit the plot below such that it doesn't show individual dots, you could e.g. use geom_hex
 p2 <- countsDF %>%
   subset(n.total >= 3 & crp.var != 0) %>% 
   ggplot(aes(x = followup)) +
@@ -1898,138 +1583,17 @@ p3 <- countsDF %>%
 p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
 ```
 
-
-<!--- CAV: remove this but keep elsewhere. No needed as max followup is fixed
-
-### Maximum followup {#maximum-followup-1}
-
-A maximum follow-up should be specified in the interest of constructing
-robust models which are not heavily influenced by observations at the
-end of follow-up where observations are more sparse. These two
-requirements are dependent on one another as the maximum follow-up
-affects whether or not a subject has at least three measurements taken
-within follow-up.
-
-As with FCAL, the decision for a specific cut-off is based upon how
-increasing follow-up changes the mean, median, and interquartile range
-of the number of observations per subject (@tbl-follow-up-crp) and how
-many subjects have CRP observations after set thresholds
-(@tbl-count-crp).
-
-```{R}
-#| label: tbl-follow-up-crp
-#| tbl-cap: Statistics for number of observations across a range of maximum follow-up
-years <- seq(5, 15, by = 1)
-mean.n <- c()
-median.n <- c()
-IQR.n <- c()
-freq <- c()
-
-for (year in years) {
-  # restrict to measurements within threshold
-  temp <- subset(crp, crp_time <= year)
-  # restrict to subjects with at least three measurements within threshold
-  temp <- subset(temp, ids %in% as.numeric(names(table(temp$ids)[table(temp$ids) >= 3])))
-  counts <- table(temp$ids)
-  mean.n <- c(mean.n, round(mean(counts), 2))
-  median.n <- c(median.n, median(counts))
-  IQR.n <- c(IQR.n, paste(quantile(counts)[c(2, 4)], collapse = "-"))
-  freq <- c(freq, length(names(counts)))
-}
-
-knitr::kable(
-  data.frame(
-    years = years,
-    freq = freq,
-    mean.n = mean.n,
-    median.n = median.n,
-    IQR.n = IQR.n
-  ),
-  col.names = c(
-    "Year cut-off",
-    "Number of subjects",
-    "Mean",
-    "Median",
-    "IQR"
-  )
-)
-```
-
-```{R}
-#| label: tbl-count-crp
-#| tbl-cap: "How many subjects have an CRP available after a given number of years?"
-years <- seq(1, 15, by = 1)
-count <- numeric()
-for (year in years) {
-  count <- c(count, length(unique(subset(crp, crp_time > year)$ids)))
-}
-
-count.tab <- data.frame(years = years, count = count)
-kable(count.tab, col.names = c("Years", "Number of subjects"))
-```
-
-From the above table, seven years of maximum follow-up appears to be the
-most appropriate.
-
-```{R}
-crp <- subset(crp, crp_time <= 7)
-# restrict to subjects with at least three measurements within threshold
-crp <- subset(
-  crp,
-  ids %in% as.numeric(
-    names(
-      table(crp$ids)[table(crp$ids) >= 3]
-    )
-  )
-)
-```
-
---->
-
 ### Additional pre-processing
 
-It appears from @fig-crp-sample-ma that some subjects have the same
+Some subjects have the same
 median log-transformed CRP across all of their observations, effectively
 having a variance of 0. These subjects will be extracted and considered
 as their own cluster, as they may cause numerical issues when model
 fitting but remain of note.
 
 ```{R}
-var0.ids <- c()
-for (id in unique(crp.ma$ids)) {
-  temp <- subset(crp.ma, ids == id)
-  if (var(temp[, "crp_result"]) == 0) {
-    var0.ids <- c(var0.ids, id)
-  }
-}
-```
-
-There are `r length(var0.ids)` subjects with no variation in their
-preprocessed CRP observations. Interestingly, these subjects typically
-exhibit substantial intra-subject heterogeneity for FC profiles
-(@fig-FC-sample-crp-var). The CRP for these subjects will not be
-modelled via LCMM.
-
-```{R}
-#| label: fig-FC-sample-crp-var
-#| fig-cap: "Logged FC profiles for subjects with no variance across their CRP measurements."
-#| results: "hold"
-p <- subset(fcal, ids %in% var0.ids) %>%
-  ggplot(aes(x = calpro_time, y = log(calpro_result), color = as.factor(ids))) +
-  geom_point(alpha = 0.6) +
-  geom_line(alpha = 0.6) +
-  theme_minimal() + 
-  theme(legend.position = "none") +
-  ylab("Log (FC)") +
-  xlab("Time")
-ggsave("plots/fcal-for-crp0var.png", p, width = 10, height = 5, units = "in")
-print(p)
-crp.ma <- subset(crp.ma, !(ids %in% var0.ids))
-```
-
-```{R}
 p1 <- crp.ma %>%
-  ggplot(aes(x = exp(crp_result))) +
+  ggplot(aes(x = crp_result)) +
   geom_density(
     linewidth = 0.8,
     alpha = 0.5,
@@ -2042,7 +1606,7 @@ p1 <- crp.ma %>%
   ylab("Density")
 
 p2 <- crp.ma %>%
-  ggplot(aes(x = crp_result)) +
+  ggplot(aes(x = log(crp_result))) +
   geom_density(
     linewidth = 0.8,
     alpha = 0.5,
@@ -2140,7 +1704,7 @@ ggsave("plots/fcal-dist.pdf", p1 + p2, width = 8, height = 4.5, units = "in")
 #| fig-cap: "Updated density plot of CRP measurements by observed value"
 #| warning: false
 p3 <- crp %>%
-  ggplot(aes(x = exp(crp_result))) +
+  ggplot(aes(x = crp_result)) +
   geom_density(
     linewidth = 0.8,
     alpha = 0.5,
@@ -2158,7 +1722,7 @@ print(p3)
 #| label: "fig-logcrp-meas-update"
 #| fig-cap: "Updated density plot of logged CRP test results"
 p4 <- crp %>%
-  ggplot(aes(x = crp_result)) +
+  ggplot(aes(x = log(crp_result))) +
   geom_density(
     linewidth = 0.8,
     alpha = 0.5,
@@ -2178,7 +1742,7 @@ ggsave("plots/crp-dist.pdf", p3 + p4, width = 8, height = 4.5, units = "in")
 #| fig-cap: "Updated density plot of CRP after additional preprocessing"
 #| warning: false
 p5 <- crp.ma %>%
-  ggplot(aes(x = exp(crp_result))) +
+  ggplot(aes(x = crp_result)) +
   geom_density(
     linewidth = 0.8,
     alpha = 0.5,
@@ -2196,7 +1760,7 @@ print(p5)
 #| label: "fig-logcrp-meas-processed"
 #| fig-cap: "Updated density plot of logged CRP after additional preprocessing"
 p6 <- crp.ma %>%
-  ggplot(aes(x = crp_result)) +
+  ggplot(aes(x = log(crp_result))) +
   geom_density(
     linewidth = 0.8,
     alpha = 0.5,
@@ -2227,77 +1791,6 @@ ggsave("plots/Sup-Figure-1.pdf",
        units = "in")
 ```
 
-## Updated trajectory plots
-
-### FC
-
-```{R}
-ids.sample <- sample(unique(fcal$ids), 15)
-fcal.sub <- subset(fcal, ids %in% ids.sample)
-
-cairo_pdf("plots/fcal-traj.pdf", width = 8, height = 6)
-fcal.sub %>%
-  ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
-  geom_line(alpha = 0.7) +
-  geom_point(alpha = 0.7) +
-  theme_minimal() +
-  scale_color_manual(values = colorspace::lighten(rainbow(length(ids.sample)),
-    amount = -0.35
-  )) +
-  guides(color = "none") +
-  xlab("Time (years)") +
-  ylab("Log(FCAL (µg/g))") +
-  ggtitle("")
-invisible(dev.off())
-
-fcal.sub %>%
-  ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
-  geom_line(alpha = 0.7) +
-  geom_point(alpha = 0.7) +
-  theme_minimal() +
-  scale_color_manual(values = colorspace::lighten(rainbow(length(ids.sample)),
-    amount = -0.35
-  )) +
-  guides(color = "none") +
-  xlab("Time (years)") +
-  ylab("Log(FCAL (µg/g))") +
-  ggtitle("")
-```
-
-### CRP {#crp}
-
-```{R}
-ids.sample <- sample(unique(crp$ids), 15)
-crp.sub <- subset(crp.ma, ids %in% ids.sample)
-
-cairo_pdf("plots/crp-traj.pdf", width = 8, height = 6)
-crp.sub %>%
-  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
-  geom_line(alpha = 0.7) +
-  geom_point(alpha = 0.7) +
-  theme_minimal() +
-  scale_color_manual(values = colorspace::lighten(rainbow(length(ids.sample)),
-                                                  amount = -0.35
-  )) +
-  guides(color = "none") +
-  xlab("Time (years)") +
-  ylab("Log(CRP (mg/L))") +
-  ggtitle("")
-invisible(dev.off())
-
-crp.sub %>%
-  ggplot(aes(x = crp_time, y = crp_result, color = factor(ids))) +
-  geom_line(alpha = 0.7) +
-  geom_point(alpha = 0.7) +
-  theme_minimal() +
-  scale_color_manual(values = colorspace::lighten(rainbow(length(ids.sample)),
-                                                  amount = -0.35
-  )) +
-  guides(color = "none") +
-  xlab("Time (years)") +
-  ylab("Log(CRP (mg/L))") +
-  ggtitle("")
-```
 
 ## Data saving
 
@@ -2310,6 +1803,8 @@ if (!dir.exists(paste0(prefix, "processed"))) {
 }
 
 fcal$calpro_result <- log(fcal$calpro_result)
+crp$crp_result <- log(crp$crp_result)
+
 
 saveRDS(dict, paste0(prefix, "processed/dict-initial.RDS"))
 saveRDS(fcal, paste0(prefix, "processed/fcal.RDS"))
