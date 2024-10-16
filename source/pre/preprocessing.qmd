@@ -29,7 +29,6 @@ author:
     url: https://scholar.google.com/citations?user=lkdrwm0AAAAJ&hl=en&oi=ao
     affiliations:
       - ref: HGU
-      - ref: Turing
 #comments:
 #  giscus: 
 #    repo: quarto-dev/quarto-docs
@@ -253,7 +252,7 @@ subjects reported to not have IBD. The latter will be removed, leaving
 
 ```{R Frequency table to diagnosis pre-process}
 #| label: tbl-diag-pre
-#| tbl-cap: Frequency table of reported IBD type
+#| tbl-cap: Reported IBD types
 kable(unique(dict$diagnosis),
   col.names = c("Diagnosis")
 )
@@ -700,9 +699,8 @@ implications for research.
 
 ```{R FCAL censor mapping}
 ## Some values cannot be directly coerced as numeric
-#unique(fcal$calpro_result[which(is.na(as.numeric(fcal$calpro_result)))])
-unique(fcal$calpro_result[grepl("<", fcal$calpro_result)])
-unique(fcal$calpro_result[grepl(">", fcal$calpro_result)])
+#unique(fcal$calpro_result[grepl("<", fcal$calpro_result)])
+#unique(fcal$calpro_result[grepl(">", fcal$calpro_result)])
 
 fcal$calpro_result <- plyr::mapvalues(
   fcal$calpro_result,
@@ -726,20 +724,14 @@ fcal$calpro_result <- plyr::mapvalues(
   )
 )
 
-# Sanity check to see that all values were converted
-unique(fcal$calpro_result[grepl("<", fcal$calpro_result)])
-unique(fcal$calpro_result[grepl(">", fcal$calpro_result)])
-
 # Here, values that cannot be converted into a numeric value will be excluded
 # (they are converted to NA)
 fcal$calpro_result <- as.numeric(fcal$calpro_result) # Remove error codes
 fcal <- fcal[!is.na(fcal[, "calpro_result"]), ]
 
 # Apply limits of detection 
-# range(fcal$calpro_result)
 fcal[fcal[, "calpro_result"] < 20, "calpro_result"] <- 20
 fcal[fcal[, "calpro_result"] > 1250, "calpro_result"] <- 1250
-#range(fcal$calpro_result)
 ```
 
 ```{r fig-fcal-meas}
@@ -785,30 +777,14 @@ fcal %>%
 
 ### Removal of duplicate FCAL measurements
 
-<!--- CAV: explain what you are doing in this section. Note that I removed the
-early code for duplicate removal, as it should be covered by the code below ---> 
+Given FC was retrospectively collected from observational data, it is possible
+duplicate tests have been recorded in the extract. As it is NHS Lothian policy
+to not test FC days apart, we can assume that any tests with the same
+observation within a small time frame are likely to be duplicates. This may
+occur when collection dates and testing dates have been used interchangeably.
 
-
-<!--- CAV: this chunk with fuzzy.duplicated.ids can be removed, no? --->  
-```{R}
-fuzzy.duplicated.ids <- c()
-
-for (id in unique(fcal$ids)) {
-  sub.fcal <- subset(fcal, ids == id) # Get FC data for a subject
-  sub.fcal <- sub.fcal[order(sub.fcal$calpro_date), ] # Order by dates
-  time.diff <- diff(sub.fcal$calpro_date) # Find time between ordered dates
-  value.diff <- diff(sub.fcal$calpro_result) # Find difference in observed values
-  # If two measurements are within 10 days of each other and have nearly same value
-  if (any(time.diff <= 10 & abs(value.diff) <= 20)) {
-    fuzzy.duplicated.ids <- c(fuzzy.duplicated.ids, id)
-  }
-}
-
-message("There are ",
-        length(fuzzy.duplicated.ids),
-        " subjects who appear to have fuzzy duplicated FC measurements")
-```
-
+If a subsequent FC test for a subject was dated within 10 days of a previous
+test and has the same observed value, this observation was dropped. 
 
 ```{R}
 duplicated.ids <- c()
@@ -830,89 +806,11 @@ for (id in unique(fcal$ids)) {
   }
 }
 
-message("There are ",
-        length(duplicated.ids),
-        " subjects who appear to have duplicated FC measurements")
+htmltools::p(paste("There are",
+                   length(duplicated.ids),
+                   "subjects who appear to have duplicated FC measurements"))
 ```
 
-<!--- CAV: remove as similar plot is shown below 
-### Observations per subject
-
-Although we explore the number of observations per subject in this
-section, we will not yet apply the inclusion criteria of having at least
-three FC measurements. This is because [we
-later](#at-least-three-measurements-maximum-followup) reduce the maximum
-follow-up which will impact the number of observations per subject.
-
-The number of FC measurements per subject is right-skewed
-(@fig-fcal-dist). However, there are also subjects with many FC
-observations. These subjects were investigated and found to often have a
-complex disease course, such as acute severe ulcerative colitis, and
-required close monitoring as a result.
-
-```{R Number of FCAL observations per subject}
-#| label: fig-fcal-dist
-#| fig-cap: "Distribution of number of FC measurements per subject. The red line indicates the required minimum number of observations for inclusion"
-
-FCcounts <- as.vector(table(fcal$ids))
-FCcountsdf <- tibble(ids = names(table(fcal$ids)), counts = FCcounts)
-FCcountsdf %>%
-  ggplot(aes(x = counts)) +
-  geom_histogram(binwidth = 1, fill = "#887C9B") +
-  geom_vline(xintercept = 2.5, color = "#D80032") +
-  theme_minimal() +
-  xlab("Number of FCAL observations per subject") +
-  ylab("Count")
-```
-
---->
-
-<!--- CAV: remove this code, but keep as a back-up elsewhere 
-
-### Number of FCAL measurements prior to diagnosis
-
-We consider measurements taken more than 90 days before diagnosis. As it can be seen in 
-
-```{r fcal before diagnosis}
-fcal.sorted <- fcal %>% 
-  mutate(days.from.diag = calpro_date - date.of.diag) %>%
-  arrange(ids, calpro_date)
-  
-
-mydf <- fcal.sorted %>% 
-  group_by(ids) %>%
-  summarise(n.before.diag = sum(days.from.diag < -3*30),
-            n.high.before.diag = sum(
-              days.from.diag < -3*30 & calpro_result > 250
-              )
-            ) %>%
-  arrange(desc(n.before.diag))
-
-mydf %>%
-  ggplot(aes(x = n.before.diag)) +
-  geom_histogram(fill = "#887C9B") +
-  theme_minimal() +
-  ggtitle("Pre-diagnosis (> 90 days) FCAL observations per subject") + 
-  xlab("Number of observations per subject") +
-  ylab("Frequency")
-
-mydf %>%
-  ggplot(aes(x = n.high.before.diag)) +
-  geom_histogram(fill = "#887C9B") +
-  theme_minimal() +
-  ggtitle("Pre-diagnosis (> 90 days) elevated FCAL observations per subject") + 
-  xlab("Number of observations per subject") +
-  ylab("Frequency")
-
-table(mydf$n.before.diag)
-table(mydf$n.high.before.diag)
-
-# examine some examples
-aux <- mydf$ids[mydf$n.high.before.diag == 5]
-fcal.sorted %>% subset(ids %in% aux[1])
-```
-
---->
 
 ### Retiming - part 1
 
@@ -930,8 +828,6 @@ fcal <- merge(fcal, dict[,c("ids", "date.of.diag")],
 fcal$calpro_time <- as.numeric(fcal$calpro_date - fcal$date.of.diag) / 365.25
 dim(fcal)
 
-# CAV: this line is not doing anything!
-#fcal <- fcal[!is.na(fcal[, "calpro_time"]), ]
 
 fcal %>%
   ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
@@ -945,17 +841,17 @@ fcal %>%
   ggtitle("")
 ```
 
-After retiming, it is clear some FC observations are earlier than
-diagnosis and in some cases substantially earlier (@fig-fcal-spag-pre).
-Tests taken close to reported date of diagnosis are likely "early" as a
-result of diagnostic delay whereas tests from much earlier were likely
-requested due to other conditions.
+After retiming, it is clear some FC observations are earlier than diagnosis and
+in some cases substantially earlier (@fig-fcal-spag-pre). Tests taken close to
+the reported date of diagnosis are likely "early" as a result of diagnostic
+delay whereas tests from much earlier were likely requested due to other
+conditions.
 
-As such, FC results earlier than 90 days prior to diagnosis will be
-discarded. If a subject has an FCAL within 90 days before diagnosis,
-then all of their FCAL tests will be retimed such that their earliest FC
-within this period is equal to 0 and all later measurements are shifted
-accordingly to maintain the same differences between measurement times.
+As such, FC results earlier than 90 days prior to diagnosis will be discarded.
+If a subject has an FC within 90 days before diagnosis, then all of their FC
+tests will be retimed such that their earliest FC within this period is equal to
+0 and all later measurements are shifted accordingly to maintain the same
+ differences between measurement times.
 
 ```{r remove prediag fcal}
 fcal <- subset(fcal, calpro_time >= -0.25)
@@ -978,7 +874,7 @@ fcal <- subset(fcal, ids %in% diagnostic$ids)
 dim(fcal)
 ```
 
-After this exclusion, `r length(unique(fcal$ids))` remain in the data. 
+After this exclusion, `r length(unique(fcal$ids))` subjects remain in the data. 
 
 ### Retiming - part 2
 
@@ -1003,8 +899,8 @@ ggsave("plots/fc-diagnostic-dist.png",
        units = "in")
 ```
 
-Although most diagnostic mearurements were observed around the recorded 
-diagnosis time (mode near zero), this is not always the case. As such, we
+Although most diagnostic measurements were observed around the recorded 
+diagnosis time (near zero), this is not always the case. As such, we
 decided to retime measurements/diagnosis time as described above (i.e. time = 0
 matches the time of first available FCAL measurement). This is only applied to
 individuals for which the first available CRP is prior to the recorded diagnosis
@@ -1037,7 +933,7 @@ fcal %>%
   ggtitle("")
 ```
 
-At this stage, we also exclude FCAL measurements recorded beyond 7-years post
+At this stage, we also exclude FCAL measurements recorded beyond 7 years post
 diagnosis. 
 
 ```{r remove fcal after 7 years}
@@ -1048,34 +944,6 @@ length(unique(fcal$ids))
 
 At this point, the data contains `r nrow(fcal)` FCAL measurements across all
 `r length(unique(fcal$ids))` individuals. 
-
-<!--- CAV: not sure why do you need this code as we don't really use fc.dist
-anywhere else. If this is about saving the diagnostic FCAL values, you can 
-match that by looking at the measurement such that time = 0 (after retiming) 
-
-```{R, eval = FALSE}
-##The following code is used to save the cleaned data generated so far. 
-
-diag.time <- c()
-fc.ids <-  unique(fcal$ids)
-
-for (id in fc.ids) {
-  temp <- subset(fcal, ids == id)
-  temp <- temp[order(temp$calpro_time), ]
-  diag.time <- c(diag.time, temp[1, "calpro_time"])
-}
-
-
-fc.dist <- data.frame(ids = fc.ids, diagnostic = diag.time)
-
-if (!dir.exists(paste0(prefix, "processed"))) {
-  dir.create(paste0(prefix, "processed"))
-}
-
-saveRDS(fc.dist, paste0(prefix, "processed/fc-diag-dist.RDS"))
-```
-
----> 
 
 ### Inclusion/exclusion: a minimum number of FCAL measurements
 
@@ -1174,30 +1042,6 @@ sum(countsDF$n.noncensored >= 3)
 sum(countsDF$n.noncensored - countsDF$n.negtime.nondiag >= 3)
 ```
 
-<!--- CAV: remove 
-
-We now explore censored FC observations and begin by considering FC
-results which have been left-censored ($\leq 20 \mu g/g$). From
-@fig-left-censor-fcal, we can clearly see there are subjects with
-entirely left-censored FC observations (n =
-`r nrow(subset(countsDF, censored.left/count ==1))`).
-
-```{R}
-#| label: fig-left-censor-fcal
-#| fig-cap: "Left-censored observations per subject"
-#  Hold results for no. of measurements and no. of censored obs per subject
-countsDF %>%
-  ggplot(aes(x = censored.left / n.total, y = n.total)) +
-  geom_point(alpha = 0.5, size = 0.9, color = "#70A288") +
-  ylab("Total number of observations") +
-  xlab("Proportion of left-censored observations") +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  geom_hline(yintercept = 3)
-```
-
---->
-
 The following is used to select individuals with at least 3 non-censored FCAL 
 measurements. 
 
@@ -1211,7 +1055,7 @@ length(unique(fcal$ids))
 This leaves a cohort with `r length(unique(fcal$ids))` individuals.
 
 ```{r fcal followup post exclusions}
-#| label: fig-fcal-follow-up
+#| label: fig-fcal-follow-up-post
 #| fig-cap: "(A) Histogram of the number of FCAL measurements per subject. (B) Histogram of FCAL follow-up per subject (before exclusions). (C) Scatterplot with number of FCAL measurements vs follow-up. In all cases, only individuals with at least 3 non-censored measurements are included."
 p1 <- countsDF %>%
   subset(n.noncensored >= 3) %>% 
@@ -1253,6 +1097,7 @@ fcal %>%
   subset(ids %in% countsDF1$ids) %>% 
   arrange(ids, calpro_time)
 ```
+
 
 <!--- CAV: this code is not needed as we set the max follow-up to 7;
 save as a backup elsewhere
@@ -1453,6 +1298,7 @@ This results in a cohort size of `r length(unique(fcal$ids))`
 --->
 
 <!--- CAV: do we need this here? may remove and keep in an EDA file --->
+
 
 ### Revisiting month of diagnosis
 
