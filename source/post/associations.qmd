@@ -53,7 +53,7 @@ library(ggmosaic)
 
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
-model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
+model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-10.RDS"))
 crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-9.RDS"))
@@ -112,13 +112,14 @@ for (id in unique(fcal$ids)) {
 df <- data.frame(ids = unique(fcal$ids), fup = fup, n.obs = n.obs)
 p <- merge(df, pprob.df, by = "ids") %>%
   filter(n.obs <= 20) %>%
-  ggplot(aes(x = fup, y = pprobs, color = n.obs)) +
-  geom_point() +
+  ggplot(aes(x = fup, y = pprobs)) +
+  geom_point(aes( color = n.obs)) +
   geom_smooth(method = "lm", formula = "y ~ x") +
   theme_minimal() +
   xlab("Follow-up time (years)") +
   ylab("Posterior probability") +
-  ylim(0, NA) + viridis::scale_color_viridis(option = "viridis") 
+  ylim(0, NA) +
+  viridis::scale_color_viridis(option = "viridis") 
 
 ggsave("plots/postprob-fup.png", p, width = 10, height = 8, units = "in")
 ggsave("plots/postprob-fup.pdf", p, width = 10, height = 8, units = "in")
@@ -151,8 +152,8 @@ for (id in unique(fcal$ids)) {
 df <- data.frame(ids = unique(fcal$ids), fup = fup, n.obs = n.obs)
 p <- merge(df, pprob.df, by = "ids") %>%
   filter(n.obs <= 20) %>%
-  ggplot(aes(x = fup, y = pprobs, color = n.obs)) +
-  geom_point() +
+  ggplot(aes(x = fup, y = pprobs)) +
+  geom_point(aes(color = n.obs)) +
   geom_smooth(method = "lm", formula = "y ~ x") +
   theme_minimal() +
   xlab("Follow-up time (years)") +
@@ -174,12 +175,17 @@ ggsave("plots/postprob-fup-clusters.pdf",
 p
 ```
 
-```{r}
+```{R}
+#| label: fig-fc-prob-fup
+#| fig-cap: "Demonstration of how mean posterior probabilities of cluster assignment for subjects changes based upon follow-up and assigned cluster."
+#| column: body-outset
+#| fig-width: 11
+#| fig-height: 8
 myDF <- fcal %>%
   group_by(ids) %>%
   summarise(n.total = n(),
-            followup = max(calpro_time)) %>%
-  mutate(followup_cut = cut(followup, breaks = seq(0, 8, by = 2)),
+            followup = max(calpro_time),) %>%
+  mutate(followup_cut = cut(followup, breaks = c(seq(0, 6, by = 2), 7)),
          n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
   
 myDF <- merge(myDF, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
@@ -189,60 +195,109 @@ myDF <- myDF %>%
 
 myDF_means <- myDF %>% 
   group_by(class, followup_cut) %>%
-  summarise(across(starts_with("prob"), mean, na.rm = TRUE)) %>%
+  summarise(across(starts_with("prob"), function(x) mean(x, na.rm = TRUE)),
+            .groups = "drop") %>%
   pivot_longer(cols = starts_with("prob"), names_to = "prob")
 
-myDF_means %>% subset(prob != "probmax") |>
-ggplot(aes(fill = prob, y = value, x = followup_cut)) +
-  geom_bar(position="fill", stat="identity") +
-  facet_wrap(.~class, ncol = 4) + 
-  theme_classic()
+
+# Assign level order otherwise alphanumerical order used
+myDF_means$prob <- factor(myDF_means$prob,
+                          levels = c(paste0("prob", 1:10), "probmax"),
+                          labels = c(paste0("FC", 1:10), "probmax"))
+
+myDF_means$class <- factor(myDF_means$class,
+                           levels = 1:10,
+                           labels = paste0("Assigned to FC", 1:10))
+
+
+col.vec <- c("#df5c7f",
+"#74c74a",
+"#d159d3",
+"#c2ae42",
+"#8581da",
+"#de6d3c",
+"#74b0c3",
+"#bc9d7a",
+"#6cb886",
+"#c597bd")
+
+
+p <- myDF_means %>%
+  filter(prob != "probmax") %>%
+  ggplot(aes(fill = prob, y = value, x = followup_cut)) +
+  geom_bar(position = "fill", stat = "identity") +
+  facet_wrap(.~class, ncol = 5) + 
+  theme_minimal() +
+  theme(legend.title = element_text(hjust = 0.5),
+        strip.background = element_rect(color = "lightgray",
+                                         linewidth = 1.5,
+                                         linetype="solid")) +
+  labs(x = "Follow-up cutoff (years)",
+       y = "",
+       fill = "Mean posterior\nprobability of\ncluster assignment") +
+  scale_fill_manual(values = col.vec) 
+
+ggsave("plots/fc-prob-fup.png", p, width = 11, height = 8, units = "in")
+ggsave("plots/fc-prob-fup.pdf", p, width = 11, height = 8, units = "in")
+p
+```
   
 
-
+```{R}
 myDF <- myDF %>% pivot_longer(cols = starts_with("prob"), names_to = "prob")
 
 myDF %>% subset(class == 7) 
 
-
-myDF %>% subset(prob == "probmax") |>
+myDF %>%
+  subset(prob == "probmax")  %>%
   ggplot(aes(x = prob, y = value, fill = followup_cut)) +
   geom_violin(drop = FALSE) + 
   xlab("Cluster") +
   ylab("Cluster assignment probability") +
   facet_wrap(.~n.total_cut, ncol = 4) +
   theme_classic()
+```
 
-myDF %>% subset(class == 7) |>
+```{R}
+myDF %>%
+  subset(class == 7) %>%
   ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin() + 
+  geom_violin(drop = FALSE) + 
   xlab("Cluster") +
   ylab("Cluster assignment probability") +
   ggtitle("FC 7") +
   theme_classic()
+```
 
-myDF %>% subset(class == 1) |>
+```{R}
+myDF %>%
+  subset(class == 1) %>%
   ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin() + 
+  geom_violin(drop = FALSE) + 
   xlab("Cluster") +
   ylab("Cluster assignment probability") +
   ggtitle("FC 1") +
   theme_classic()
+```
 
-myDF %>% subset(class == 2) |>
+```{R}
+myDF %>%
+  subset(class == 2) %>%
   ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin() + 
+  geom_violin(drop = FALSE) + 
   xlab("Cluster") +
   ylab("Cluster assignment probability") +
   ggtitle("FC 2") +
   theme_classic()
+```
 
-myDF |>
+```{R}
+myDF %>%
   ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin() + 
+  geom_violin(drop = FALSE) + 
   xlab("Cluster") +
   ylab("Cluster assignment probability") +
-  facet_wrap(.~class, ncol = 4, nrow = 2) +
+  facet_wrap(.~class, ncol = 5, nrow = 2) +
   theme_classic()
 ```
 
@@ -311,7 +366,7 @@ aov(class ~ age, data = dict.fc) %>%
 #| fig-width: 9.142857
 #| warning: false
 p1 <- dict.fc %>%
-  mutate(class = factor(class, labels = paste("FC", seq(1, 8)))) %>%
+  mutate(class = factor(class, labels = paste("FC", seq(1, 10)))) %>%
   ggplot(aes(x = class, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
@@ -473,7 +528,6 @@ p1 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
   geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
@@ -484,8 +538,6 @@ p2 <- perc.table %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
-  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
@@ -498,11 +550,11 @@ p3 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
   geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
-p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")
+p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")  &
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) 
 ggsave("plots/ibd-type-fc.png", p, width = 7.5, height = 7.5)
 ggsave("plots/ibd-type-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
@@ -655,7 +707,6 @@ p1 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#C2F8CB", color = "#82C68F") +
   geom_hline(yintercept = totalL1Perc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
@@ -667,7 +718,6 @@ p2 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#EFC7E5", color = "#C795BB") +
   geom_hline(yintercept = totalL2Perc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
@@ -680,11 +730,11 @@ p3 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#F6BD60", color = "#C89216") +
   geom_hline(yintercept = totalL3Perc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
-p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")
+p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A") &
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) 
 ggsave("plots/cd-location-fc.png", p, width = 7.5, height = 7.5)
 ggsave("plots/cd-location-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
@@ -780,7 +830,6 @@ p1 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#FF7700", color = "#C56025") +
   geom_hline(yintercept = totalB1Perc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
@@ -792,7 +841,6 @@ p2 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#004777", color = "#003A62") +
   geom_hline(yintercept = totalB2Perc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
@@ -805,11 +853,11 @@ p3 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#4E937A", color = "#447361") +
   geom_hline(yintercept = totalB3Perc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
-p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")
+p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")  &
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) 
 ggsave("plots/cd-behaviour-fc.png", p, width = 7.5, height = 7.5)
 ggsave("plots/cd-behaviour-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
@@ -1323,7 +1371,6 @@ p1 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
   geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
@@ -1335,7 +1382,6 @@ p2 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
   geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
@@ -1348,11 +1394,11 @@ p3 <- perc.table %>%
   ggplot(aes(x = cluster, y = perc)) +
   geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
   geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  scale_y_continuous(labels = scales::percent) +
   theme_minimal() +
   labs(x = "Cluster", y = "Percentage")
 
-p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")
+p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")  &
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) 
 ggsave("plots/ibd-type-crp.png", p, width = 7.5, height = 7.5)
 ggsave("plots/ibd-type-crp.pdf", p, width = 7.5, height = 7.5)
 print(p)
