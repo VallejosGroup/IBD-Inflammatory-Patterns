@@ -293,19 +293,21 @@ dim(dict)
 
 ```{r add sex to dict}
 # Merge with fcal to add sex information
-dict <- fcal.pheno[,c("ids", "sex")] %>%
+dict <- fcal.pheno[, c("ids", "sex")] %>%
   distinct(ids,
-           .keep_all = TRUE) %>%
+    .keep_all = TRUE
+  ) %>%
   merge(x = dict, by = "ids", all.x = TRUE, all.y = FALSE)
 
 # Update NA sex if sex available from updated
 dict <- merge(dict,
-              updated[, c("ids", "sex")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) 
+  updated[, c("ids", "sex")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+)
 
-for (i in 1:nrow(dict)){
+for (i in 1:nrow(dict)) {
   if (is.na(dict[i, "sex.x"]) & !is.na(dict[i, "sex.y"])) {
     dict[i, "sex.x"] <- dict[i, "sex.y"]
   }
@@ -318,10 +320,11 @@ dict$sex.x <- dict$sex.y <- NULL
 updated <- fix_date_df(updated, "diagnosisDate")
 updated$age <- with(updated, year(diagnosisDate) - dateOfBirth)
 dict <- merge(dict,
-              updated[, c("ids", "age")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE)
+  updated[, c("ids", "age")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+)
 
 dim(dict)
 ```
@@ -334,10 +337,11 @@ there are `r sum(is.na(dict$sex))` individuals for which sex is missing.
 
 ```{r add date.of.death}
 dict <- merge(dict,
-              updated[, c("ids", "death")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
+  updated[, c("ids", "death")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
   rename(date.of.death = death)
 
 dict <- fix_date_df(dict, "date.of.death")
@@ -355,30 +359,33 @@ remaining individuals have not died by the date of data extraction.
 ```{R Create subject dictionary alternative}
 # From outcomes
 dict <- merge(dict,
-              outcomes[, c("ids", "diagnosisDate")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
+  outcomes[, c("ids", "diagnosisDate")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
   rename(date.of.diag.outcomes = diagnosisDate)
 dict <- fix_date_df(dict, "date.of.diag.outcomes")
 dim(dict)
 
 # From updated
 dict <- merge(dict,
-              updated[, c("ids", "diagnosisDate")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
+  updated[, c("ids", "diagnosisDate")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
   rename(date.of.diag.updated = diagnosisDate)
 dict <- fix_date_df(dict, "date.of.diag.updated")
 dim(dict)
 
 # From fcal
 dict <- merge(dict,
-              fcal[, c("ids", "diagnosis_date")] %>% distinct(ids, .keep_all = TRUE),
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
+  fcal[, c("ids", "diagnosis_date")] %>% distinct(ids, .keep_all = TRUE),
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
   rename(date.of.diag.fcal = diagnosis_date)
 dict <- fix_date_df(dict, "date.of.diag.fcal")
 dim(dict)
@@ -387,28 +394,31 @@ dim(dict)
 ```{R Create subject dictionary alternative sex}
 # From outcomes
 dict <- merge(dict,
-              outcomes[, c("ids", "Gender")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
+  outcomes[, c("ids", "Gender")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
   rename(sex.outcomes = Gender)
 dim(dict)
 
 # From updated
 dict <- merge(dict,
-              updated[, c("ids", "sex")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
+  updated[, c("ids", "sex")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
   rename(sex.updated = sex.y, sex = sex.x)
 dim(dict)
 
 # From fcal
 dict <- merge(dict,
-              fcal[, c("ids", "sex")] %>% distinct(ids, .keep_all = TRUE),
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
+  fcal[, c("ids", "sex")] %>% distinct(ids, .keep_all = TRUE),
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
   rename(sex.fcal = sex.y, sex = sex.x)
 dim(dict)
 
@@ -421,31 +431,38 @@ table(dict$sex.updated, dict$sex.fcal, useNA = "always")
 ```{R Create subject dictionary alternative diag}
 # From outcomes
 dict <- merge(dict,
-              outcomes[, c("ids", "diagnosisId")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
+  outcomes[, c("ids", "diagnosisId")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
   rename(diagnosis.outcomes = diagnosisId)
 dim(dict)
 
 # From updated
 dict <- merge(dict,
-              updated[, c("ids", "diagnosis")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
-  rename(diagnosis = diagnosis.x,
-         diagnosis.updated = diagnosis.y)
+  updated[, c("ids", "diagnosis")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
+  rename(
+    diagnosis = diagnosis.x,
+    diagnosis.updated = diagnosis.y
+  )
 dim(dict)
 
 # From fcal
 dict <- merge(dict,
-              fcal[, c("ids", "diagnosis")] %>% distinct(ids, .keep_all = TRUE),
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) %>% 
-  rename(diagnosis = diagnosis.x,
-         diagnosis.fcal = diagnosis.y)
+  fcal[, c("ids", "diagnosis")] %>% distinct(ids, .keep_all = TRUE),
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+) %>%
+  rename(
+    diagnosis = diagnosis.x,
+    diagnosis.fcal = diagnosis.y
+  )
 dim(dict)
 
 table(dict$diagnosis.outcomes, dict$diagnosis.updated, useNA = "always")
@@ -464,7 +481,7 @@ ids1 <- dict$ids[which(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag
 dict %>% subset(ids %in% ids1)
 dict %>% subset(!is.na(date.of.death))
 
-par(mfrow = c(1,3))
+par(mfrow = c(1, 3))
 with(dict, plot(date.of.diag.outcomes, date.of.diag.updated))
 abline(a = 0, b = 1, col = "red")
 
@@ -474,7 +491,7 @@ abline(a = 0, b = 1, col = "red")
 with(dict, plot(date.of.diag.updated, date.of.diag.fcal))
 abline(a = 0, b = 1, col = "red")
 
-par(mfrow = c(1,3))
+par(mfrow = c(1, 3))
 with(dict, plot(date.of.death, date.of.diag.updated))
 abline(a = 0, b = 1, col = "red")
 
@@ -504,7 +521,7 @@ This leaves `r nrow(dict)` for subsequent analyses.
 # no. subjects over upper bound
 max_fup <- max(labs$COLLECTION_DATE)
 max_fup <- as.Date(max_fup)
-n.upper <- nrow(subset(dict, max_fup - date.of.diag  < 5 * 365.25))
+n.upper <- nrow(subset(dict, max_fup - date.of.diag < 5 * 365.25))
 
 # no. subjects under lower bound
 n.lower <- nrow(subset(dict, (year(date.of.diag) < 2004) |
@@ -609,16 +626,18 @@ dict %>%
 ```
 
 ```{r diagnostic trend}
-diag.ts <- dict %>% 
-  mutate(date.of.diag.month = 
-           as.Date(paste0(format(date.of.diag, "%Y-%m"), "-01"), format = "%Y-%m-%d")) %>%
+diag.ts <- dict %>%
+  mutate(
+    date.of.diag.month =
+      as.Date(paste0(format(date.of.diag, "%Y-%m"), "-01"), format = "%Y-%m-%d")
+  ) %>%
   group_by(date.of.diag.month) %>%
   summarise(count = n()) %>%
-  ungroup() 
+  ungroup()
 
 ggplot(diag.ts, aes(x = as.Date(date.of.diag.month, "%Y-%m"), y = count, group = 1)) +
   geom_line() +
-  xlab("Diagnosis date") + 
+  xlab("Diagnosis date") +
   ylab("Number of diagnosis") +
   scale_x_date(date_labels = "%Y-%m") +
   theme_minimal()
@@ -644,12 +663,14 @@ have been dropped as this degree of granularity is not required.
 Duplicate tests (same id, date and test value) are removed here. 
 
 ```{R FCAL merge}
-fcal <- fcal[, c("ids",
-                 "COLLECTION_DATE",
-                 "TEST_DATA",
-                 "sex",
-                 "diagnosis",
-                 "diagnosis_date")]
+fcal <- fcal[, c(
+  "ids",
+  "COLLECTION_DATE",
+  "TEST_DATA",
+  "sex",
+  "diagnosis",
+  "diagnosis_date"
+)]
 
 # Subset to only include those that passed the earlier inclusion/exclusion
 fcal <- subset(fcal, ids %in% dict$ids)
@@ -659,7 +680,7 @@ fcal <- subset(fcal, ids %in% dict$ids)
 fcal$COLLECTION_DATE <- readr::parse_date(
   stringr::str_split_fixed(fcal$COLLECTION_DATE, " ", n = 2)[, 1],
   format = "%Y-%m-%d"
-) 
+)
 
 colnames(fcal)[1:3] <- c("ids", "calpro_date", "calpro_result")
 
@@ -668,9 +689,10 @@ fcal <- fcal %>%
   select(-diagnosis)
 
 fcal <- merge(fcal,
-              dict[, c("ids", "diagnosis", "date.of.diag")],
-              by = "ids",
-              all.x = TRUE)
+  dict[, c("ids", "diagnosis", "date.of.diag")],
+  by = "ids",
+  all.x = TRUE
+)
 
 dim(fcal)
 ```
@@ -708,7 +730,7 @@ fcal$calpro_result <- plyr::mapvalues(
 fcal$calpro_result <- as.numeric(fcal$calpro_result) # Remove error codes
 fcal <- fcal[!is.na(fcal[, "calpro_result"]), ]
 
-# Apply limits of detection 
+# Apply limits of detection
 fcal[fcal[, "calpro_result"] < 20, "calpro_result"] <- 20
 fcal[fcal[, "calpro_result"] > 1250, "calpro_result"] <- 1250
 ```
@@ -809,9 +831,11 @@ If a subsequent FC test for a subject was dated within 10 days of a previous
 test and has the same observed value, this observation was dropped. 
 
 ```{R}
-htmltools::p(paste("There are",
-                   length(duplicated.ids),
-                   "subjects who appear to have duplicated FC measurements"))
+htmltools::p(paste(
+  "There are",
+  length(duplicated.ids),
+  "subjects who appear to have duplicated FC measurements"
+))
 ```
 
 
@@ -882,21 +906,24 @@ Here, we show the distribution of the diagnostic FCAL measurements with
 respect to diagnosis date (in days). 
 
 ```{r fcal days before diag}
-p <- fcal %>% 
+p <- fcal %>%
   group_by(ids) %>%
   filter(calpro_time == min(calpro_time)) %>%
   ggplot(aes(x = calpro_time * 365.25)) +
   geom_density(fill = "#20A39E", color = "#187370") +
   theme_minimal() +
-  labs(y = "Density",
-       x = "Time from diagnosis to first faecal calprotectin (days)") +
+  labs(
+    y = "Density",
+    x = "Time from diagnosis to first faecal calprotectin (days)"
+  ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "red")
 
 ggsave("plots/fc-diagnostic-dist.png",
-       p,
-       width = 16 * 2/3,
-       height = 6,
-       units = "in")
+  p,
+  width = 16 * 2 / 3,
+  height = 6,
+  units = "in"
+)
 ```
 
 Although most diagnostic measurements were observed around the recorded 
@@ -955,12 +982,14 @@ latest FCAL measurement.
 ```{r}
 countsDF <- fcal %>%
   group_by(ids) %>%
-  summarise(n.total = n(),
-            censored.left = sum(calpro_result == 20),
-            censored.right = sum(calpro_result == 1250),
-            n.noncensored = n.total - censored.left - censored.right,
-            n.negtime.nondiag = sum(calpro_time != 0 & calpro_date - date.of.diag < 0),
-            followup = max(calpro_time))
+  summarise(
+    n.total = n(),
+    censored.left = sum(calpro_result == 20),
+    censored.right = sum(calpro_result == 1250),
+    n.noncensored = n.total - censored.left - censored.right,
+    n.negtime.nondiag = sum(calpro_time != 0 & calpro_date - date.of.diag < 0),
+    followup = max(calpro_time)
+  )
 ```
 
 
@@ -984,12 +1013,12 @@ p2 <- countsDF %>%
 p3 <- countsDF %>%
   ggplot(aes(y = n.total, x = followup)) +
   geom_hex() +
-  xlab("Follow-up (years since diagnosis)") + 
+  xlab("Follow-up (years since diagnosis)") +
   ylab("Number of FC measurements") +
   theme_minimal() +
   labs(fill = "Count")
 
-p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+p1 + p2 + p3 + plot_annotation(tag_levels = "A")
 ```
 
 Summary observations:
@@ -1023,12 +1052,12 @@ p1 <- countsDF %>%
 p2 <- countsDF %>%
   ggplot(aes(y = n.noncensored, x = followup)) +
   geom_point(color = "#FF4F79", size = 2) +
-  xlab("Follow-up (years since diagnosis)") + 
+  xlab("Follow-up (years since diagnosis)") +
   ylab("Number of non-censored FCAL measurements") +
   theme_minimal() +
   geom_hline(yintercept = 3)
 
-p1 + p2 + plot_annotation(tag_levels = 'A')
+p1 + p2 + plot_annotation(tag_levels = "A")
 ```
 
 ```{R calculate number of non censored FCAL}
@@ -1047,7 +1076,7 @@ The following is used to select individuals with at least 3 non-censored FCAL
 measurements. 
 
 ```{R FCAL frequency}
-fcal <- fcal %>% 
+fcal <- fcal %>%
   subset(ids %in% countsDF$ids[countsDF$n.noncensored >= 3])
 
 length(unique(fcal$ids))
@@ -1061,29 +1090,29 @@ This leaves a cohort with `r length(unique(fcal$ids))` individuals.
 #| fig-width: 12
 #| column: body-outset
 p1 <- countsDF %>%
-  subset(n.noncensored >= 3) %>% 
+  subset(n.noncensored >= 3) %>%
   ggplot(aes(x = n.total)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
   xlab("Measurements per subject")
 p2 <- countsDF %>%
-  subset(n.noncensored >= 3) %>% 
+  subset(n.noncensored >= 3) %>%
   ggplot(aes(x = followup)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
   xlab("Follow-up (years)")
 p3 <- countsDF %>%
-  subset(n.noncensored >= 3) %>% 
+  subset(n.noncensored >= 3) %>%
   ggplot(aes(y = n.total, x = followup)) +
   geom_hex() +
-  xlab("Follow-up (years since diagnosis)") + 
+  xlab("Follow-up (years since diagnosis)") +
   ylab("Number of FC measurements") +
   theme_minimal() +
   labs(fill = "Count")
 
-p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+p1 + p2 + p3 + plot_annotation(tag_levels = "A")
 ```
 
 
@@ -1122,9 +1151,10 @@ crp$COLLECTION_DATE <- readr::parse_date(
 colnames(crp) <- c("ids", "crp_date", "crp_result")
 
 crp <- merge(crp,
-             dict[, c("ids", "diagnosis")],
-             by = "ids",
-             all.x = TRUE)
+  dict[, c("ids", "diagnosis")],
+  by = "ids",
+  all.x = TRUE
+)
 ```
 
 C-reactive protein (CRP) is a blood-based marker of inflammation. Unlike
@@ -1153,8 +1183,10 @@ dim(crp)
 crp$crp_result <- as.numeric(
   plyr::mapvalues(
     crp$crp_result,
-    from = c("<0.2", "<1", "<1.", "<1.0", "<2", "<3", "<3.0", "<5",
-             ">90", ">320"),
+    from = c(
+      "<0.2", "<1", "<1.", "<1.0", "<2", "<3", "<3.0", "<5",
+      ">90", ">320"
+    ),
     to = c(1, 1, 1, 1, 2, 3, 3, 5, 90, 320)
   )
 )
@@ -1255,8 +1287,9 @@ scaled to be the number of years since IBD diagnosis.
 #| fig-cap: "Spaghetti plot of CRP trajectories (preprocessed)"
 
 dim(crp)
-crp <- merge(crp, dict[,c("ids", "date.of.diag")], 
-             by = "ids", all.x = TRUE, all.y = FALSE)
+crp <- merge(crp, dict[, c("ids", "date.of.diag")],
+  by = "ids", all.x = TRUE, all.y = FALSE
+)
 dim(crp)
 
 # Dates have already been converted to Date class by fix_date_char() for dict
@@ -1324,21 +1357,24 @@ Here, we show the distribution of the diagnostic CRP measurements with
 respect to diagnosis date (in days). 
 
 ```{r crp days before diag}
-p <- crp %>% 
+p <- crp %>%
   group_by(ids) %>%
   filter(crp_time == min(crp_time)) %>%
   ggplot(aes(x = crp_time * 365.25)) +
   geom_density(fill = "#415A77", color = "#1B263B") +
   theme_minimal() +
-  labs(y = "Density",
-       x = "Time from diagnosis to first CRP (days)") +
+  labs(
+    y = "Density",
+    x = "Time from diagnosis to first CRP (days)"
+  ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "red")
 
 ggsave("plots/crp-diagnostic-dist.png",
-       p,
-       width = 16 * 2/3,
-       height = 6,
-       units = "in")
+  p,
+  width = 16 * 2 / 3,
+  height = 6,
+  units = "in"
+)
 ```
 
 Similar to what was observed for FC, most diagnostic measurements were around 
@@ -1400,11 +1436,13 @@ latest CRP measurement.
 
 countsDF <- crp %>%
   group_by(ids) %>%
-  summarise(n.total = n(),
-            censored.left = sum(crp_result == 1),
-            n.noncensored = n.total - censored.left,
-            n.negtime.nondiag = sum(crp_time != 0 & crp_date - date.of.diag < 0),
-            followup = max(crp_time))
+  summarise(
+    n.total = n(),
+    censored.left = sum(crp_result == 1),
+    n.noncensored = n.total - censored.left,
+    n.negtime.nondiag = sum(crp_time != 0 & crp_date - date.of.diag < 0),
+    followup = max(crp_time)
+  )
 
 p1 <- countsDF %>%
   ggplot(aes(x = n.total)) +
@@ -1421,12 +1459,12 @@ p2 <- countsDF %>%
 p3 <- countsDF %>%
   ggplot(aes(y = n.total, x = followup)) +
   geom_hex() +
-  xlab("Follow-up (years since diagnosis)") + 
+  xlab("Follow-up (years since diagnosis)") +
   ylab("Number of CRP measurements") +
   theme_minimal() +
   labs(fill = "Count")
 
-p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+p1 + p2 + p3 + plot_annotation(tag_levels = "A")
 ```
 
 Our observations are very similar to what we had for FCAL. However, as CRP
@@ -1470,7 +1508,7 @@ rownames(crp.ma) <- id.list
 # Convert back to a long-format dataset and rename columns
 crp.ma <- reshape2::melt(t(crp.ma), id.vars = row.names(crp.ma), na.rm = TRUE)
 colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
-crp.ma  <- crp.ma[, c(2, 3, 1)]
+crp.ma <- crp.ma[, c(2, 3, 1)]
 
 # Reset the time to start at zero
 crp.ma$crp_time <- crp.ma$crp_time - 1
@@ -1500,11 +1538,13 @@ previous section. Here, we re-calculate relevant summary statistics.
 
 countsDF <- crp.ma %>%
   group_by(ids) %>%
-  summarise(n.total = n(),
-            censored.left = sum(crp_result == 0), # 0 because it was log transformed
-            n.noncensored = n.total - censored.left,
-            followup = max(crp_time), 
-            crp.var = var(crp_result, na.rm = TRUE))
+  summarise(
+    n.total = n(),
+    censored.left = sum(crp_result == 0), # 0 because it was log transformed
+    n.noncensored = n.total - censored.left,
+    followup = max(crp_time),
+    crp.var = var(crp_result, na.rm = TRUE)
+  )
 
 p1 <- countsDF %>%
   ggplot(aes(x = n.total)) +
@@ -1521,12 +1561,12 @@ p2 <- countsDF %>%
 p3 <- countsDF %>%
   ggplot(aes(y = n.total, x = followup)) +
   geom_hex() +
-  xlab("Follow-up (years since diagnosis)") + 
+  xlab("Follow-up (years since diagnosis)") +
   ylab("Number of CRP measurements") +
   theme_minimal() +
   labs(fill = "Count")
 
-p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+p1 + p2 + p3 + plot_annotation(tag_levels = "A")
 ```
 
 ```{R calculate number of non censored CRP}
@@ -1544,7 +1584,7 @@ The following is used to select individuals with at least 3 CRP measurements
 and non-zero variance.
 
 ```{R CRP frequency}
-crp.ma <- crp.ma %>% 
+crp.ma <- crp.ma %>%
   subset(ids %in% countsDF$ids[countsDF$n.total >= 3 & countsDF$crp.var != 0])
 
 length(unique(crp.ma$ids))
@@ -1558,29 +1598,29 @@ This leaves a cohort with `r length(unique(crp$ids))` individuals.
 #| label: fig-crp-follow-up-post-exclusions
 #| fig-cap: "(A) Histogram of the number of CRP measurements per subject. (B) Histogram of FCAL follow-up per subject (before exclusions). (C) Scatterplot with number of CRP measurements vs follow-up. In all cases, only individuals with at least 3 measurements  and non-zero variance are included."
 p1 <- countsDF %>%
-  subset(n.total >= 3 & crp.var != 0) %>% 
+  subset(n.total >= 3 & crp.var != 0) %>%
   ggplot(aes(x = n.total)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
   xlab("Measurements per subject")
 p2 <- countsDF %>%
-  subset(n.total >= 3 & crp.var != 0) %>% 
+  subset(n.total >= 3 & crp.var != 0) %>%
   ggplot(aes(x = followup)) +
   geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
   theme_minimal() +
   ylab("Count") +
   xlab("Follow-up (years)")
 p3 <- countsDF %>%
-  subset(n.total >= 3 & crp.var != 0) %>% 
+  subset(n.total >= 3 & crp.var != 0) %>%
   ggplot(aes(y = n.total, x = followup)) +
   geom_point(color = "#FF4F79", size = 2) +
-  xlab("Follow-up (years since diagnosis)") + 
+  xlab("Follow-up (years since diagnosis)") +
   ylab("Number of FCAL measurements") +
   theme_minimal() +
   geom_hline(yintercept = 3)
 
-p1 + p2 + p3 + plot_annotation(tag_levels = 'A')
+p1 + p2 + p3 + plot_annotation(tag_levels = "A")
 ```
 
 ### Additional pre-processing
@@ -1773,10 +1813,11 @@ p6 <- crp.ma %>%
   ylab("Density")
 print(p6)
 ggsave("plots/crp-processed-dist.pdf",
-       p5 + p6,
-       width = 8,
-       height = 4.5,
-       units = "in")
+  p5 + p6,
+  width = 8,
+  height = 4.5,
+  units = "in"
+)
 
 
 p <- (p1 + p2) / (p5 + p6) +
@@ -1785,10 +1826,11 @@ p <- (p1 + p2) / (p5 + p6) +
 
 
 ggsave("plots/Sup-Figure-1.pdf",
-       p,
-       width = 8,
-       height = 8,
-       units = "in")
+  p,
+  width = 8,
+  height = 8,
+  units = "in"
+)
 ```
 
 
@@ -1803,7 +1845,7 @@ if (!dir.exists(paste0(prefix, "processed"))) {
 }
 
 fcal$calpro_result <- log(fcal$calpro_result)
-crp$crp_result <- log(crp$crp_result)
+crp.ma$crp_result <- log(crp.ma$crp_result)
 
 
 saveRDS(dict, paste0(prefix, "processed/dict-initial.RDS"))
