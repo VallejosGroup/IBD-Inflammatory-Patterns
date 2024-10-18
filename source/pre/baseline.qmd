@@ -926,6 +926,66 @@ survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
 
 :::
 
+### Ulcerative colitis only data
+
+```{R}
+uc.pheno <- read_xlsx(paste0(prefix, "2024-10-16/UC-pheno.xlsx"),
+                      range = cell_cols(1:4))
+temp <- unique(subset(fcal, diagnosis == "Ulcerative Colitis")$ids)
+temp <- temp[!(temp %in% uc.pheno$ids)]
+print(length(temp))
+```
+
+
+
+#### Montreal extent
+
+```{R}
+uc.pheno <- uc.pheno %>%
+  mutate(Extent = if_else(!is.na(Extent), paste0("E", Extent), NA))
+```
+
+```{R}
+counts <- data.frame(table(uc.pheno$Extent, useNA = "ifany"))
+colnames(counts) <- c("Montreal extent", "Frequency")
+
+uc.pheno %>%
+    ggplot(aes(x = Extent)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Montreal location") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+#### Smoking status
+
+```{R}
+uc.pheno$Smoke <- 
+  plyr::mapvalues(uc.pheno$Smoke,
+                  from = c("0",
+                           "1",
+                           "2",
+                           "ex"), 
+                  to = c("No",
+                         "Yes",
+                         "Yes",
+                         "Yes"))
+```
+
+```{R}
+counts <- data.frame(table(uc.pheno$Smoke, useNA = "ifany"))
+colnames(counts) <- c("Previously smoked", "Frequency")
+
+uc.pheno %>%
+    ggplot(aes(x = Smoke)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Previously smoked") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
 ## Demographics table
 
 The following table compares the demographic data ("table 1") for the FC
