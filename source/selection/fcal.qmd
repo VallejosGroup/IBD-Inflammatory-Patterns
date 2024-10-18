@@ -833,7 +833,7 @@ for (G in G.fcal) {
   if(!dir.exists("plots/spaghetti")) dir.create("plots/spaghetti")
   png(paste0("plots/spaghetti/fcal-ncs-", G, ".png"),
     width = 10,
-    height = 14,
+    height = 17.5,
     units = "in",
     res = 300)
   grid::grid.newpage()
@@ -850,7 +850,7 @@ for (G in G.fcal) {
   
   cairo_pdf(paste0("plots/spaghetti/fcal-ncs-", G, ".pdf"),
     width = 10,
-    height = 14)
+    height = 17.5)
   grid::grid.newpage()
   spaghettiPlot(new.fc,
                 models.fcal,
@@ -876,7 +876,6 @@ for (G in G.fcal) {
   
 }
 ```
-
 
 #### IBD Association
 
