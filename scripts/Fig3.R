@@ -19,8 +19,15 @@ p <- p1 / p2  +
   theme(plot.tag = element_text(size = 18, face = "bold"),
         axis.title = element_text(size = 13))
 
-ggsave("plots/Figure-3.pdf",
+ggsave("paper/Figure-S7.pdf",
        p,
-       width = 8,
-       height = 8,
+       width = 10,
+       height = 10,
+       units = "in")
+
+
+ggsave("paper/Figure-S7.png",
+       p,
+       width = 10,
+       height = 10,
        units = "in")
