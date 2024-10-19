@@ -16,10 +16,6 @@ author:
     affiliations:
       - ref: CGEM
       - ref: IBD
-  - name: "Matthew Lyons"
-    url: https://scholar.google.com/citations?user=I9vcMcQAAAAJ&hl=en&oi=ao
-    affiliations:
-      - ref: IBD
   - name: "Charlie W. Lees"
     url: https://scholar.google.com/citations?user=rHc0qf0AAAAJ&hl=en&oi=ao
     affiliations:
@@ -285,8 +281,6 @@ dict$diagnosis <- plyr::mapvalues(
 
 kable(addmargins(table(dict$diagnosis, dict$old), margin = 2))
 dict$old <- NULL
-
-dim(dict)
 ```
 
 ### Age and sex
@@ -325,8 +319,6 @@ dict <- merge(dict,
   all.x = TRUE,
   all.y = FALSE
 )
-
-dim(dict)
 ```
 
 Note that there `r sum(is.na(dict$age))` individuals for which age at
@@ -345,162 +337,11 @@ dict <- merge(dict,
   rename(date.of.death = death)
 
 dict <- fix_date_df(dict, "date.of.death")
-dim(dict)
 ```
 
 Date of death information is available for
 `r sum(!is.na(dict$date.of.death))` individuals. We assume that all
 remaining individuals have not died by the date of data extraction.
-
-## Exploration of data disagreements
-
-<!--- CAV: Remove this from the final website as it shows small counts ---> 
-
-```{R Create subject dictionary alternative}
-# From outcomes
-dict <- merge(dict,
-  outcomes[, c("ids", "diagnosisDate")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(date.of.diag.outcomes = diagnosisDate)
-dict <- fix_date_df(dict, "date.of.diag.outcomes")
-dim(dict)
-
-# From updated
-dict <- merge(dict,
-  updated[, c("ids", "diagnosisDate")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(date.of.diag.updated = diagnosisDate)
-dict <- fix_date_df(dict, "date.of.diag.updated")
-dim(dict)
-
-# From fcal
-dict <- merge(dict,
-  fcal[, c("ids", "diagnosis_date")] %>% distinct(ids, .keep_all = TRUE),
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(date.of.diag.fcal = diagnosis_date)
-dict <- fix_date_df(dict, "date.of.diag.fcal")
-dim(dict)
-```
-
-```{R Create subject dictionary alternative sex}
-# From outcomes
-dict <- merge(dict,
-  outcomes[, c("ids", "Gender")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(sex.outcomes = Gender)
-dim(dict)
-
-# From updated
-dict <- merge(dict,
-  updated[, c("ids", "sex")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(sex.updated = sex.y, sex = sex.x)
-dim(dict)
-
-# From fcal
-dict <- merge(dict,
-  fcal[, c("ids", "sex")] %>% distinct(ids, .keep_all = TRUE),
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(sex.fcal = sex.y, sex = sex.x)
-dim(dict)
-
-table(dict$sex.outcomes, dict$sex.updated, useNA = "always")
-table(dict$sex.outcomes, dict$sex.fcal, useNA = "always")
-table(dict$sex.updated, dict$sex.fcal, useNA = "always")
-```
-
-::: column-page
-```{R Create subject dictionary alternative diag}
-# From outcomes
-dict <- merge(dict,
-  outcomes[, c("ids", "diagnosisId")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(diagnosis.outcomes = diagnosisId)
-dim(dict)
-
-# From updated
-dict <- merge(dict,
-  updated[, c("ids", "diagnosis")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(
-    diagnosis = diagnosis.x,
-    diagnosis.updated = diagnosis.y
-  )
-dim(dict)
-
-# From fcal
-dict <- merge(dict,
-  fcal[, c("ids", "diagnosis")] %>% distinct(ids, .keep_all = TRUE),
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-) %>%
-  rename(
-    diagnosis = diagnosis.x,
-    diagnosis.fcal = diagnosis.y
-  )
-dim(dict)
-
-table(dict$diagnosis.outcomes, dict$diagnosis.updated, useNA = "always")
-table(dict$diagnosis.outcomes, dict$diagnosis.fcal, useNA = "always")
-table(dict$diagnosis.updated, dict$diagnosis.fcal, useNA = "always")
-```
-:::
-
-```{r explore differences in diagnostic date, eval = FALSE}
-table(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.updated))
-table(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.fcal))
-table(year(dict$date.of.diag.updated) - year(dict$date.of.diag.fcal))
-
-ids1 <- dict$ids[which(year(dict$date.of.diag.outcomes) - year(dict$date.of.diag.updated) < -10)]
-
-dict %>% subset(ids %in% ids1)
-dict %>% subset(!is.na(date.of.death))
-
-par(mfrow = c(1, 3))
-with(dict, plot(date.of.diag.outcomes, date.of.diag.updated))
-abline(a = 0, b = 1, col = "red")
-
-with(dict, plot(date.of.diag.outcomes, date.of.diag.fcal))
-abline(a = 0, b = 1, col = "red")
-
-with(dict, plot(date.of.diag.updated, date.of.diag.fcal))
-abline(a = 0, b = 1, col = "red")
-
-par(mfrow = c(1, 3))
-with(dict, plot(date.of.death, date.of.diag.updated))
-abline(a = 0, b = 1, col = "red")
-
-with(dict, plot(date.of.death, date.of.diag.outcomes))
-abline(a = 0, b = 1, col = "red")
-
-with(dict, plot(date.of.death, date.of.diag.fcal))
-abline(a = 0, b = 1, col = "red")
-```
 
 ## Exclusion criteria according to diagnosis and date of diagnosis
 
@@ -511,8 +352,6 @@ Firstly, we remove `r sum(is.na(dict$date.of.diag))` individuals with a missing 
 
 ```{R Remove NA date of diagnosis}
 dict <- dict[!is.na(dict$date.of.diag), ]
-
-dim(dict)
 ```
 
 This leaves `r nrow(dict)` for subsequent analyses. 
@@ -531,8 +370,6 @@ n.lower <- nrow(subset(dict, (year(date.of.diag) < 2004) |
 dict <- subset(dict, max_fup - date.of.diag >= 5 * 365.25)
 dict <- subset(dict, (year(date.of.diag) >= 2005) |
   (year(date.of.diag) == 2004 & month(date.of.diag) >= 10))
-
-dim(dict)
 ```
 
 As described in the [inclusion/exclusion criteria
@@ -693,8 +530,6 @@ fcal <- merge(fcal,
   by = "ids",
   all.x = TRUE
 )
-
-dim(fcal)
 ```
 
 ### Pre-processing of test results
@@ -850,8 +685,6 @@ years since IBD diagnosis.
 
 # Dates have already been converted to Date class by fix_date_char() for dict
 fcal$calpro_time <- as.numeric(fcal$calpro_date - fcal$date.of.diag) / 365.25
-dim(fcal)
-
 
 fcal %>%
   ggplot(aes(x = calpro_time, y = log(calpro_result), color = factor(ids))) +
@@ -879,7 +712,6 @@ tests will be retimed such that their earliest FC within this period is equal to
 
 ```{r remove prediag fcal}
 fcal <- subset(fcal, calpro_time >= -0.25)
-dim(fcal)
 ```
 
 ### Inclusion/exclusion: removal of subjects without a diagnostic FC test
@@ -895,7 +727,6 @@ diagnostic <- fcal %>%
   subset(n > 0)
 
 fcal <- subset(fcal, ids %in% diagnostic$ids)
-dim(fcal)
 ```
 
 After this exclusion, `r length(unique(fcal$ids))` subjects remain in the data. 
@@ -965,7 +796,6 @@ diagnosis.
 
 ```{r remove fcal after 7 years}
 fcal <- subset(fcal, calpro_time <= 7)
-dim(fcal)
 length(unique(fcal$ids))
 ```
 
@@ -1172,9 +1002,6 @@ multiple datasets is not required. As with the FCAL data, the recorded
 time of day for each test has been discarded in favour of the date. Any
 potential duplicate results have been removed.
 
-```{R}
-dim(crp)
-```
 
 ### Pre-processing of test results
 
@@ -1273,10 +1100,6 @@ As multiple CRP measurements are possible within a short time-frame, we only
 consider as duplicates those with an exact match by `ids`, `crp_date` and
 `crp_result`. 
 
-```{r}
-dim(crp)
-```
-
 ### Retiming - part 1
 
 As with the FCAL data, the times of CRP measurements are retimed and
@@ -1286,11 +1109,9 @@ scaled to be the number of years since IBD diagnosis.
 #| label: fig-crp-spag-pre
 #| fig-cap: "Spaghetti plot of CRP trajectories (preprocessed)"
 
-dim(crp)
 crp <- merge(crp, dict[, c("ids", "date.of.diag")],
   by = "ids", all.x = TRUE, all.y = FALSE
 )
-dim(crp)
 
 # Dates have already been converted to Date class by fix_date_char() for dict
 crp$crp_time <- as.numeric(crp$crp_date - crp$date.of.diag) / 365.25
@@ -1330,7 +1151,6 @@ $t \leq 0.25$
 
 ```{r}
 crp <- subset(crp, crp_time >= -0.25)
-dim(crp)
 ```
 
 ### Inclusion/exclusion: removal of subjects without a diagnostic CRP test
@@ -1346,7 +1166,6 @@ diagnostic <- crp %>%
   subset(n > 0)
 
 crp <- subset(crp, ids %in% diagnostic$ids)
-dim(crp)
 ```
 
 After this exclusion, `r length(unique(crp$ids))` remain in the data. 
@@ -1414,7 +1233,6 @@ diagnosis.
 
 ```{r remove crp after 7 years}
 crp <- subset(crp, crp_time <= 7)
-dim(crp)
 length(unique(crp$ids))
 ```
 
