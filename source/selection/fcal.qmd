@@ -124,7 +124,7 @@ upon the optimum number of classes.
 # set the number of groups
 G.fcal <- numeric()
 models.fcal <- list()
-G.cands <- seq(2, 10)
+G.cands <- seq(2, 11)
 for (G.cand in G.cands) {
   file.name <- paste0(prefix, "/cache/fcal/ncs/fcal-", G.cand, ".RDS")
   if (file.exists(file.name)) {
@@ -451,6 +451,13 @@ alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
   )
 
 
+alluvial.df[alluvial.df[, "G"] == 11, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 11, "class"],
+    from = c(seq(1, 11)),
+    to = c(6, 10, 7, 2, 11, 3, 9, 4, 5, 1, 8)
+  )
+
+
 p <- ggplot(
   alluvial.df,
   aes(
@@ -467,7 +474,7 @@ p <- ggplot(
   geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
   theme(legend.position = "none") +
-  scale_fill_manual(values = rainbow(10)) +
+  scale_fill_manual(values = rainbow(11)) +
   xlab("Assumed number of clusters") +
   ylab("Frequency")
 print(p)
@@ -518,7 +525,7 @@ p <- ggplot(
   geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
   theme(legend.position = "none") +
-  scale_fill_manual(values = rainbow(10)) +
+  scale_fill_manual(values = rainbow(11)) +
   xlab("Assumed number of clusters") +
   ylab("Frequency")
 print(p)
@@ -562,6 +569,7 @@ pprobs.7 <- c(); groups.7 <- models.fcal[[7]]
 pprobs.8 <- c(); groups.8 <- models.fcal[[8]]
 pprobs.9 <- c(); groups.9 <- models.fcal[[9]]
 pprobs.10 <- c(); groups.10 <- models.fcal[[10]]
+pprobs.11 <- c(); groups.11 <- models.fcal[[11]]
 
 
 for (i in 1:nrow(models.fcal[[2]]$pprob)){
@@ -583,6 +591,8 @@ for (i in 1:nrow(models.fcal[[2]]$pprob)){
   pprobs.9 <- c(pprobs.9, groups.9$pprob[i, class.9 + 2 ])
   class.10 <- groups.10$pprob[i, 2]
   pprobs.10 <- c(pprobs.10, groups.10$pprob[i, class.10 + 2 ])
+  class.11 <- groups.11$pprob[i, 2]
+  pprobs.11 <- c(pprobs.11, groups.11$pprob[i, class.11 + 2 ])
 }
 pprobs.2 <- tibble(prob = pprobs.2)
 pprobs.3 <- tibble(prob = pprobs.3)
@@ -593,6 +603,7 @@ pprobs.7 <- tibble(prob = pprobs.7)
 pprobs.8 <- tibble(prob = pprobs.8)
 pprobs.9 <- tibble(prob = pprobs.9)
 pprobs.10 <- tibble(prob = pprobs.10)
+pprobs.11 <- tibble(prob = pprobs.11)
 
 pprobs.2$Model <- as.factor(rep("Two clusters", nrow(pprobs.2)))
 pprobs.3$Model <- as.factor(rep("Three clusters", nrow(pprobs.3)))
@@ -603,6 +614,7 @@ pprobs.7$Model <- as.factor(rep("Seven clusters", nrow(pprobs.7)))
 pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
 pprobs.9$Model <- as.factor(rep("Nine clusters", nrow(pprobs.9)))
 pprobs.10$Model <- as.factor(rep("Ten clusters", nrow(pprobs.10)))
+pprobs.11$Model <- as.factor(rep("Eleven clusters", nrow(pprobs.11)))
 pprobs <- rbind(pprobs.2,
                 pprobs.3,
                 pprobs.4,
@@ -611,11 +623,11 @@ pprobs <- rbind(pprobs.2,
                 pprobs.7,
                 pprobs.8,
                 pprobs.9,
-                pprobs.10)
+                pprobs.10,
+                pprobs.11)
 
 p <- pprobs %>%
   ggplot(aes(x = prob, y = Model)) +
-  #geom_histogram(bins = 40, fill = NA, position="identity")
   stat_slab(fill = "#5D5179",color = "gray",
                     size = 0.8,
                     alpha = 0.7) +
@@ -740,6 +752,8 @@ summaryplot(models.fcal[[4]],
   models.fcal[[7]],
   models.fcal[[8]],
   models.fcal[[9]],
+  models.fcal[[10]],
+  models.fcal[[11]],
   which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
   mfrow = c(2, 3),
   axis = "Class"
@@ -759,11 +773,7 @@ The optimum AIC is <b>
 
 #### Spaghetti plots per cluster
 
-
-
 ```{R FCAL spaghetti plots}
-
-
 for (G in G.fcal) {
   # Data frame to hold processed data
   new.fc <- data.frame(ids = numeric(),
