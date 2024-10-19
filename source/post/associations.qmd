@@ -90,30 +90,23 @@ the association testing when filtering by posterior probabilities (@fig-pprob-fu
 ```{R}
 #| label: fig-pprob-fup-fc
 #| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period)."
-pprobs <- c()
 
-temp <- model.fc$pprob
-for (i in 1:nrow(temp)) {
-  pprobs <- c(pprobs, temp[i, temp[i, "class"] + 2])
-}
+myDF <- fcal %>%
+  group_by(ids) %>%
+  summarise(n.total = n(),
+            followup = max(calpro_time),) %>%
+  mutate(followup_cut = cut(followup, breaks = c(seq(0, 6, by = 2), 7)),
+         n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
+  
+myDF <- merge(myDF, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
+myDF <- myDF %>% 
+  mutate(probmax = pmax(prob1, prob2, prob3, prob4, prob5, 
+                        prob6, prob7, prob8, prob9, prob10))
 
-pprob.df <- data.frame(ids = temp$ids, pprobs = pprobs)
-
-fup <- c()
-n.obs <- c()
-
-for (id in unique(fcal$ids)) {
-  temp <- subset(fcal, ids == id)
-  temp <- temp[order(temp$calpro_time, decreasing = TRUE), ]
-  fup <- c(fup, temp[1, "calpro_time"])
-  n.obs <- c(n.obs, nrow(temp))
-}
-
-df <- data.frame(ids = unique(fcal$ids), fup = fup, n.obs = n.obs)
-p <- merge(df, pprob.df, by = "ids") %>%
-  filter(n.obs <= 20) %>%
-  ggplot(aes(x = fup, y = pprobs)) +
-  geom_point(aes( color = n.obs)) +
+p <- myDF %>%
+  filter(n.total <= 20) %>%
+  ggplot(aes(x = followup, y = probmax)) +
+  geom_point(aes(color = n.total)) +
   geom_smooth(method = "lm", formula = "y ~ x") +
   theme_minimal() +
   xlab("Follow-up time (years)") +
@@ -130,37 +123,17 @@ p
 #| label: fig-pprob-fup-fc-cluster
 #| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period) by cluster."
 
-
-temp <- model.fc$pprob
-for (i in 1:nrow(temp)) {
-  pprobs <- c(pprobs, temp[i, temp[i, "class"] + 2])
-}
-
-
-pprob.df <- data.frame(ids = temp$ids, pprobs = pprobs, clusters = temp$class)
-
-fup <- c()
-n.obs <- c()
-
-for (id in unique(fcal$ids)) {
-  temp <- subset(fcal, ids == id)
-  temp <- temp[order(temp$calpro_time, decreasing = TRUE), ]
-  fup <- c(fup, temp[1, "calpro_time"])
-  n.obs <- c(n.obs, nrow(temp))
-}
-
-df <- data.frame(ids = unique(fcal$ids), fup = fup, n.obs = n.obs)
-p <- merge(df, pprob.df, by = "ids") %>%
-  filter(n.obs <= 20) %>%
-  ggplot(aes(x = fup, y = pprobs)) +
-  geom_point(aes(color = n.obs)) +
+p <- myDF %>%
+  filter(n.total <= 20) %>%
+  ggplot(aes(x = followup, y = probmax)) +
+  geom_point(aes(color = n.total)) +
   geom_smooth(method = "lm", formula = "y ~ x") +
   theme_minimal() +
   xlab("Follow-up time (years)") +
   ylab("Posterior probability") +
   ylim(0, NA) +
   viridis::scale_color_viridis(option = "viridis") +
-  facet_grid(rows = vars(clusters))
+  facet_grid(rows = vars(class))
 
 ggsave("plots/postprob-fup-clusters.png",
        p,
@@ -181,24 +154,12 @@ p
 #| column: body-outset
 #| fig-width: 11
 #| fig-height: 8
-myDF <- fcal %>%
-  group_by(ids) %>%
-  summarise(n.total = n(),
-            followup = max(calpro_time),) %>%
-  mutate(followup_cut = cut(followup, breaks = c(seq(0, 6, by = 2), 7)),
-         n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
-  
-myDF <- merge(myDF, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
-myDF <- myDF %>% 
-  mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
-                        prob5, prob6, prob7, prob7))
 
 myDF_means <- myDF %>% 
   group_by(class, followup_cut) %>%
   summarise(across(starts_with("prob"), function(x) mean(x, na.rm = TRUE)),
             .groups = "drop") %>%
   pivot_longer(cols = starts_with("prob"), names_to = "prob")
-
 
 # Assign level order otherwise alphanumerical order used
 myDF_means$prob <- factor(myDF_means$prob,
