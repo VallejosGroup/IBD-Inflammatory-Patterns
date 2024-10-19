@@ -77,6 +77,8 @@ independently, this page is split into FC and CRP sections.
 
 ## Faecal calprotectin analysis
 
+### Exclusion based on posterior probabilities
+
 In order to reliably assess associations between clusters and baseline data, we
 will focus on subjects with posterior probabilities for cluster assignment above
 a set threshold. This ensures subjects which were not confidently assigned to a
@@ -89,7 +91,7 @@ the association testing when filtering by posterior probabilities (@fig-pprob-fu
 
 ```{R}
 #| label: fig-pprob-fup-fc
-#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period)."
+#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period). Subjects with more than 20 FC observations have been removed from the plot for clarity."
 
 myDF <- fcal %>%
   group_by(ids) %>%
@@ -121,7 +123,8 @@ p
 
 ```{R}
 #| label: fig-pprob-fup-fc-cluster
-#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period) by cluster."
+#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period) by cluster. Subjects with more than 20 FC observations have been removed from the plot for clarity."
+#| fig-height: 10
 
 p <- myDF %>%
   filter(n.total <= 20) %>%
@@ -147,6 +150,15 @@ ggsave("plots/postprob-fup-clusters.pdf",
        units = "in")
 p
 ```
+
+@fig-fc-prob-fup shows how cluster assignment probabilities change as follow-up
+for subjects increases. As one would expect, probabilities typically increase as
+as follow-up increases. This relationship appears to depend upon when the mean
+trajectory for the assigned cluster substantially differs from the other
+clusters. FC8 shows high posterior probabilities with even short follow-up as
+this is the only cluster with low FC at diagnosis. FC5 is similar to FC10
+and FC3 for the first two years and only starts to differ substantially after
+much longer follow-up. 
 
 ```{R}
 #| label: fig-fc-prob-fup
@@ -202,92 +214,37 @@ ggsave("plots/fc-prob-fup.png", p, width = 11, height = 8, units = "in")
 ggsave("plots/fc-prob-fup.pdf", p, width = 11, height = 8, units = "in")
 p
 ```
-  
 
 ```{R}
-myDF <- myDF %>% pivot_longer(cols = starts_with("prob"), names_to = "prob")
-
-myDF %>% subset(class == 7) 
-
-myDF %>%
-  subset(prob == "probmax")  %>%
-  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin(drop = FALSE) + 
-  xlab("Cluster") +
-  ylab("Cluster assignment probability") +
-  facet_wrap(.~n.total_cut, ncol = 4) +
-  theme_classic()
+pprob.df <- subset(myDF, probmax > 0.5)
+model.fc$pprob <- subset(model.fc$pprob, ids %in% pprob.df$ids)
 ```
 
-```{R}
-myDF %>%
-  subset(class == 7) %>%
-  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin(drop = FALSE) + 
-  xlab("Cluster") +
-  ylab("Cluster assignment probability") +
-  ggtitle("FC 7") +
-  theme_classic()
-```
+Based upon @tbl-pprob-fc-cutoff and the above plots, we will only look at
+associations with cluster membership for subjects with a posterior 
+probability greater than 0.5.
 
 ```{R}
-myDF %>%
-  subset(class == 1) %>%
-  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin(drop = FALSE) + 
-  xlab("Cluster") +
-  ylab("Cluster assignment probability") +
-  ggtitle("FC 1") +
-  theme_classic()
-```
-
-```{R}
-myDF %>%
-  subset(class == 2) %>%
-  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin(drop = FALSE) + 
-  xlab("Cluster") +
-  ylab("Cluster assignment probability") +
-  ggtitle("FC 2") +
-  theme_classic()
-```
-
-```{R}
-myDF %>%
-  ggplot(aes(x = prob, y = value, fill = followup_cut)) +
-  geom_violin(drop = FALSE) + 
-  xlab("Cluster") +
-  ylab("Cluster assignment probability") +
-  facet_wrap(.~class, ncol = 5, nrow = 2) +
-  theme_classic()
-```
-
-
-```{R}
+#| label: tbl-pprob-fc-cutoff
+#| tbl-cap: "Percentage of subjects included in the analysis based upon different posterior probability cutoffs."
 included <- c()
 percs <- seq(0.5, 0.8, by = 0.05)
 
 for (perc in percs) {
   included <- c(included,
-                paste0(round(sum(pprob.df$pprobs > perc) / nrow(pprob.df), 4) * 100, "%"))
+                paste0(round(sum(myDF$probmax > perc) / nrow(myDF), 4) * 100, "%"))
 }
 
 included.df <- data.frame(perc = percs, included = included)
 included.df %>%
   knitr::kable(col.names = c("Posterior prob cutoff", "Percentage included"),
                align = c("c", "c"))
-
 ```
 
 
-```{R}
-pprob.df <- subset(pprob.df, pprobs > 0.5)
-model.fc$pprob <- subset(model.fc$pprob, ids %in% pprob.df$ids)
-```
+### Univariate analyses 
 
-We will use a threshold of greater than 0.5. 
-
-### Sex
+#### Sex
 
 A significant association was not found between sex and cluster membership. 
 
@@ -307,7 +264,7 @@ chisq.test(dict.fc$class, dict.fc$sex) %>%
   pander()
 ```
 
-### Age
+#### Age
 
 As a reminder, age has been calculated by subtracting year of diagnosis from
 year of birth and is therefore not 100% accurate. We will initially consider
@@ -336,7 +293,7 @@ p1 <- dict.fc %>%
 print(p1)
 ```
 
-#### Montreal classification of age for Crohn's disease
+##### Montreal classification of age for Crohn's disease
 
 Unlike ulcerative colitis, age at diagnosis is part of the Montreal
 classification for Crohn's disease.  As such, we will explore potential
@@ -371,7 +328,7 @@ cd.dict.fc %>%
   pander()
 ```
 
-### IBD type
+#### IBD type
 
 IBD type has been included in the cluster assignment sub model as a covariate
 and will therefore be analysed differently to the other variables considered.
