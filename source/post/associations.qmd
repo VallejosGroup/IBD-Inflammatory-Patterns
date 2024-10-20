@@ -77,22 +77,14 @@ independently, this page is split into FC and CRP sections.
 
 ## Faecal calprotectin analysis
 
-### Exclusion based on posterior probabilities
+### Merge subject-level metadata with model-derived quantities
 
-In order to reliably assess associations between clusters and baseline data, we
-will focus on subjects with posterior probabilities for cluster assignment above
-a set threshold. This ensures subjects which were not confidently assigned to a
-cluster do not affect potential associations. 
+Here, we create a `data.frame` that combines individual-level information
+(e.g. age at diagnosis, sex) with model-derived quantities, such as the
+posterior probabilities of class assignment. To facilitate visualisation, 
+we also create discretised versions for some variables. 
 
-Subjects with little follow-up typically have low posterior probabilities as 
-there is less of a temporal trend to rely upon when assigning a cluster. As
-such, subjects with short follow-up available will typically be removed from
-the association testing when filtering by posterior probabilities (@fig-pprob-fup-fc). 
-
-```{R}
-#| label: fig-pprob-fup-fc
-#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period). Subjects with more than 20 FC observations have been removed from the plot for clarity."
-
+```{r}
 myDF <- fcal %>%
   group_by(ids) %>%
   summarise(n.total = n(),
@@ -104,61 +96,10 @@ myDF <- merge(myDF, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
 myDF <- myDF %>% 
   mutate(probmax = pmax(prob1, prob2, prob3, prob4, prob5, 
                         prob6, prob7, prob8, prob9, prob10))
-
-p <- myDF %>%
-  filter(n.total <= 20) %>%
-  ggplot(aes(x = followup, y = probmax)) +
-  geom_point(aes(color = n.total)) +
-  geom_smooth(method = "lm", formula = "y ~ x") +
-  theme_minimal() +
-  xlab("Follow-up time (years)") +
-  ylab("Posterior probability") +
-  ylim(0, NA) +
-  viridis::scale_color_viridis(option = "viridis") 
-
-ggsave("plots/postprob-fup.png", p, width = 10, height = 8, units = "in")
-ggsave("plots/postprob-fup.pdf", p, width = 10, height = 8, units = "in")
-p
+myDF <- merge(myDF, dict, by = "ids", all.x = TRUE, all.y = FALSE)
 ```
 
-```{R}
-#| label: fig-pprob-fup-fc-cluster
-#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period) by cluster. Subjects with more than 20 FC observations have been removed from the plot for clarity."
-#| fig-height: 10
-
-p <- myDF %>%
-  filter(n.total <= 20) %>%
-  ggplot(aes(x = followup, y = probmax)) +
-  geom_point(aes(color = n.total)) +
-  geom_smooth(method = "lm", formula = "y ~ x") +
-  theme_minimal() +
-  xlab("Follow-up time (years)") +
-  ylab("Posterior probability") +
-  ylim(0, NA) +
-  viridis::scale_color_viridis(option = "viridis") +
-  facet_grid(rows = vars(class))
-
-ggsave("plots/postprob-fup-clusters.png",
-       p,
-       width = 10,
-       height = 16,
-       units = "in")
-ggsave("plots/postprob-fup-clusters.pdf",
-       p,
-       width = 10,
-       height = 16,
-       units = "in")
-p
-```
-
-@fig-fc-prob-fup shows how cluster assignment probabilities change as follow-up
-for subjects increases. As one would expect, probabilities typically increase as
-as follow-up increases. This relationship appears to depend upon when the mean
-trajectory for the assigned cluster substantially differs from the other
-clusters. FC8 shows high posterior probabilities with even short follow-up as
-this is the only cluster with low FC at diagnosis. FC5 is similar to FC10
-and FC3 for the first two years and only starts to differ substantially after
-much longer follow-up. 
+### Posterior cluster assignment probabilities 
 
 ```{R}
 #| label: fig-fc-prob-fup
@@ -214,6 +155,82 @@ ggsave("plots/fc-prob-fup.png", p, width = 11, height = 8, units = "in")
 ggsave("plots/fc-prob-fup.pdf", p, width = 11, height = 8, units = "in")
 p
 ```
+
+@fig-fc-prob-fup shows how cluster assignment probabilities change as follow-up
+for subjects increases. As one would expect, probabilities typically increase as
+as follow-up increases. This relationship appears to depend upon when the mean
+trajectory for the assigned cluster substantially differs from the other
+clusters. FC8 shows high posterior probabilities with even short follow-up as
+this is the only cluster with low FC at diagnosis. However, longer follow-ups 
+are required to distinguish other clusters. For example, individuals
+assigned to FC1 that have a short follow-up (< 2 years from diagnosis) only have
+a the marginally higher average probability of being assigned to FC1 than to FC6
+(`r myDF_means$value[myDF_means$class == "Assigned to FC1" & myDF_means$followup_cut == "(0,2]" & myDF_means$prob == "FC1"]` versus `r myDF_means$value[myDF_means$class == "Assigned to FC1" & myDF_means$followup_cut == "(0,2]" & myDF_means$prob == "FC6"]`). This is not
+unexpected, as FC1 and FC6 share similar patterns within the first 2 years. 
+
+
+### Exclusion based on posterior probabilities
+
+In order to reliably assess associations between clusters and baseline data, we
+will focus on subjects with posterior probabilities for cluster assignment above
+a set threshold. This ensures subjects which were not confidently assigned to a
+cluster do not affect potential associations. 
+
+Subjects with little follow-up typically have low posterior probabilities as 
+there is less of a temporal trend to rely upon when assigning a cluster. As
+such, subjects with short follow-up available will typically be removed from
+the association testing when filtering by posterior probabilities (@fig-pprob-fup-fc). 
+
+```{R}
+#| label: fig-pprob-fup-fc
+#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period). Subjects with more than 20 FC observations have been removed from the plot for clarity."
+p <- myDF %>%
+  filter(n.total <= 20) %>%
+  ggplot(aes(x = followup, y = probmax)) +
+  geom_point(aes(color = n.total)) +
+  geom_smooth(method = "lm", formula = "y ~ x") +
+  theme_minimal() +
+  xlab("Follow-up time (years)") +
+  ylab("Posterior probability") +
+  ylim(0, NA) +
+  viridis::scale_color_viridis(option = "viridis") 
+
+ggsave("plots/postprob-fup.png", p, width = 10, height = 8, units = "in")
+ggsave("plots/postprob-fup.pdf", p, width = 10, height = 8, units = "in")
+p
+```
+
+```{R}
+#| label: fig-pprob-fup-fc-cluster
+#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period) by cluster. Subjects with more than 20 FC observations have been removed from the plot for clarity."
+#| fig-height: 10
+
+p <- myDF %>%
+  filter(n.total <= 20) %>%
+  ggplot(aes(x = followup, y = probmax)) +
+  geom_point(aes(color = n.total)) +
+  geom_smooth(method = "lm", formula = "y ~ x") +
+  theme_minimal() +
+  xlab("Follow-up time (years)") +
+  ylab("Posterior probability") +
+  ylim(0, NA) +
+  viridis::scale_color_viridis(option = "viridis") +
+  facet_grid(rows = vars(class))
+
+ggsave("plots/postprob-fup-clusters.png",
+       p,
+       width = 10,
+       height = 16,
+       units = "in")
+ggsave("plots/postprob-fup-clusters.pdf",
+       p,
+       width = 10,
+       height = 16,
+       units = "in")
+p
+```
+
+
 
 ```{R}
 pprob.df <- subset(myDF, probmax > 0.5)
