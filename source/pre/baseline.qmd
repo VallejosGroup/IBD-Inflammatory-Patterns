@@ -836,6 +836,13 @@ temp <- dict.fc.cd %>%
   mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
   mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
    mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
+
+
+temp <- temp %>%
+  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
+         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
+
+
 survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
   ggsurvplot()
 ```
@@ -917,8 +924,10 @@ temp <- dict.crp.cd %>%
   mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
   mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
    mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
-survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
-  ggsurvplot(pval = FALSE)
+
+temp <- temp %>%
+  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
+         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
 
 survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
   ggsurvplot()
@@ -1035,26 +1044,22 @@ uc.bio <- fix_date_df(uc.bio, c("startDate", "stopDate"), excel = TRUE)
 dict.fc.uc <- subset(dict.fc, diagnosis == "Ulcerative Colitis")
 dict.fc.uc <- merge(dict.fc.uc, uc.bio, all.x = TRUE, all.y = FALSE)
 dict.fc.uc <- dict.fc.uc %>%
-  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
+  mutate(advancedT = if_else(is.na(Treatment), 0, 1))
 dict.fc.uc$firstY <- dict.fc.uc$advancedT
 
 dict.fc.uc$timeToTherapy <- with(dict.fc.uc, startDate - date.of.diag) / 365.25
 
 for (i in 1:nrow(dict.fc.uc)) {
-  if (dict.fc.uc[i, "advancedT"] == 0) { # If been on AT
+  if (dict.fc.uc[i, "advancedT"] == 1) { # If been on AT
     # If been on AT later than one year of diag
-    
     if (is.na(dict.fc.uc[i, "startDate"])) {
-      dict.fc.uc[i, "firstY"] <- 1 
+      dict.fc.uc[i, "firstY"] <- 0 
     } else if (dict.fc.uc[i, "startDate"] - dict.fc.uc[i, "date.of.diag"] > 365.25) {
-      dict.fc.uc[i, "firstY"] <- 1 # Map to "No"
+      dict.fc.uc[i, "firstY"] <- 0 # Map to "No"
     }
   }
 }
-# Change to more interpretable value
-dict.fc.uc$firstY <- as.logical(plyr::mapvalues(dict.fc.uc$firstY,
-                                     from = c(0, 1),
-                                     to = c(TRUE, FALSE)))
+
 
 cols <- c(
   "#E26D5C",
@@ -1096,10 +1101,14 @@ p1
 
 ```{R}
 temp <- dict.fc.uc %>%
-  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
-  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
+  mutate(timeToTherapy = if_else(advancedT == 0, 7, as.numeric(timeToTherapy))) %>%
   mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
    mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
+
+temp <- temp %>%
+  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
+         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
+
 survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
   ggsurvplot()
 ```
