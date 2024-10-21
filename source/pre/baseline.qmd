@@ -46,7 +46,7 @@ will be explored between cluster membership and these data.
 
 As FC and CRP are analysed independently, the data is split into subjects who
 met the criteria for FC and CRP analyses. The  colours used in the plot are
-specific to either the FC or the CROP cohorts which are also under seperate
+specific to either the FC or the CRP cohorts which are also under separate
 tabs. 
 
 ## Descriptive analyses
