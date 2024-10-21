@@ -170,31 +170,32 @@ unexpected, as FC1 and FC6 share similar patterns within the first 2 years.
 
 ### Univariate associations with respect to cluster assignments
 
+This section displays descriptive plots to summarize marginal associations
+between cluster assignments and individual-level covariates. Due to their small
+size, we combine the three clusters with oscillatory FC patterns into one for
+the purpose of this analysis.
 
+```{r combine class}
+myDF <- myDF %>% 
+  mutate(class_combined = ifelse(class %in% c(2, 3, 9), 
+                                 "FC2-3-9", paste0("F", class)))
+```
 
+As a sensitivity analysis, we also consider restricting the analysis to only
+consider individuals whose class assignment was less uncertain (with posterior
+probability > 0.5).
 
-
-
-
-### Univariate analyses 
+<!--- CAV: add here a table with summary statistics per cluster ---> 
 
 #### Sex
 
 A significant association was not found between sex and cluster membership. 
 
 ```{R}
-dict.fc <- subset(dict, ids %in% model.fc$pprob$ids)
-dict.fc <- merge(dict.fc, model.fc$pprob[, c("ids", "class")])
-fcal <- select(fcal, -sex)
+with(myDF, chisq.test(class_combined, sex)) %>%
+  pander()
 
-fcal <- merge(fcal,
-  dict.fc[, c("ids", "class", "sex")],
-  all.x = TRUE,
-  all.y = FALSE,
-  by = "ids"
-)
-
-chisq.test(dict.fc$class, dict.fc$sex) %>%
+with(myDF[myDF$probmax > 0.5,], chisq.test(class_combined, sex)) %>%
   pander()
 ```
 
@@ -205,7 +206,11 @@ year of birth and is therefore not 100% accurate. We will initially consider
 age as a continuous variable. 
 
 ```{R}
-aov(class ~ age, data = dict.fc) %>%
+aov(age ~ class_combined , data = myDF) %>%
+  summary() %>%
+  pander()
+
+aov(age ~ class_combined , data = myDF[myDF$probmax > 0.5,]) %>%
   summary() %>%
   pander()
 ```
@@ -217,13 +222,21 @@ aov(class ~ age, data = dict.fc) %>%
 #| fig-height: 4
 #| fig-width: 9.142857
 #| warning: false
-p1 <- dict.fc %>%
-  mutate(class = factor(class, labels = paste("FC", seq(1, 10)))) %>%
-  ggplot(aes(x = class, y = age)) +
+p1 <- myDF %>%
+  ggplot(aes(x = class_combined, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
+
+p2 <- myDF %>%
+  subset(probmax > 0.5) %>%
+  ggplot(aes(x = class_combined, y = age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
 print(p1)
 ```
 
