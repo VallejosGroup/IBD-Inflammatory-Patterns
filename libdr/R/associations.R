@@ -1,15 +1,18 @@
 #' Percentage bar plots for categorical data
-#' @param dat data frame holding categorical data and cluster assignment data, the latter denoted via a "class_combined" column.
-#' @param var Character. The name of the categorical variable of interest
+#' @param dat data frame holding categorical data and cluster assignment data.
+#' @param var Character. The name of the categorical variable of interest.
+#' @param class Character. The name of the class assignment variable. Assumed
+#'   to be \code{"class_combined"} if not manually specified
 #' @returns A \code{\link[patchwork]{patchwork}} object
 #' @export
-plotCat <- function(dat, var) {
-  class_combined <- cluster <- NULL
+plotCat <- function(dat, var, class = "class_combined") {
+  cluster <- NULL
 
   fill.vec <- c("#C2F8CB", "#EFC7E5", "#F6BD60")
   col.vec <- c("#82C68F", "#C795BB", "#C89216")
 
-  if (!(var %in% colnames(dat))) stop("Variable not found in data frame.")
+  if (!(var %in% colnames(dat))) stop("Column for categorical variable not found.")
+  if (!(class %in% colnames(dat))) stop("Class column not found.")
 
   labels <- sort(unique(dat[, var]))
 
@@ -21,8 +24,8 @@ plotCat <- function(dat, var) {
   )
 
   # Calculate percentage per cluster for each category
-  for (g in sort(unique(dat[, "class_combined"]))) {
-    temp.1 <- subset(dat, class_combined ==  g)
+  for (g in sort(unique(dat[, class]))) {
+    temp.1 <- dat[dat[, class] == g, ]
     for (label in labels) {
       perc <- nrow(subset(temp.1, eval(parse(text = var)) == label)) / nrow(temp.1)
       perc.table <- rbind(
@@ -38,7 +41,7 @@ plotCat <- function(dat, var) {
 
   # Set order of clusters in percentage data frame
   perc.table$cluster <- factor(perc.table$cluster,
-                               levels = levels(dat[, "class_combined"]))
+                               levels = levels(dat[, class]))
   # Per sub plot
   for (i in 1:length(labels)){
     totalPerc <- nrow(subset(dat, eval(parse(text = var)) == labels[i])) /

@@ -4,12 +4,15 @@
 \alias{plotCat}
 \title{Percentage bar plots for categorical data}
 \usage{
-plotCat(dat, var)
+plotCat(dat, var, class = "class_combined")
 }
 \arguments{
-\item{dat}{data frame holding categorical data and cluster assignment data, the latter denoted via a "class_combined" column.}
+\item{dat}{data frame holding categorical data and cluster assignment data.}
 
-\item{var}{Character. The name of the categorical variable of interest}
+\item{var}{Character. The name of the categorical variable of interest.}
+
+\item{class}{Character. The name of the class assignment variable. Assumed
+to be \code{"class_combined"} if not manually specified}
 }
 \value{
 A \code{\link[patchwork]{patchwork}} object
