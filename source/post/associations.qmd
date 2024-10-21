@@ -182,10 +182,15 @@ the purpose of this analysis.
 ```{r combine class}
 myDF.fc <- myDF.fc %>% 
   mutate(class_combined = ifelse(class %in% c(2, 3, 9), 
-                                 "FC2-3-9", paste0("F", class)),
+                                 "FC2-3-9",
+                                 paste0("FC", class)),
          prob239 = prob2 + prob3 + prob9,
          probmax_combined =  pmax(prob1, prob4, prob5, 
                                   prob6, prob7, prob8, prob10, prob239))
+
+# Sort by sensible order rather than alphanumerical order
+myDF.fc$class_combined <- factor(myDF.fc$class_combined,
+                                 levels = c("FC1", "FC2-3-9", "FC4", "FC5", "FC6", "FC7", "FC8", "FC10"))
 ```
 
 As a sensitivity analysis, we also consider restricting the analysis to only
@@ -267,7 +272,7 @@ significantly associated with cluster membership.
 ```{R}
 ageLabels <- c("\u226416", "17—40", "> 40")
 
-cd.dict.fc <- subset(dict.fc, diagnosis == "Crohn's Disease")
+cd.dict.fc <- subset(myDF.fc, diagnosis == "Crohn's Disease")
 
 cd.dict.fc$ageCat <- cut(cd.dict.fc$age,
   breaks = c(0, 16, 40, Inf),
@@ -277,7 +282,7 @@ cd.dict.fc$ageCat <- cut(cd.dict.fc$age,
 )
 
 cd.dict.fc %>%
-  with(fisher.test(class,
+  with(fisher.test(class_combined,
                    ageCat,
                    workspace = 2000000,
                    simulate.p.value = TRUE)) %>%
@@ -374,61 +379,7 @@ df %>%
 ```{R}
 #| label: fig-fc-ibd-facet
 #| fig-cap: "Percentage of (A) Crohn's disease, (B) ulcerative colitis, and (C) IBDU within each FC cluster. Dotted lines indicate the overall percentage of each IBD type."
-perc.table <- data.frame(
-  diagnosis = character(),
-  cluster = character(),
-  perc = numeric()
-)
-for (g in 1:8) {
-  temp.1 <- subset(dict.fc, class == g)
-  for (diag in c("Crohn's Disease", "Ulcerative Colitis", "IBDU")) {
-    perc <- nrow(subset(temp.1, diagnosis == diag)) / nrow(temp.1)
-    perc.table <- rbind(
-      perc.table,
-      data.frame(
-        diagnosis = diag,
-        cluster = paste0("FC ", g),
-        perc = perc
-      )
-    )
-  }
-}
-
-totalCdPerc <- nrow(subset(dict.fc, diagnosis == "Crohn's Disease")) /
-  nrow(dict.fc)
-
-p1 <- perc.table %>%
-  filter(diagnosis == "Crohn's Disease") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
-  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-totalCdPerc <- nrow(subset(dict.fc, diagnosis == "Ulcerative Colitis")) /
-  nrow(dict.fc)
-
-p2 <- perc.table %>%
-  filter(diagnosis == "Ulcerative Colitis") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-
-totalCdPerc <- nrow(subset(dict.fc, diagnosis == "IBDU")) /
-  nrow(dict.fc)
-
-p3 <- perc.table %>%
-  filter(diagnosis == "IBDU") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
-  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")  &
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) 
+p <- libdr::plotCat(myDF.fc, "diagnosis")
 ggsave("plots/ibd-type-fc.png", p, width = 7.5, height = 7.5)
 ggsave("plots/ibd-type-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
@@ -520,14 +471,11 @@ Montreal classification of Crohn's disease and advanced therapy prescribing.
 ```{R}
 cd.pheno <- readRDS(paste0(prefix, "processed/cd-pheno.RDS"))
 cd.pheno <- merge(cd.pheno,
-  dict.fc[, c("ids", "class")],
+  myDF.fc[, c("ids", "class_combined")],
   by = "ids",
-  all.x = TRUE,
+  all.x = FALSE,
   all.y = FALSE
 )
-cd.pheno$class <- as.factor(cd.pheno$class)
-
-cd.pheno <- subset(cd.pheno, ids %in% model.fc$pprob$ids)
 ```
 
 #### Montreal location
@@ -553,62 +501,7 @@ cd.pheno %>%
 ```{R}
 #| label: fig-fc-location-facet
 #| fig-cap: "Percentage of (A) L1, (B) L2, and (C) L3 within each FC cluster. Dotted lines indicate the overall percentage of each IBD type."
-perc.table <- data.frame(
-  location = character(),
-  cluster = character(),
-  perc = numeric()
-)
-for (g in 1:8) {
-  temp.1 <- subset(cd.pheno, class ==  g)
-  for (loc in c("L1", "L2", "L3")) {
-    perc <- nrow(subset(temp.1, Location == loc)) / nrow(temp.1)
-    perc.table <- rbind(
-      perc.table,
-      data.frame(
-        location = loc,
-        cluster = paste0("FC ", g),
-        perc = perc
-      )
-    )
-  }
-}
-
-totalL1Perc <- nrow(subset(cd.pheno, Location == "L1")) /
-  nrow(cd.pheno)
-
-p1 <- perc.table %>%
-  filter(location == "L1") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#C2F8CB", color = "#82C68F") +
-  geom_hline(yintercept = totalL1Perc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-totalL2Perc <- nrow(subset(cd.pheno, Location == "L2")) /
-  nrow(cd.pheno)
-
-p2 <- perc.table %>%
-  filter(location == "L2") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#EFC7E5", color = "#C795BB") +
-  geom_hline(yintercept = totalL2Perc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-
-totalL3Perc <- nrow(subset(cd.pheno, Location == "L3")) /
-  nrow(cd.pheno)
-
-p3 <- perc.table %>%
-  filter(location == "L3") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#F6BD60", color = "#C89216") +
-  geom_hline(yintercept = totalL3Perc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A") &
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) 
+p <- plotCat(cd.pheno, "Location")
 ggsave("plots/cd-location-fc.png", p, width = 7.5, height = 7.5)
 ggsave("plots/cd-location-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
@@ -618,49 +511,6 @@ print(p)
 
 ```{R}
 
-plotCat <- function(dat, var, labels, biomarker) {
-  perc.table <- data.frame(
-    location = character(),
-    cluster = character(),
-    perc = numeric()
-    )
-  for (g in sort(unique(dat$class))) {
-    temp.1 <- subset(dat, class ==  g)
-    for (loc in labels) {
-      perc <- nrow(subset(temp.1, eval(parse(text = var)) == loc)) / nrow(temp.1)
-      perc.table <- rbind(
-        perc.table,
-        data.frame(
-          eval(parse(text = var)) = loc,
-          cluster = paste0(biomarker, g),
-          perc = perc
-        )
-      )
-    }
-  }
-  
-  
-  p <- NULL
-  
-  for (i in 1:length(labels)){
-    
-    totalPerc <- nrow(subset(dat, eval(parse(text = var)) == labels[i])) /
-      nrow(dat)
-    
-    p <- P + perc.table %>%
-      filter( eval(parse(text = var)) == labels[i]) %>%
-      ggplot(aes(x = cluster, y = perc)) +
-      geom_bar(stat = "identity", fill = "#C2F8CB", color = "#82C68F") +
-      geom_hline(yintercept = totalPerc, linetype = "dashed", color = "#4D4730") +
-      theme_minimal() +
-      labs(x = "Cluster", y = "Percentage")
-  }
-  p <- p +
-    patchwork::plot_layout(nrow = length(labels)) +
-    patchwork::plot_annotation(tag_levels = "A") &
-    scale_y_continuous(labels = scales::percent, limits = c(0, 1))
-  return(p)
-}
 ```
 
 #### Upper GI inflammation
@@ -725,62 +575,7 @@ starker differences for penetrating.
 ```{R}
 #| label: fig-fc-behaviour-facet
 #| fig-cap: "Percentage of (A) B1, (B) B2, and (C) B3 within each FC cluster. Dotted lines indicate the overall percentage of each IBD type."
-perc.table <- data.frame(
-  behaviour = character(),
-  cluster = character(),
-  perc = numeric()
-)
-for (g in 1:8) {
-  temp.1 <- subset(cd.pheno, class == g)
-  for (beh in c("B1", "B2", "B3")) {
-    perc <- nrow(subset(temp.1, Behaviour == beh)) / nrow(temp.1)
-    perc.table <- rbind(
-      perc.table,
-      data.frame(
-        behaviour = beh,
-        cluster = paste0("FC ", g),
-        perc = perc
-      )
-    )
-  }
-}
-
-totalB1Perc <- nrow(subset(cd.pheno, Behaviour == "B1")) /
-  nrow(cd.pheno)
-
-p1 <- perc.table %>%
-  filter(behaviour == "B1") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#FF7700", color = "#C56025") +
-  geom_hline(yintercept = totalB1Perc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-totalB2Perc <- nrow(subset(cd.pheno, Behaviour == "B2")) /
-  nrow(cd.pheno)
-
-p2 <- perc.table %>%
-  filter(behaviour == "B2") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#004777", color = "#003A62") +
-  geom_hline(yintercept = totalB2Perc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-
-totalB3Perc <- nrow(subset(cd.pheno, Behaviour == "B3")) /
-  nrow(cd.pheno)
-
-p3 <- perc.table %>%
-  filter(behaviour == "B3") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#4E937A", color = "#447361") +
-  geom_hline(yintercept = totalB3Perc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")  &
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) 
+p <- plotCat(cd.pheno, "Behaviour")
 ggsave("plots/cd-behaviour-fc.png", p, width = 7.5, height = 7.5)
 ggsave("plots/cd-behaviour-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
