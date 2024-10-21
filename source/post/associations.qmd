@@ -165,9 +165,11 @@ this is the only cluster with low FC at diagnosis. However, longer follow-ups
 are required to distinguish other clusters. For example, individuals
 assigned to FC1 that have a short follow-up (< 2 years from diagnosis) only have
 a the marginally higher average probability of being assigned to FC1 than to FC6
-(`r myDF_means$value[myDF_means$class == "Assigned to FC1" & myDF_means$followup_cut == "(0,2]" & myDF_means$prob == "FC1"]` versus `r myDF_means$value[myDF_means$class == "Assigned to FC1" & myDF_means$followup_cut == "(0,2]" & myDF_means$prob == "FC6"]`). This is not
-unexpected, as FC1 and FC6 share similar patterns within the first 2 years. 
-
+(`r round(myDF_means$value[myDF_means$class == "Assigned to FC1" & myDF_means$followup_cut == "(0,2]" & myDF_means$prob == "FC1"], 3)`
+versus
+`r round(myDF_means$value[myDF_means$class == "Assigned to FC1" & myDF_means$followup_cut == "(0,2]" & myDF_means$prob == "FC6"], 3)`).
+This is not unexpected, as FC1 and FC6 share similar patterns within the first
+2 years. 
 
 ### Exclusion based on posterior probabilities
 
