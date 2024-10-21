@@ -10,7 +10,10 @@ Description: More about what it does (maybe more than one line)
 License: GPL (>= 3)
 Depends: 
     R (>= 4.1.0),
-    splines
+    splines,
+    patchwork,
+    magrittr,
+    dplyr
 Imports: 
     lcmm,
     ggplot2,
@@ -20,7 +23,8 @@ Imports:
     viridis,
     doParallel,
     foreach,
-    tibble
+    tibble,
+    scales
 Suggests: magick
 Encoding: UTF-8
 LazyData: true
