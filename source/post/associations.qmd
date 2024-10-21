@@ -32,6 +32,7 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
 ##########################
 
 library(tidyverse)
+library(dplyr)
 # Support package (source found in libdr/)
 library(libdr)
 ## Modelling ##
@@ -85,18 +86,18 @@ posterior probabilities of class assignment. To facilitate visualisation,
 we also create discretised versions for some variables. 
 
 ```{r}
-myDF <- fcal %>%
+myDF.fc <- fcal %>%
   group_by(ids) %>%
   summarise(n.total = n(),
             followup = max(calpro_time),) %>%
   mutate(followup_cut = cut(followup, breaks = c(seq(0, 6, by = 2), 7)),
          n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
   
-myDF <- merge(myDF, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
-myDF <- myDF %>% 
+myDF.fc <- merge(myDF.fc, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
+myDF.fc <- myDF.fc %>% 
   mutate(probmax = pmax(prob1, prob2, prob3, prob4, prob5, 
                         prob6, prob7, prob8, prob9, prob10))
-myDF <- merge(myDF, dict, by = "ids", all.x = TRUE, all.y = FALSE)
+myDF.fc <- merge(myDF.fc, dict, by = "ids", all.x = TRUE, all.y = FALSE)
 ```
 
 ### Posterior cluster assignment probabilities 
@@ -108,18 +109,18 @@ myDF <- merge(myDF, dict, by = "ids", all.x = TRUE, all.y = FALSE)
 #| fig-width: 11
 #| fig-height: 8
 
-myDF_means <- myDF %>% 
+myDF.fc_means <- myDF.fc %>% 
   group_by(class, followup_cut) %>%
   summarise(across(starts_with("prob"), function(x) mean(x, na.rm = TRUE)),
             .groups = "drop") %>%
   pivot_longer(cols = starts_with("prob"), names_to = "prob")
 
 # Assign level order otherwise alphanumerical order used
-myDF_means$prob <- factor(myDF_means$prob,
+myDF.fc_means$prob <- factor(myDF.fc_means$prob,
                           levels = c(paste0("prob", 1:10), "probmax"),
                           labels = c(paste0("FC", 1:10), "probmax"))
 
-myDF_means$class <- factor(myDF_means$class,
+myDF.fc_means$class <- factor(myDF.fc_means$class,
                            levels = 1:10,
                            labels = paste0("Assigned to FC", 1:10))
 
@@ -136,7 +137,7 @@ col.vec <- c("#df5c7f",
 "#c597bd")
 
 
-p <- myDF_means %>%
+p <- myDF.fc_means %>%
   filter(prob != "probmax") %>%
   ggplot(aes(fill = prob, y = value, x = followup_cut)) +
   geom_bar(position = "fill", stat = "identity") +
@@ -165,9 +166,9 @@ this is the only cluster with low FC at diagnosis. However, longer follow-ups
 are required to distinguish other clusters. For example, individuals
 assigned to FC1 that have a short follow-up (< 2 years from diagnosis) only have
 a marginally higher average probability of being assigned to FC1 than to FC6
-(`r round(myDF_means$value[myDF_means$class == "Assigned to FC1" & myDF_means$followup_cut == "(0,2]" & myDF_means$prob == "FC1"], 3)`
+(`r round(myDF.fc_means$value[myDF.fc_means$class == "Assigned to FC1" & myDF.fc_means$followup_cut == "(0,2]" & myDF.fc_means$prob == "FC1"], 3)`
 versus
-`r round(myDF_means$value[myDF_means$class == "Assigned to FC1" & myDF_means$followup_cut == "(0,2]" & myDF_means$prob == "FC6"], 3)`).
+`r round(myDF.fc_means$value[myDF.fc_means$class == "Assigned to FC1" & myDF.fc_means$followup_cut == "(0,2]" & myDF.fc_means$prob == "FC6"], 3)`).
 This is not unexpected, as FC1 and FC6 share similar patterns within the first
 2 years.  
 
@@ -179,9 +180,12 @@ size, we combine the three clusters with oscillatory FC patterns into one for
 the purpose of this analysis.
 
 ```{r combine class}
-myDF <- myDF %>% 
+myDF.fc <- myDF.fc %>% 
   mutate(class_combined = ifelse(class %in% c(2, 3, 9), 
-                                 "FC2-3-9", paste0("F", class)))
+                                 "FC2-3-9", paste0("F", class)),
+         prob239 = prob2 + prob3 + prob9,
+         probmax_combined =  pmax(prob1, prob4, prob5, 
+                                  prob6, prob7, prob8, prob10, prob239))
 ```
 
 As a sensitivity analysis, we also consider restricting the analysis to only
@@ -195,10 +199,12 @@ probability > 0.5).
 A significant association was not found between sex and cluster membership. 
 
 ```{R}
-with(myDF, chisq.test(class_combined, sex)) %>%
+with(myDF.fc, 
+     chisq.test(class_combined, sex)) %>%
   pander()
 
-with(myDF[myDF$probmax > 0.5,], chisq.test(class_combined, sex)) %>%
+with(myDF.fc[myDF.fc$probmax_combined > 0.5,], 
+     chisq.test(class_combined, sex)) %>%
   pander()
 ```
 
@@ -209,11 +215,11 @@ year of birth and is therefore not 100% accurate. We will initially consider
 age as a continuous variable. 
 
 ```{R}
-aov(age ~ class_combined , data = myDF) %>%
+aov(age ~ class_combined , data = myDF.fc) %>%
   summary() %>%
   pander()
 
-aov(age ~ class_combined , data = myDF[myDF$probmax > 0.5,]) %>%
+aov(age ~ class_combined , data = myDF.fc[myDF.fc$probmax_combined > 0.5,]) %>%
   summary() %>%
   pander()
 ```
@@ -225,15 +231,15 @@ aov(age ~ class_combined , data = myDF[myDF$probmax > 0.5,]) %>%
 #| fig-height: 4
 #| fig-width: 9.142857
 #| warning: false
-p1 <- myDF %>%
+p1 <- myDF.fc %>%
   ggplot(aes(x = class_combined, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
 
-p2 <- myDF %>%
-  subset(probmax > 0.5) %>%
+p2 <- myDF.fc %>%
+  subset(probmax_combined > 0.5) %>%
   ggplot(aes(x = class_combined, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
