@@ -608,6 +608,55 @@ ggsave("plots/cd-location-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
 ```
 
+
+
+```{R}
+
+plotCat <- function(dat, var, labels, biomarker) {
+  perc.table <- data.frame(
+    location = character(),
+    cluster = character(),
+    perc = numeric()
+    )
+  for (g in sort(unique(dat$class))) {
+    temp.1 <- subset(dat, class ==  g)
+    for (loc in labels) {
+      perc <- nrow(subset(temp.1, eval(parse(text = var)) == loc)) / nrow(temp.1)
+      perc.table <- rbind(
+        perc.table,
+        data.frame(
+          eval(parse(text = var)) = loc,
+          cluster = paste0(biomarker, g),
+          perc = perc
+        )
+      )
+    }
+  }
+  
+  
+  p <- NULL
+  
+  for (i in 1:length(labels)){
+    
+    totalPerc <- nrow(subset(dat, eval(parse(text = var)) == labels[i])) /
+      nrow(dat)
+    
+    p <- P + perc.table %>%
+      filter( eval(parse(text = var)) == labels[i]) %>%
+      ggplot(aes(x = cluster, y = perc)) +
+      geom_bar(stat = "identity", fill = "#C2F8CB", color = "#82C68F") +
+      geom_hline(yintercept = totalPerc, linetype = "dashed", color = "#4D4730") +
+      theme_minimal() +
+      labs(x = "Cluster", y = "Percentage")
+  }
+  p <- p +
+    patchwork::plot_layout(nrow = length(labels)) +
+    patchwork::plot_annotation(tag_levels = "A") &
+    scale_y_continuous(labels = scales::percent, limits = c(0, 1))
+  return(p)
+}
+```
+
 #### Upper GI inflammation
 
 Upper inflammation refers to any gastrointestinal inflammation further up than
