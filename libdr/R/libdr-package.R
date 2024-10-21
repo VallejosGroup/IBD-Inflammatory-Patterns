@@ -4,4 +4,5 @@
 #' @import magrittr
 #' @import patchwork
 #' @importFrom foreach "%dopar%"
+#' @importFrom stats pnorm qnorm reformulate
 NULL

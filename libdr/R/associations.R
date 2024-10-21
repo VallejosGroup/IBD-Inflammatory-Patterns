@@ -1,5 +1,5 @@
 #' Percentage bar plots for categorical data
-#' @param dat data frame holding categorical data and cluster assignment data.
+#' @param dat Data frame holding categorical and cluster assignment data.
 #' @param var Character. The name of the categorical variable of interest.
 #' @param class Character. The name of the class assignment variable. Assumed
 #'   to be \code{"class_combined"} if not manually specified
@@ -72,4 +72,71 @@ plotCat <- function(dat, var, class = "class_combined") {
     patchwork::plot_annotation(tag_levels = "A") &
     scale_y_continuous(labels = scales::percent, limits = c(0, 1))
   return(p)
+}
+
+
+#' Forest plot of multinomial logistic regression model
+#' @param dat  Data frame holding covariate and cluster assignment data.
+#' @param var Character. The name of the covariate(s) of interest. If given as
+#'   a character vector then a multivariate model is fitted using the specified
+#'   covariates.
+#' @param class Character. The name of the class assignment variable. Assumed
+#'   to be \code{"class_combined"} if not manually specified.
+#' @export
+mlrPlot <- function(dat, var, class = "class_combined") {
+
+  Estimate <- Lower <- Upper <- Var1 <- Var2 <- sig <- NULL
+
+  results <- list()
+  mlr <- nnet::multinom(formula = reformulate(var, class), data = dat, trace = FALSE)
+  z <- summary(mlr)$coefficients / summary(mlr)$standard.errors
+  p.val <- (1 - pnorm(abs(z), 0, 1)) * 2
+
+  coeff <- summary(mlr)$coefficients
+  coeff <- reshape2::melt(coeff)
+  coeff$var <- with(coeff, paste(Var1, Var2))
+  coeff <- filter(coeff, Var2 != "(Intercept)")
+  coeff <- coeff
+  colnames(coeff) <- c("Var1", "Var2", "Estimate", "var")
+  lower <- summary(mlr)$coefficients - (qnorm(0.975) * summary(mlr)$standard.errors)
+  lower <- reshape2::melt(lower)
+  lower$var <- with(lower, paste(Var1, Var2))
+  lower <- filter(lower, Var2 != "(Intercept)")
+  lower <- lower %>%
+    select(-Var1, -Var2)
+  colnames(lower) <- c("Lower", "var")
+  tab <- merge(coeff, lower, by = "var")
+  upper <- summary(mlr)$coefficients + (qnorm(0.975) * summary(mlr)$standard.errors)
+  upper <- reshape2::melt(upper)
+  upper$var <- with(upper, paste(Var1, Var2))
+  upper <- filter(upper, Var2 != "(Intercept)")
+  upper <- upper %>%
+    select(-Var1, -Var2)
+  colnames(upper) <- c("Upper", "var")
+  tab <- merge(tab, upper, by = "var")
+  tab$var <- factor(tab$var, levels = rev(tab$var))
+  tab$sig <- FALSE
+  tab[tab$Upper < 0, "sig"] <- TRUE
+  tab[tab$Lower > 0, "sig"] <- TRUE
+  for (variable in unique(tab$Var2)) {
+    p <- tab %>%
+      filter(Var2 == variable) %>%
+      ggplot(aes(
+        x = var,
+        y = Estimate,
+        ymin = Lower,
+        ymax = Upper,
+        color = sig)) +
+      geom_errorbar() +
+      geom_point(size = 3.5) +
+      geom_hline(yintercept = 0, lty = 2) +
+      coord_flip() + # flip coordinates (puts labels on y axis)
+      xlab("") +
+      ylab("Estimate (95% CI)") +
+      theme_bw() +
+      scale_color_manual(values = c("black", "#FF007F")) +
+      theme(legend.position = "none")
+    print(p)
+  }
+  return(p.val)
 }

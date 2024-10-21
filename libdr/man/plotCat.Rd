@@ -7,7 +7,7 @@
 plotCat(dat, var, class = "class_combined")
 }
 \arguments{
-\item{dat}{data frame holding categorical data and cluster assignment data.}
+\item{dat}{Data frame holding categorical and cluster assignment data.}
 
 \item{var}{Character. The name of the categorical variable of interest.}
 
