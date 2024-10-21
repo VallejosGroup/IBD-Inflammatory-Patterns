@@ -213,6 +213,32 @@ with(myDF.fc[myDF.fc$probmax_combined > 0.5,],
   pander()
 ```
 
+##### All
+
+```{R}
+myDF.fc %>% 
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "sex")
+```
+
+##### Crohn's disease
+
+```{R}
+myDF.fc %>% 
+  filter(probmax_combined > 0.5) %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  mlrPlot(var = c("sex"))
+```
+
+##### Ulcerative colitis
+
+```{R}
+myDF.fc %>% 
+  filter(probmax_combined > 0.5) %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  mlrPlot(var = "sex")
+```
+
 #### Age
 
 As a reminder, age has been calculated by subtracting year of diagnosis from
@@ -254,6 +280,34 @@ p2 <- myDF.fc %>%
 print(p1)
 ```
 
+
+##### All
+
+```{R}
+myDF.fc %>% 
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "age")
+```
+
+##### Crohn's disease
+
+```{R}
+myDF.fc %>% 
+  filter(probmax_combined > 0.5) %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  mlrPlot(var = "age")
+```
+
+
+##### Ulcerative colitis
+
+```{R}
+myDF.fc %>% 
+  filter(probmax_combined > 0.5) %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  mlrPlot(var = "age")
+```
+
 ##### Montreal classification of age for Crohn's disease
 
 Unlike ulcerative colitis, age at diagnosis is part of the Montreal
@@ -272,21 +326,28 @@ significantly associated with cluster membership.
 ```{R}
 ageLabels <- c("\u226416", "17—40", "> 40")
 
-cd.dict.fc <- subset(myDF.fc, diagnosis == "Crohn's Disease")
+myDF.fc.cd <- subset(myDF.fc, diagnosis == "Crohn's Disease")
 
-cd.dict.fc$ageCat <- cut(cd.dict.fc$age,
+myDF.fc.cd$ageCat <- cut(myDF.fc.cd$age,
   breaks = c(0, 16, 40, Inf),
   labels = ageLabels,
   include.lowest = TRUE,
   right = FALSE
 )
 
-cd.dict.fc %>%
+myDF.fc.cd %>%
+  filter(probmax_combined > 0.5) %>%
   with(fisher.test(class_combined,
                    ageCat,
                    workspace = 2000000,
                    simulate.p.value = TRUE)) %>%
   pander()
+```
+
+```{R}
+myDF.fc.cd %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "ageCat")
 ```
 
 #### IBD type
@@ -302,88 +363,12 @@ and a summary table ([@tbl-fc-ibd]).
 
 Only ulcerative colitis in cluster 1 was found to be statistically significant. 
 
-
 ```{R}
-#| label: fig-fc-ibd
-#| fig-cap: "Forest plot of IBD type for the chosen FC model. Pink estimates denote a statistically different covariate at the 5% significance level."
-n.clust <- 8
-id <- 1:length(model.fc$best)
-
-indice <- rep(id * (id + 1) / 2)
-
-se <- sqrt(model.fc$V[indice])
-coefficient <- coef(model.fc)
-var.names <- names(coefficient)
-
-df <- data.frame(coefficient = coefficient, se = se)
-df <- df[1:(3 * (n.clust - 1)), ]
-
-df$lower <- df$coefficient - (qnorm(0.975) * df$se)
-df$upper <- df$coefficient + (qnorm(0.975) * df$se)
-df$labels <- names(coefficient)[1:(3 * (n.clust - 1))]
-
-df$labels <- factor(df$labels, levels = rev(df$labels))
-
-df$sig <- FALSE
-
-df[df$upper < 0, "sig"] <- TRUE
-df[df$lower > 0, "sig"] <- TRUE
-
-df <- df[n.clust:(3 * (n.clust - 1)), ] # Remove intercept
-
-df %>%
-  ggplot(aes(
-    x = labels,
-    y = coefficient,
-    ymin = lower,
-    ymax = upper,
-    color = sig
-  )) +
-  geom_errorbar() +
-  geom_point(size = 3.5) +
-  geom_hline(yintercept = 0, lty = 2) +
-  coord_flip() + # flip coordinates (puts labels on y axis)
-  xlab("") +
-  ylab("Estimate (95% CI)") +
-  theme_bw() +
-  ylim(-6, 6) +
-  scale_color_manual(values = c("black", "#FF007F")) +
-  theme(legend.position = "none")
+myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "diagnosis")
 ```
 
-```{R}
-#| label: tbl-fc-ibd
-#| tbl-cap: "Table of β estimates and associated p-values obtained via univariate Wald tests."
-wald <- c()
-p.vals <- c()
-
-for (index in seq(n.clust, 3 * (n.clust - 1))) {
-  temp <- WaldMult(model.fc, pos = index)
-  wald <- c(wald, temp[, 1])
-  p.vals <- c(p.vals, temp[, 2])
-}
-
-df$wald <- wald
-df$p.vals <- p.vals
-
-rownames(df) <- df$labels
-
-df %>%
-  select(coefficient, se, wald, p.vals) %>%
-  knitr::kable(digits = 3, col.names = c("Estimate", "SE", "Wald", "p-value"))
-```
-
-@fig-fc-ibd-facet shows the breakdown of IBD type within each cluster.
-
-
-```{R}
-#| label: fig-fc-ibd-facet
-#| fig-cap: "Percentage of (A) Crohn's disease, (B) ulcerative colitis, and (C) IBDU within each FC cluster. Dotted lines indicate the overall percentage of each IBD type."
-p <- libdr::plotCat(myDF.fc, "diagnosis")
-ggsave("plots/ibd-type-fc.png", p, width = 7.5, height = 7.5)
-ggsave("plots/ibd-type-fc.pdf", p, width = 7.5, height = 7.5)
-print(p)
-```
 
 ### Multivariate modelling
 
@@ -396,72 +381,11 @@ categories. @tbl-mlr-fc provides all p-values for all covariates.
 ```{R}
 #| label: tbl-mlr-fc
 #| tbl-cap: "Table of p-values for the Wald tests of the multinomial logistic regression model."
-mlr <- multinom(class ~ age + sex + diagnosis, data = dict.fc, trace = FALSE)
-z <- summary(mlr)$coefficients / summary(mlr)$standard.errors
-p <- (1 - pnorm(abs(z), 0, 1)) * 2
-knitr::kable(p)
+
+myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = c("age", "sex", "diagnosis"))
 ```
-
-As estimates lie on  substantially different scales, these will be visualised
-using separate forest plots for each covariate. 
-
-```{R}
-coeff <- summary(mlr)$coefficients
-coeff <- reshape2::melt(coeff)
-coeff$var <- with(coeff, paste(Var1, Var2))
-coeff <- filter(coeff, Var2 != "(Intercept)")
-coeff <- coeff
-colnames(coeff) <- c("Var1", "Var2", "Estimate", "var")
-
-lower <- summary(mlr)$coefficients - (qnorm(0.975) * summary(mlr)$standard.errors)
-lower <- reshape2::melt(lower)
-lower$var <- with(lower, paste(Var1, Var2))
-lower <- filter(lower, Var2 != "(Intercept)")
-lower <- lower %>%
-  select(-Var1, -Var2)
-colnames(lower) <- c("Lower", "var")
-
-tab <- merge(coeff, lower, by = "var")
-
-upper <- summary(mlr)$coefficients + (qnorm(0.975) * summary(mlr)$standard.errors)
-upper <- reshape2::melt(upper)
-upper$var <- with(upper, paste(Var1, Var2))
-upper <- filter(upper, Var2 != "(Intercept)")
-upper <- upper %>%
-  select(-Var1, -Var2)
-colnames(upper) <- c("Upper", "var")
-
-tab <- merge(tab, upper, by = "var")
-
-tab$var <- factor(tab$var, levels = rev(tab$var))
-tab$sig <- FALSE
-tab[tab$Upper < 0, "sig"] <- TRUE
-tab[tab$Lower > 0, "sig"] <- TRUE
-
-for (variable in unique(tab$Var2)) {
-  p <- tab %>%
-    filter(Var2 == variable) %>%
-    ggplot(aes(
-      x = var,
-      y = Estimate,
-      ymin = Lower,
-      ymax = Upper,
-      color = sig
-    )) +
-    geom_errorbar() +
-    geom_point(size = 3.5) +
-    geom_hline(yintercept = 0, lty = 2) +
-    coord_flip() + # flip coordinates (puts labels on y axis)
-    xlab("") +
-    ylab("Estimate (95% CI)") +
-    theme_bw() +
-    #  ylim(-6, 6) +
-    scale_color_manual(values = c("black", "#FF007F")) +
-    theme(legend.position = "none")
-  print(p)
-}
-```
-
 
 ### Crohn's disease only data
 
@@ -471,7 +395,7 @@ Montreal classification of Crohn's disease and advanced therapy prescribing.
 ```{R}
 cd.pheno <- readRDS(paste0(prefix, "processed/cd-pheno.RDS"))
 cd.pheno <- merge(cd.pheno,
-  myDF.fc[, c("ids", "class_combined")],
+  myDF.fc[, c("ids", "class_combined", "probmax_combined")],
   by = "ids",
   all.x = FALSE,
   all.y = FALSE
@@ -494,7 +418,8 @@ location.
 
 ```{R}
 cd.pheno %>%
-  with(chisq.test(class,Location)) %>%
+  filter(probmax_combined > 0.5) %>%
+  with(chisq.test(class_combined, Location)) %>%
   pander()
 ```
 
@@ -507,10 +432,10 @@ ggsave("plots/cd-location-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
 ```
 
-
-
 ```{R}
-
+cd.pheno %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "Location")
 ```
 
 #### Upper GI inflammation
@@ -524,7 +449,8 @@ with cluster membership.
 
 ```{R}
 cd.pheno %>%
-  with(fisher.test(class, L4, workspace = 200000000)) %>%
+  filter(probmax_combined > 0.5) %>%
+  with(fisher.test(class_combined, L4, workspace = 200000000)) %>%
   pander()
 ```
 
@@ -534,7 +460,7 @@ percentage of CD subjects in FC 4 have L4.
 ```{R}
 cd.pheno %>%
   drop_na(L4) %>%
-  ggplot(aes(x = class, fill = L4, color = L4)) +
+  ggplot(aes(x = class_combined, fill = L4, color = L4)) +
   geom_bar(position = "fill") +
   scale_fill_manual(values = c("#F8766D", "#619CFF")) +
   scale_color_manual(values = c("#CF544B", "#417BD2")) +
@@ -547,6 +473,13 @@ cd.pheno %>%
     fill = "L4 present",
     color = "L4 present"
   )
+```
+
+
+```{R}
+cd.pheno %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "L4")
 ```
 
 #### Montreal behaviour
@@ -564,7 +497,9 @@ Montreal behaviour was found to be significantly associated with cluster
 membership at the 5% significance level.
 
 ```{R}
-fisher.test(cd.pheno$class, cd.pheno$Behaviour, simulate.p.value = TRUE) %>%
+cd.pheno %>%
+  filter(probmax_combined > 0.5) %>%
+  with(fisher.test(class_combined, Behaviour, simulate.p.value = TRUE)) %>%
   pander()
 ```
 
@@ -581,6 +516,12 @@ ggsave("plots/cd-behaviour-fc.pdf", p, width = 7.5, height = 7.5)
 print(p)
 ```
 
+```{R}
+cd.pheno %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "Behaviour")
+```
+
 #### Perianal disease
 
 Perianal disease is considered a modifier for Montreal behaviour and is a severe
@@ -591,7 +532,8 @@ cluter membership for CD subjects.
 
 ```{R}
 cd.pheno %>%
-  with(fisher.test(class, Perianal, workspace = 20000000)) %>%
+  filter(probmax_combined > 0.5) %>%
+  with(fisher.test(class_combined, Perianal, workspace = 20000000)) %>%
   pander()
 ```
 
@@ -599,7 +541,7 @@ cd.pheno %>%
 ```{R}
 cd.pheno %>%
   drop_na(Perianal) %>%
-  ggplot(aes(x = class, fill = Perianal, color = Perianal)) +
+  ggplot(aes(x = class_combined, fill = Perianal, color = Perianal)) +
   geom_bar(position = "fill") +
   scale_fill_manual(values = c("#F8766D", "#619CFF")) +
   scale_color_manual(values = c("#CF544B", "#417BD2")) +
@@ -612,6 +554,12 @@ cd.pheno %>%
     fill = "Perianal disease present",
     color = "Perianal disease present"
   )
+```
+
+```{R}
+cd.pheno %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "Perianal")
 ```
 
 ### Advanced therapy in CD
@@ -1340,63 +1288,6 @@ mlr <- multinom(class ~ age + sex + diagnosis, data = dict.crp, trace = FALSE)
 z <- summary(mlr)$coefficients / summary(mlr)$standard.errors
 p <- (1 - pnorm(abs(z), 0, 1)) * 2
 knitr::kable(p)
-```
-
-``` {R}
-coeff <- summary(mlr)$coefficients
-coeff <- reshape2::melt(coeff)
-coeff$var <- with(coeff, paste(Var1, Var2))
-coeff <- filter(coeff, Var2 != "(Intercept)")
-coeff <- coeff
-colnames(coeff) <- c("Var1", "Var2", "Estimate", "var")
-
-lower <- summary(mlr)$coefficients - (qnorm(0.975) * summary(mlr)$standard.errors)
-lower <- reshape2::melt(lower)
-lower$var <- with(lower, paste(Var1, Var2))
-lower <- filter(lower, Var2 != "(Intercept)")
-lower <- lower %>%
-  select(-Var1, -Var2)
-colnames(lower) <- c("Lower", "var")
-
-tab <- merge(coeff, lower, by = "var")
-
-upper <- summary(mlr)$coefficients + (qnorm(0.975) * summary(mlr)$standard.errors)
-upper <- reshape2::melt(upper)
-upper$var <- with(upper, paste(Var1, Var2))
-upper <- filter(upper, Var2 != "(Intercept)")
-upper <- upper %>%
-  select(-Var1, -Var2)
-colnames(upper) <- c("Upper", "var")
-
-tab <- merge(tab, upper, by = "var")
-
-tab$var <- factor(tab$var, levels = rev(tab$var))
-tab$sig <- FALSE
-tab[tab$Upper < 0, "sig"] <- TRUE
-tab[tab$Lower > 0, "sig"] <- TRUE
-
-for (variable in unique(tab$Var2)) {
-  p <- tab %>%
-    filter(Var2 == variable) %>%
-    ggplot(aes(
-      x = var,
-      y = Estimate,
-      ymin = Lower,
-      ymax = Upper,
-      color = sig
-    )) +
-    geom_errorbar() +
-    geom_point(size = 3.5) +
-    geom_hline(yintercept = 0, lty = 2) +
-    coord_flip() + # flip coordinates (puts labels on y axis)
-    xlab("") +
-    ylab("Estimate (95% CI)") +
-    theme_bw() +
-    #  ylim(-6, 6) +
-    scale_color_manual(values = c("black", "#FF007F")) +
-    theme(legend.position = "none")
-  print(p)
-}
 ```
 
 ### Demographics table
