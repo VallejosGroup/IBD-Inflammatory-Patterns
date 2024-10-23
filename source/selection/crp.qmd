@@ -452,7 +452,9 @@ for (G in G.crp) {
     new.crp <- rbind(new.crp, crp.ma)
   }
   
-  cairo_pdf(paste0("plots/spaghetti/crp-", G, ".pdf"), width = 10, height = 14)
+  cairo_pdf(paste0("plots/spaghetti/crp-", G, ".pdf"),
+            width = 10,
+            height = 17.5)
   grid::grid.newpage()
   spaghettiPlot(new.crp,
     models.crp.ma,
@@ -467,7 +469,7 @@ for (G in G.crp) {
   
   png(paste0("plots/spaghetti/crp-", G, ".png"),
     width = 10,
-    height = 14,
+    height = 17.5,
     units = "in",
     res = 300
   )
