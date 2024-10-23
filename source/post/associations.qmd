@@ -122,7 +122,8 @@ myDF.fc_means$prob <- factor(myDF.fc_means$prob,
 
 myDF.fc_means$class <- factor(myDF.fc_means$class,
                            levels = 1:10,
-                           labels = paste0("Assigned to FC", 1:10))
+                           labels = paste0("Assigned to FC", 1:10, "\n n = ",
+                                           as.vector(table(myDF.fc$class))))
 
 
 col.vec <- c("#df5c7f",
@@ -188,9 +189,17 @@ myDF.fc <- myDF.fc %>%
          probmax_combined =  pmax(prob1, prob4, prob5, 
                                   prob6, prob7, prob8, prob10, prob239))
 
+# Calculate sample size per group
+group.size <- as.vector(table(myDF.fc$class))
+group.size <- c(group.size[1], sum(group.size[c(2, 3, 9)]), group.size[4:8], group.size[10])
+
 # Sort by sensible order rather than alphanumerical order
 myDF.fc$class_combined <- factor(myDF.fc$class_combined,
-                                 levels = c("FC1", "FC2-3-9", "FC4", "FC5", "FC6", "FC7", "FC8", "FC10"))
+                                 levels = c("FC1", "FC2-3-9", "FC4", "FC5",
+                                            "FC6", "FC7", "FC8", "FC10"),
+                                 labels = paste0(c("FC1", "FC2-3-9", "FC4", "FC5", 
+                                                   "FC6", "FC7", "FC8", "FC10"),
+                                                 " (n = ", group.size, ")"))
 ```
 
 As a sensitivity analysis, we also consider restricting the analysis to only
@@ -199,7 +208,60 @@ probability > 0.5).
 
 <!--- CAV: add here a table with summary statistics per cluster ---> 
 
+#### IBD type
+
+<!--- IBD type has been included in the cluster assignment sub model as a covariate
+and will therefore be analysed differently to the other variables considered.
+Instead of chi-squared tests, Wald tests of the model covariates were conducted.
+In these tests, Crohn's disease is the reference IBD type with cluster FC 8
+being the reference cluster. 
+
+The results of these tests are presented as both forest plots ([@fig-fc-ibd])
+and a summary table ([@tbl-fc-ibd]).
+
+Only ulcerative colitis in cluster 1 was found to be statistically significant. 
+--->
+
+```{r}
+p1 <- myDF.fc %>%
+  plotCat("diagnosis") +
+  plot_annotation(title = "All subjects")
+
+p2 <- myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  plotCat("diagnosis") + 
+  plot_annotation(title = "All subjects with prob > 0.5")
+
+p1 
+p2
+
+wrap_elements(p1) / wrap_elements(p2) + plot_layout(ncol = 2)
+```
+
+```{R}
+myDF.fc %>%
+  mlrPlot(var = "diagnosis")
+
+myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = "diagnosis")
+```
+
+As seen above, the distribution of diagnosis types is not evenly distributed 
+across clusters. In particular, we observe an enrichment of UC patients in 
+FC5 and FC6, both of which are characterized by a slow decrease in FC 
+(normalized after around 5 and 1 years, respectively). The same occurs for FC8
+(Furthermore, CD patients
+appear to be over-represented in the 
+
+
+UC patients appear to be under-represented 
+
+
 #### Sex
+
+
+<!---
 
 A significant association was not found between sex and cluster membership. 
 
@@ -213,15 +275,50 @@ with(myDF.fc[myDF.fc$probmax_combined > 0.5,],
   pander()
 ```
 
+--->
+
 ##### All
 
+```{r}
+p1 <- myDF.fc %>%
+  plotCat("sex") +
+  plot_annotation(title = "All subjects")
+
+p2 <- myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  plotCat("sex") + 
+  plot_annotation(title = "All subjects with prob > 0.5")
+
+wrap_elements(p1) / wrap_elements(p2) + plot_layout(ncol = 2)
+```
+
 ```{R}
-myDF.fc %>% 
+p1 <- myDF.fc %>% 
+  mlrPlot(var = "sex")
+p1
+
+p2 <- myDF.fc %>% 
   filter(probmax_combined > 0.5) %>%
   mlrPlot(var = "sex")
+p2
 ```
 
 ##### Crohn's disease
+
+```{r}
+p1 <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  plotCat("sex") +
+  plot_annotation(title = "All subjects")
+
+p2 <- myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  plotCat("sex") + 
+  plot_annotation(title = "All subjects with prob > 0.5")
+
+wrap_elements(p1) / wrap_elements(p2) + plot_layout(ncol = 2)
+```
 
 ```{R}
 myDF.fc %>% 
@@ -231,6 +328,21 @@ myDF.fc %>%
 ```
 
 ##### Ulcerative colitis
+
+```{r}
+p1 <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  plotCat("sex") +
+  plot_annotation(title = "All subjects")
+
+p2 <- myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  plotCat("sex") + 
+  plot_annotation(title = "All subjects with prob > 0.5")
+
+wrap_elements(p1) / wrap_elements(p2) + plot_layout(ncol = 2)
+```
 
 ```{R}
 myDF.fc %>% 
@@ -350,24 +462,7 @@ myDF.fc.cd %>%
   mlrPlot(var = "ageCat")
 ```
 
-#### IBD type
 
-IBD type has been included in the cluster assignment sub model as a covariate
-and will therefore be analysed differently to the other variables considered.
-Instead of chi-squared tests, Wald tests of the model covariates were conducted.
-In these tests, Crohn's disease is the reference IBD type with cluster FC 8
-being the reference cluster. 
-
-The results of these tests are presented as both forest plots ([@fig-fc-ibd])
-and a summary table ([@tbl-fc-ibd]).
-
-Only ulcerative colitis in cluster 1 was found to be statistically significant. 
-
-```{R}
-myDF.fc %>%
-  filter(probmax_combined > 0.5) %>%
-  mlrPlot(var = "diagnosis")
-```
 
 
 ### Multivariate modelling

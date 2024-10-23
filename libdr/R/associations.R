@@ -55,7 +55,8 @@ plotCat <- function(dat, var, class = "class_combined") {
         geom_bar(stat = "identity", fill = fill.vec[i], color = col.vec[i]) +
         geom_hline(yintercept = totalPerc, linetype = "dashed", color = "#4D4730") +
         theme_minimal() +
-        labs(x = "Cluster", y = "Percentage")
+        labs(x = "Cluster", y = "Percentage") +
+        ggtitle(labels[i])
     } else {
       p <- p +
         perc.table %>%
@@ -64,11 +65,15 @@ plotCat <- function(dat, var, class = "class_combined") {
         geom_bar(stat = "identity", fill = fill.vec[i], color = col.vec[i]) +
         geom_hline(yintercept = totalPerc, linetype = "dashed", color = "#4D4730") +
         theme_minimal() +
-        labs(x = "Cluster", y = "Percentage")
+        labs(x = "Cluster", y = "Percentage") +
+        ggtitle(labels[i]) #+
+        #theme(axis.title.x = element_blank(),
+        #      axis.text.x = element_blank(),
+        #      axis.ticks.x = element_blank())
     }
   }
   p <- p +
-    patchwork::plot_layout(nrow = length(labels), ncol = 1) +
+    patchwork::plot_layout(nrow = length(labels), ncol = 1, guides = "collect") +
     patchwork::plot_annotation(tag_levels = "A") &
     scale_y_continuous(labels = scales::percent, limits = c(0, 1))
   return(p)
