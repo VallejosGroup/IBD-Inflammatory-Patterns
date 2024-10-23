@@ -938,11 +938,11 @@ survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
 ### Ulcerative colitis only data
 
 ```{R}
-uc.pheno <- read_xlsx(paste0(prefix, "2024-10-16/UC-pheno.xlsx"),
+uc.pheno <- read_xlsx(paste0(prefix, "2024-10-23/UC-pheno.xlsx"),
                       range = cell_cols(1:4))
 temp <- unique(subset(fcal, diagnosis == "Ulcerative Colitis")$ids)
-temp <- temp[!(temp %in% uc.pheno$ids)]
-print(length(temp))
+
+uc.pheno <- subset(uc.pheno, ids %in% temp)
 ```
 
 
@@ -973,10 +973,14 @@ uc.pheno %>%
 uc.pheno$Smoke <- 
   plyr::mapvalues(uc.pheno$Smoke,
                   from = c("0",
+                           "never",
                            "1",
                            "2",
-                           "ex"), 
+                           "ex",
+                           "former"), 
                   to = c("No",
+                         "No",
+                         "Yes",
                          "Yes",
                          "Yes",
                          "Yes"))
@@ -996,7 +1000,6 @@ uc.pheno %>%
 ```
 
 ### Advanced therapies in UC
-
 
 ```{R}
 #| warning: false
@@ -1177,6 +1180,11 @@ temp <- dict.crp.uc %>%
   mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
   mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
    mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
+
+
+temp <- temp %>%
+  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
+         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
 
 survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
   ggsurvplot()
