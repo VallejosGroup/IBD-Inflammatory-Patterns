@@ -140,6 +140,31 @@ dict.crp %>%
   wrap_table(gt(quants), space = "free_y") 
 ```
 
+#### Overlap
+
+```{R}
+dict.both <- subset(dict, ids %in% fcal$ids & ids %in% crp$ids)
+
+quants <- quantile(dict.both$age, na.rm = TRUE, probs = c(0.25, 0.5, 0.75)) %>%
+  data.frame()
+
+quants <- cbind(rownames(quants), quants)
+colnames(quants) <- c("Quantile", "Age at diagnosis")
+```
+
+Age at diagnosis is missing for `r sum(is.na(dict.both$age))`
+(`r round(sum(is.na(dict.both$age) / nrow(dict.both) * 100), 2)`%) subjects 
+
+```{R}
+dict.both %>%
+  ggplot(aes(x = age)) +
+  geom_density(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  ylab("Density") +
+  xlab("Age at diagnosis") +
+  wrap_table(gt(quants), space = "free_y") 
+```
+
 :::
 
 ### Sex
@@ -210,6 +235,22 @@ dict.crp %>%
   wrap_table(gt(counts), space = "free_y")  
 ```
 
+#### Overlap
+
+```{R}
+dict.both <- subset(dict, ids %in% fcal$ids & ids %in% crp$ids)
+counts <- data.frame(table(dict.both$sex))
+colnames(counts) <- c("Sex", "Frequency")
+
+dict.both %>%
+  ggplot(aes(x = sex)) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") + 
+  theme_minimal() +
+  xlab("Sex") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")  
+```
+
 :::
 
 ### IBD type
@@ -258,6 +299,22 @@ colnames(counts) <- c("IBD type", "Frequency")
 dict.crp %>%
     ggplot(aes(x = diagnosis)) +
     geom_bar(fill = "#EF2D56", color = "#BE2544") +
+    theme_minimal() +
+    xlab("IBD type") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")  
+```
+
+#### Overlap
+
+```{R}
+dict.both <- subset(dict, ids %in% fcal$ids & ids %in% crp$ids)
+counts <- data.frame(table(dict.both$diagnosis))
+colnames(counts) <- c("IBD type", "Frequency")
+
+dict.both %>%
+    ggplot(aes(x = diagnosis)) +
+    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
     theme_minimal() +
     xlab("IBD type") +
     ylab("Frequency") +
@@ -355,6 +412,31 @@ dict.crp %>%
   wrap_table(gt(counts), space = "free_y") 
 ```
 
+#### Overlap
+
+```{R}
+dict.both <- subset(dict, ids %in% fcal$ids & ids %in% crp$ids)
+dict.both %>%
+  ggplot(aes(x = year(date.of.diag))) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  xlab("Year of diagnosis") +
+  ylab("Frequency")
+```
+
+```{R}
+counts <- data.frame(table(dict.both$era))
+colnames(counts) <- c("Diagnosis era", "Frequency")
+
+dict.both %>%
+    ggplot(aes(x = era)) +
+    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+    theme_minimal() +
+    xlab("Diagnosis era") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
 :::
 
 ### Biomarker at baseline
@@ -422,6 +504,7 @@ dict %>%
   ylab("Density") +
   wrap_table(gt(quants), space = "free_y") 
 ```
+
 
 We will now consider baseline FC for the subset of subjects included in both 
 the FC and CRP analyses. 
@@ -501,26 +584,30 @@ dict %>%
 ### Crohn's disease only data
 
 ```{R}
-cd.pheno <- read_xlsx(paste0(prefix, "2024-10-10/CD-pheno.xlsx"))
-cd.pheno <- select(cd.pheno, -Alex)
+#| warning: false
+# Subjects in the FC analysis
+cd.pheno1 <- read_xlsx(paste0(prefix, "2024-10-10/CD-pheno.xlsx")) %>%
+  select(-Alex, -Comments)
 
+colnames(cd.pheno1)[c(3, 4)] <- c("sex", "Smoke")
 
-names(cd.pheno) <- c("ids",
-                     "diagosis",
-                     "Sex",
-                     "Smoke",
-                     "Location",
-                     "L4",
-                     "Behaviour",
-                     "Perianal",
-                     "Comments")
+# Subjects in the CRP analysis
+cd.pheno2 <- read_xlsx(paste0(prefix, "2024-10-24/CD-pheno-crp.xlsx")) %>%
+  select(-Alex, -...10)
+
+cd.pheno <- rbind(cd.pheno1, cd.pheno2)
+cd.pheno <- cd.pheno %>%
+  select(-diagnosis, -sex) %>%
+  distinct(ids, .keep_all = TRUE)
+
+dict <- merge(x = dict, y = cd.pheno, all.x = TRUE, all.y  = FALSE, by = "ids")
 ```
 
 #### Montreal location
 
 ```{R}
-cd.pheno$Location <- 
-  plyr::mapvalues(cd.pheno$Location,
+dict$Location <- 
+  plyr::mapvalues(dict$Location,
                   from = c("1",
                            "2",
                            "3",
@@ -530,7 +617,9 @@ cd.pheno$Location <-
                            "L2/L4",
                            "L3/L4",
                            "L3+4",
-                           "NA"),
+                           "NA",
+                           "L4",
+                           "No luminal"),
                   to = c("L1",
                          "L2",
                          "L3",
@@ -540,12 +629,24 @@ cd.pheno$Location <-
                          "L2",
                          "L3",
                          "L3",
+                         NA,
+                         NA,
                          NA))
+```
 
-counts <- data.frame(table(cd.pheno$Location, useNA = "ifany"))
+
+
+::: {.panel-tabset group="biomarker"}
+
+##### Faecal calprotectin
+
+```{R}
+dict.cd.fc <- subset(dict, ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.fc$Location, useNA = "ifany"))
 colnames(counts) <- c("Montreal location", "Frequency")
 
-cd.pheno %>%
+dict.cd.fc %>%
     ggplot(aes(x = Location)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
@@ -554,17 +655,62 @@ cd.pheno %>%
   wrap_table(gt(counts), space = "free_y") 
 ```
 
-#### Upper GI inflammation
+##### CRP
 
 ```{R}
-cd.pheno$L4 <- plyr::mapvalues(cd.pheno$L4, 
+dict.cd.crp <- subset(dict, ids %in% crp$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.crp$Location, useNA = "ifany"))
+colnames(counts) <- c("Montreal location", "Frequency")
+
+dict.cd.crp %>%
+    ggplot(aes(x = Location)) +
+    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
+    theme_minimal() +
+    xlab("Montreal location") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+##### Overlap
+
+```{R}
+dict.cd.both <- subset(dict, (ids %in% crp$ids) & (ids %in% fcal$ids) & (diagnosis == "Crohn's Disease"))
+
+counts <- data.frame(table(dict.cd.both$Location, useNA = "ifany"))
+colnames(counts) <- c("Montreal location", "Frequency")
+
+dict.cd.both %>%
+    ggplot(aes(x = Location)) +
+    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+    theme_minimal() +
+    xlab("Montreal location") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+:::
+
+#### Upper GI inflammation
+
+
+```{R}
+dict$L4 <- plyr::mapvalues(dict$L4, 
                                from = c("0", "1", "N"),
                                to = c("No", "Yes", "No"))
+```
 
-counts <- data.frame(table(cd.pheno$L4, useNA = "ifany"))
+::: {.panel-tabset group="biomarker"}
+
+##### Faecal calprotectin
+
+```{R}
+dict.cd.fc <- subset(dict, ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.fc$L4, useNA = "ifany"))
 colnames(counts) <- c("L4 present", "Frequency")
 
-cd.pheno %>%
+dict.cd.fc %>%
     ggplot(aes(x = L4)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
@@ -573,18 +719,58 @@ cd.pheno %>%
   wrap_table(gt(counts), space = "free_y") 
 ```
 
+
+##### CRP
+
+```{R}
+dict.cd.crp <- subset(dict, ids %in% crp$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.crp$L4, useNA = "ifany"))
+colnames(counts) <- c("L4 present", "Frequency")
+
+dict.cd.crp %>%
+    ggplot(aes(x = L4)) +
+    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
+    theme_minimal() +
+    xlab("L4 present") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+##### Overlap
+
+```{R}
+dict.cd.both <- subset(dict, ids %in% crp$ids & ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.both$L4, useNA = "ifany"))
+colnames(counts) <- c("L4 present", "Frequency")
+
+dict.cd.both %>%
+    ggplot(aes(x = L4)) +
+    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+    theme_minimal() +
+    xlab("L4 present") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+:::
+
 #### Montreal behaviour
 
 ```{R}
-cd.pheno$Behaviour <- plyr::mapvalues(cd.pheno$Behaviour,
+dict$Behaviour <- plyr::mapvalues(dict$Behaviour,
                                       from = c("0",
                                                "1",
                                                "2",
                                                "3",
                                                "B0",
+                                               "C1",
                                                "L2",
                                                "L3",
-                                               "NA"),
+                                               "NA",
+                                               "No luminal",
+                                               "No luminal disease"),
                                       to = c(NA,
                                              "B1",
                                              "B2",
@@ -592,12 +778,23 @@ cd.pheno$Behaviour <- plyr::mapvalues(cd.pheno$Behaviour,
                                              NA,
                                              NA,
                                              NA,
+                                             NA,
+                                             NA,
+                                             NA,
                                              NA))
+```
 
-counts <- data.frame(table(cd.pheno$Behaviour, useNA = "ifany"))
+::: {.panel-tabset group="biomarker"}
+
+##### Faecal calprotectin
+
+```{R}
+dict.cd.fc <- subset(dict, ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.fc$Behaviour, useNA = "ifany"))
 colnames(counts) <- c("Montreal behaviour", "Frequency")
 
-cd.pheno %>%
+dict.cd.fc %>%
     ggplot(aes(x = Behaviour)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
@@ -606,36 +803,117 @@ cd.pheno %>%
   wrap_table(gt(counts), space = "free_y") 
 ```
 
+##### CRP
+
+```{R}
+dict.cd.crp <- subset(dict, ids %in% crp$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.crp$Behaviour, useNA = "ifany"))
+colnames(counts) <- c("Montreal behaviour", "Frequency")
+
+dict.cd.crp %>%
+    ggplot(aes(x = Behaviour)) +
+    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
+    theme_minimal() +
+    xlab("Montreal behaviour") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+##### Overlap
+
+```{R}
+dict.cd.both <- subset(dict, ids %in% crp$ids & ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.both$Behaviour, useNA = "ifany"))
+colnames(counts) <- c("Montreal behaviour", "Frequency")
+
+dict.cd.both %>%
+    ggplot(aes(x = Behaviour)) +
+    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+    theme_minimal() +
+    xlab("Montreal behaviour") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
+```
+
+:::
+
 #### Perianal disease
 
 ```{R}
-cd.pheno$Perianal <- plyr::mapvalues(cd.pheno$Perianal,
-                                     from = c("0", "1", "n", "N", "NA", "Y" ),
-                                     to = c("No", "Yes", "No", "No", NA, "Yes"))
+dict$Perianal <- plyr::mapvalues(dict$Perianal,
+                                 from = c("0", "1", "n", "N", "NA", "Y" ),
+                                 to = c("No", "Yes", "No", "No", NA, "Yes"))
+```
 
-counts <- data.frame(table(cd.pheno$Perianal, useNA = "ifany"))
+::: {.panel-tabset group="biomarker"}
+
+##### Faecal calprotectin
+
+```{R}
+dict.cd.fc <- subset(dict, ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.fc$Perianal, useNA = "ifany"))
 colnames(counts) <- c("Perianal disease present", "Frequency")
 
-cd.pheno %>%
+dict.cd.fc %>%
     ggplot(aes(x = Perianal)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
     xlab("Perianal disease present") +
     ylab("Frequency") +
   wrap_table(gt(counts), space = "free_y") 
-
 ```
+
+##### CRP
+
+```{R}
+dict.cd.crp <- subset(dict, ids %in% crp$ids & diagnosis == "Crohn's Disease")
+
+counts <- data.frame(table(dict.cd.crp$Perianal, useNA = "ifany"))
+colnames(counts) <- c("Perianal disease present", "Frequency")
+
+dict.cd.crp %>%
+    ggplot(aes(x = Perianal)) +
+    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
+    theme_minimal() +
+    xlab("Perianal disease present") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+##### Overlap
+
+```{R}
+dict.cd.both <- subset(dict, ids %in% crp$ids & ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+counts <- data.frame(table(dict.cd.both$Perianal, useNA = "ifany"))
+colnames(counts) <- c("Perianal disease present", "Frequency")
+
+dict.cd.both  %>%
+    ggplot(aes(x = Perianal)) +
+    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+    theme_minimal() +
+    xlab("Perianal disease present") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+:::
 
 #### Smoking status
 
 ```{R}
-cd.pheno$Smoke <- 
-  plyr::mapvalues(cd.pheno$Smoke,
+dict$Smoke <- 
+  plyr::mapvalues(dict$Smoke,
                   from = c("?",
                            "0",
                            "1",
+                           "1`",
+                           "2",
                            "current",
                            "Current",
+                           "Curent",
                            "ex",
                            "Ex",
                            "EX",
@@ -653,17 +931,28 @@ cd.pheno$Smoke <-
                          "Yes",
                          "Yes",
                          "Yes",
+                         "Yes",
+                         "Yes",
+                         "Yes",
                          "No",
                          "No",
                          "No",
                          "No",
                          NA,
                          NA))
+```
 
-counts <- data.frame(table(cd.pheno$Smoke, useNA = "ifany"))
+
+::: {.panel-tabset group="biomarker"}
+
+##### Faecal calprotectin
+
+```{R}
+dict.cd.fc <- subset(dict, ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+counts <- data.frame(table(dict.cd.fc$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
-cd.pheno %>%
+dict.cd.fc %>%
     ggplot(aes(x = Smoke)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
@@ -672,9 +961,39 @@ cd.pheno %>%
   wrap_table(gt(counts), space = "free_y") 
 ```
 
+##### CRP
+
 ```{R}
-saveRDS(cd.pheno, paste0(prefix, "processed/cd-pheno.RDS"))
+dict.cd.crp <- subset(dict, ids %in% crp$ids & diagnosis == "Crohn's Disease")
+counts <- data.frame(table(dict.cd.crp$Smoke, useNA = "ifany"))
+colnames(counts) <- c("Previously smoked", "Frequency")
+
+dict.cd.crp %>%
+    ggplot(aes(x = Smoke)) +
+    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
+    theme_minimal() +
+    xlab("Previously smoked") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
 ```
+
+##### Overlap
+
+```{R}
+dict.cd.both <- subset(dict, ids %in% crp$ids & ids %in% fcal$ids & diagnosis == "Crohn's Disease")
+counts <- data.frame(table(dict.cd.both$Smoke, useNA = "ifany"))
+colnames(counts) <- c("Previously smoked", "Frequency")
+
+dict.cd.both %>%
+    ggplot(aes(x = Smoke)) +
+    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+    theme_minimal() +
+    xlab("Previously smoked") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+:::
 
 ### Advanced therapies in CD
 
