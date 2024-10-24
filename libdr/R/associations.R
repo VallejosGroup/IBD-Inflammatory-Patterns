@@ -73,7 +73,7 @@ plotCat <- function(dat, var, class = "class_combined") {
     }
   }
   p <- p +
-    patchwork::plot_layout(nrow = length(labels), ncol = 1, guides = "collect") +
+    patchwork::plot_layout(nrow = length(labels), ncol = 1, guides = "collect") &
     #patchwork::plot_annotation(tag_levels = "A") &
     scale_y_continuous(labels = scales::percent, limits = c(0, 1))
   return(p)

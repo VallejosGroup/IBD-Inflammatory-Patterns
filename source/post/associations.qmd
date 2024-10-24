@@ -261,10 +261,6 @@ wrap_elements(p_diagnosis) +
   p_mlr$plot$`diagnosisUlcerative Colitis` + p_mlr$plot$`diagnosisIBDU` +
   patchwork::plot_annotation(tag_levels = "A")
 
-#sex
-wrap_elements(p_sex) + p_mlr$plot$sexMale +
-  patchwork::plot_annotation(tag_levels = "A")
-
 #age + sex + baseline_fc 
 (wrap_elements(p_age) + p_mlr$plot$age) /
   (wrap_elements(p_sex) + p_mlr$plot$sexMale) /
@@ -275,100 +271,161 @@ wrap_elements(p_sex) + p_mlr$plot$sexMale +
 Restricted to those with posterior probability > 0.5
 
 ```{r}
-p1 <- myDF.fc %>%
+p_diagnosis <- myDF.fc %>%
   filter(probmax_combined > 0.5) %>%
-  plotCat("diagnosis") + 
-  plot_annotation(title = "All subjects with prob > 0.5")
+  plotCat("diagnosis") 
 
-p2 <- myDF.fc %>%
-  mutate(class_combined = relevel(class_combined, ref = "FC10 (n = 209)")) %>%
-  mutate(diagnosis = relevel(diagnosis, ref = "IBDU")) %>%
+p_sex <- myDF.fc %>%
   filter(probmax_combined > 0.5) %>%
-  mlrPlot(var = "diagnosis")
+  plotCat("sex")
 
-wrap_elements(p1) + p2$plot$`diagnosisUlcerative Colitis` + p2$plot$`diagnosisCrohn's Disease`
-
-p3 <- myDF.fc %>%
-  mutate(class_combined = relevel(class_combined, ref = "FC10 (n = 209)")) %>%
-  mutate(diagnosis = relevel(diagnosis, ref = "IBDU")) %>%
+p_age <- myDF.fc %>%
   filter(probmax_combined > 0.5) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex", "baseline_fc"))
+  ggplot(aes(x = class_combined, y = age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
 
-wrap_elements(p1) + p3$plot$`diagnosisUlcerative Colitis` + p3$plot$`diagnosisCrohn's Disease`
+p_baseline_fc <- myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  ggplot(aes(x = class_combined, y = baseline_fc)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("FC at diagnosis")
+
+p_mlr <- myDF.fc %>%
+  filter(probmax_combined > 0.5) %>%
+  mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
+  mlrPlot(var = c("diagnosis", "age", "sex", "baseline_fc"), class = "class_combined")
+
+#diagnosis
+wrap_elements(p_diagnosis) + 
+  p_mlr$plot$`diagnosisUlcerative Colitis` + p_mlr$plot$`diagnosisIBDU` +
+  patchwork::plot_annotation(tag_levels = "A")
+
+#age + sex + baseline_fc 
+(wrap_elements(p_age) + p_mlr$plot$age) /
+  (wrap_elements(p_sex) + p_mlr$plot$sexMale) /
+  (wrap_elements(p_baseline_fc) + p_mlr$plot$baseline_fc) +
+  patchwork::plot_annotation(tag_levels = "A")
 ```
 
-As seen above, the distribution of diagnosis types is not evenly distributed 
-across clusters. In particular, we observe an enrichment of UC patients in 
-FC5 and FC6, both of which are characterized by a slow decrease in FC 
-(normalized after around 5 and 1 years, respectively). The same occurs for FC8
-(Furthermore, CD patients
-appear to be over-represented in the 
 
-
-UC patients appear to be under-represented 
-
-
-#### Sex
-
-
-<!---
-
-A significant association was not found between sex and cluster membership. 
-
-```{R}
-with(myDF.fc, 
-     chisq.test(class_combined, sex)) %>%
-  pander()
-
-with(myDF.fc[myDF.fc$probmax_combined > 0.5,], 
-     chisq.test(class_combined, sex)) %>%
-  pander()
-```
-
---->
-
-##### All
+#### Crohn's disease only
 
 ```{r}
-p1 <- myDF.fc %>%
-  plotCat("sex") +
-  plot_annotation(title = "All subjects")
+p_sex <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  plotCat("sex")
 
-p2 <- myDF.fc %>%
-  filter(probmax_combined > 0.5) %>%
-  plotCat("sex") + 
-  plot_annotation(title = "All subjects with prob > 0.5")
+p_age <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  ggplot(aes(x = class_combined, y = age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
 
-wrap_elements(p1) / wrap_elements(p2) + plot_layout(ncol = 2)
+p_baseline_fc <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  ggplot(aes(x = class_combined, y = baseline_fc)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("FC at diagnosis")
+
+p_smoke <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  mutate(Smoke = ifelse(!is.na(Smoke), Smoke, "Missing")) %>%
+  plotCat("Smoke")
+
+p_location <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  mutate(Location = ifelse(!is.na(Location), Location, "Missing")) %>%
+  plotCat("Location")
+
+p_L4 <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  mutate(L4 = ifelse(!is.na(L4), L4, "Missing")) %>%
+  plotCat("L4")
+
+p_behaviour <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  mutate(Behaviour = ifelse(!is.na(Behaviour), Behaviour, "Missing")) %>%
+  plotCat("Behaviour")
+
+p_perianal <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
+  plotCat("Perianal")
+
+p_smoke
+p_location
+p_L4
+p_behaviour
+p_perianal
 ```
 
-```{R}
-p1 <- myDF.fc %>% 
-  mlrPlot(var = "sex")
-p1
-
-p2 <- myDF.fc %>% 
-  filter(probmax_combined > 0.5) %>%
-  mlrPlot(var = "sex")
-p2
-```
-
-##### Crohn's disease
+#### Ulcerative Colitis only
 
 ```{r}
-p1 <- myDF.fc %>%
-  filter(diagnosis == "Crohn's Disease") %>%
-  plotCat("sex") +
-  plot_annotation(title = "All subjects")
+p_sex <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  plotCat("sex")
 
-p2 <- myDF.fc %>%
-  filter(probmax_combined > 0.5) %>%
-  filter(diagnosis == "Crohn's Disease") %>%
-  plotCat("sex") + 
-  plot_annotation(title = "All subjects with prob > 0.5")
+p_age <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  ggplot(aes(x = class_combined, y = age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
 
-wrap_elements(p1) / wrap_elements(p2) + plot_layout(ncol = 2)
+p_baseline_fc <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  ggplot(aes(x = class_combined, y = baseline_fc)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("FC at diagnosis")
+
+p_smoke <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  mutate(Smoke = ifelse(!is.na(Smoke), Smoke, "Missing")) %>%
+  plotCat("Smoke")
+
+p_location <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  mutate(Location = ifelse(!is.na(Location), Location, "Missing")) %>%
+  plotCat("Location")
+
+p_L4 <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  mutate(L4 = ifelse(!is.na(L4), L4, "Missing")) %>%
+  plotCat("L4")
+
+p_behaviour <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  mutate(Behaviour = ifelse(!is.na(Behaviour), Behaviour, "Missing")) %>%
+  plotCat("Behaviour")
+
+p_perianal <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
+  plotCat("Perianal")
+
+p_smoke
+p_location
+p_L4
+p_behaviour
+p_perianal
 ```
+
 
 ```{R}
 myDF.fc %>% 
