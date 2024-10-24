@@ -214,7 +214,7 @@ spaghetti_plot_sub <- function(data,
 
         p[[g]] <- p[[g]] +
           xlab("Time (years)") +
-          ylab("FCAL (\u03BCg/g)")
+          ylab("FC (\u03BCg/g)")
       } else if (var.time == "crp_time") {
         # CRP
         if (is.null(color)) {
@@ -291,7 +291,7 @@ spaghetti_plot_sub <- function(data,
         )
       if (sizes) {
         p[[g]] <- p[[g]] + ggtitle(paste("n =", length(id.group))) +
-          theme(plot.title = element_text(hjust = 0.5))
+            theme(plot.title = element_text(hjust = 0.5))
       }
     } else { # Logged plots
       if (var.time == "calpro_time") {
@@ -322,7 +322,7 @@ spaghetti_plot_sub <- function(data,
             linewidth = 1.5
           ) +
           xlab("Time (years)") +
-          ylab("Log (FCAL (\u03BCg/g))")
+          ylab("Log (FC (\u03BCg/g))")
       } else if (var.time == "crp_time") {
         if (is.null(color)) {
           p[[g]] <- ggplot(
@@ -365,13 +365,14 @@ spaghetti_plot_sub <- function(data,
         )
       }
 
+
+      p[[g]] <- p[[g]] +
+        theme_minimal()
+
       if (sizes) {
         p[[g]] <- p[[g]] + ggtitle(paste("n =", length(id.group))) +
           theme(plot.title = element_text(hjust = 0.5))
       }
-
-      p[[g]] <- p[[g]] +
-        theme_minimal()
 
       if (var.time == "calpro_time") {
         p[[g]] <- p[[g]] +
