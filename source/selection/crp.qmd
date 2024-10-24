@@ -180,8 +180,6 @@ for (format in c("png", "pdf")) {
     units = "in"
   )
 }
-
-saveRDS(p, paste0(prefix, "processed/plots/crp-alluvial.RDS"))
 ```
 
 ```{R Processed CRP alluvial no switching}
@@ -498,132 +496,106 @@ for (G in G.crp) {
 }
 ```
 
-## IBD Association
 
 ```{R}
-cluster <- numeric()
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("ids", "class", "G")
 
-dict.crp.median <- subset(dict, ids %in% unique(crp_median$ids))
+for (G in G.crp) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.crp.ma[[G]]$pprob[, 1:2],
+    G = G
+  ))
+}
+alluvial.df <- as.data.frame(alluvial.df)
 
-for (id in dict.crp.median$ids) {
-  cluster <- c(
-    cluster,
-    subset(models.crp.ma[[8]]$pprob, ids == id)$class
+alluvial.df$ids <- as.character(alluvial.df$ids)
+alluvial.df$class <- as.factor(alluvial.df$class)
+
+
+alluvial.df[alluvial.df[, "G"] == 2, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 2, "class"],
+    from = c(1, 2),
+    to = c(6, 4)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
+    from = c(seq(1, 3)),
+    to = c(6, 4, 5)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
+    from = c(seq(1, 4)),
+    to = c(4, 6, 5, 9)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
+    from = c(seq(1, 5)),
+    to = c(4, 6, 5, 7, 9)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
+    from = c(seq(1, 6)),
+    to = c(4, 6, 1, 5, 7, 9)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
+    from = c(seq(1, 7)),
+    to = c(7, 4, 4, 1, 6, 5, 9)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
+    from = c(seq(1, 8)),
+    to = c(5, 2, 6, 4, 3, 7, 1, 9)
+  )
+
+
+alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 9, "class"],
+    from = c(seq(1, 9)),
+    to = c(2, 7, 6, 9, 8, 3, 5, 4, 1)
+  )
+
+
+# eliminate label switching
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = rainbow(11)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
+
+
+for (format in c("png", "pdf")) {
+  ggsave(paste0("plots/ma-nocor/anchored-alluvial.", format),
+    p,
+    width = 12,
+    height = 6.75,
+    units = "in"
   )
 }
 
-dict.crp.median$diagnosis <- as.factor(dict.crp.median$diagnosis)
-dict.crp.median$cluster <- as.factor(cluster)
-rm(cluster)
-```
-
-```{R}
-describe_cat("diagnosis", dict.crp.median)
-```
-
-##### Cluster = 1
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp.median, cluster == 1))
-```
-##### Cluster = 2
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp.median, cluster == 2))
-```
-
-##### Cluster = 3
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp.median, cluster == 3))
-```
-
-##### Cluster = 4
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp.median, cluster == 4))
-```
-
-##### Cluster = 5
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp.median, cluster == 5))
-```
-
-##### Cluster = 6
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp.median, cluster == 6))
-```
-
-
-##### Cluster = 7
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp.median, cluster == 7))
-```
-
-
-##### Cluster = 8
-
-```{R}
-describe_cat("diagnosis", subset(dict.crp.median, cluster == 8))
-```
-
-##### Fisher’s exact test
-
-```{R}
-fisher.test(dict.crp.median$diagnosis,
-  dict.crp.median$cluster,
-  simulate.p.value = TRUE,
-  B = 1e5
-)
-```
-
-
-### Number of observations by cluster 
-
-```{R}
-stats.by.clust <- data.frame(
-  Cluster = character(),
-  Median = numeric(),
-  IQR = numeric()
-)
-counts.by.clust <- data.frame(
-  Cluster = character(),
-  Count = numeric()
-)
-
-
-
-for (G in sort(unique(dict.crp.median$cluster))) {
-  cluster.subset <- subset(dict.crp.median, cluster == G)
-  crp.subset <- subset(crp_median, ids %in% cluster.subset$ids)
-  tab <- table(crp.subset$ids)
-  stats.by.clust <- rbind(
-    stats.by.clust,
-    data.frame(
-      Cluster = G,
-      Median = median(tab),
-      IQR = IQR(tab)
-    )
-  )
-
-  counts.by.clust <- rbind(
-    counts.by.clust,
-    data.frame(
-      Cluster = G,
-      Count = as.numeric(tab)
-    )
-  )
-}
-stats.by.clust %>% knitr::kable()
-```
-
-```{R}
-aov(Cluster ~ Count, data = counts.by.clust) %>%
-  summary() %>%
-  pander()
+saveRDS(p, paste0(prefix, "processed/plots/crp-alluvial.RDS"))
 ```
 
 ## Acknowledgments {.appendix}
