@@ -139,6 +139,8 @@ fcal <- fcal.pheno %>%
 crp <- subset(labs, TEST == "C-Reactive Prot")
 updated <- read.csv(file.path(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
 outcomes <- read.csv(file.path(prefix, "2024-10-03/cd-cleaned.csv"))
+
+non.ibd <- read.csv(file.path (prefix, "2024-10-24/non-ibd.csv"))
 ```
 
 Multiple datasets are used in this report with varying degrees of
@@ -164,6 +166,9 @@ previous curation.
     In addition to the same basic patient characteristic variables in
     other datasets, this dataset also describes surgical outcomes and
     biologic treatments prescribed to the subject.
+-  `non-ibd.csv` describes subjects who were found to not have IBD during the
+    phenotyping process. This dataset is used to remove subjects who do not have
+    IBD from the analysis.
 
 ::: callout-note
 The "cleaned" in the above file names refers to the CHI numbers having
@@ -230,6 +235,7 @@ dict <- data.frame(
   date.of.diag = fix_date_char(date.of.diag)
 )
 
+
 rm(id, ids, diagnosis, date.of.diag) # clean up
 dict <- fix_date_df(dict, "date.of.diag")
 ```
@@ -242,8 +248,8 @@ are observed for diagnosis (IBD type).
 As can be seen in the below table, two spellings of Crohn's disease (with and 
 without an apostrophe (')) and three names for IBDU are used. There are also 
 subjects reported to not have IBD. These will be removed, leaving 
-`r sum(dict$diagnosis != "Not IBD")` subjects included in the subsequent
-analyses.
+`r sum(dict$diagnosis != "Not IBD") - nrow(non.ibd)` subjects included in the
+subsequent analyses.
 
 ```{R Frequency table to diagnosis pre-process}
 #| label: tbl-diag-pre
@@ -252,7 +258,9 @@ kable(unique(dict$diagnosis),
   col.names = c("Diagnosis")
 )
 
-dict <- dict %>% subset(diagnosis != "Not IBD")
+dict <- dict %>%
+  subset(diagnosis != "Not IBD") %>%
+  subset(!(ids %in% non.ibd$ids))
 ```
 
 The Crohn's disease and IBDU names have been standardised (IBDU,

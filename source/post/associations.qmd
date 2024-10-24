@@ -714,7 +714,7 @@ cd.pheno %>%
 ```{R}
 dict.fc.cd <- readRDS(paste0(prefix, "processed/dict-fc-cd.RDS"))
 dict.fc.cd <- merge(dict.fc.cd,
-  dict.fc[, c("ids", "class")],
+  myDF.fc[, c("ids", "class", "class_combined", "probmax_combined")],
   by = "ids",
   all.x = TRUE,
   all.y = FALSE
@@ -736,7 +736,7 @@ pred.fc.df.update <- predictY(model.fc, pred.fc.df,
 
 temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
 
-for (g in 1:8) {
+for (g in 1:10) {
   temp <- rbind(
     temp,
     data.frame(
@@ -749,7 +749,7 @@ for (g in 1:8) {
 
 dict.fc.cd$timeToTherapy <- with(dict.fc.cd, startDate - date.of.diag) / 365.25
 
-for (g in 1:8) {
+for (g in 1:10) {
   p1 <- temp %>%
     filter(Cluster == g) %>%
     ggplot(aes(x = Time, y = Value)) +
@@ -790,6 +790,10 @@ temp <- dict.fc.cd %>%
   mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
   mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
   mutate(timeToTherapy = if_else(timeToTherapy > 7, 7, timeToTherapy))
+
+temp <- temp %>%
+  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
+         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
 
 
 survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
@@ -1460,98 +1464,4 @@ Licensed by
 pander(sessionInfo())
 ```
 
-
-<!--- CAV: removed this as we have alternative plots that don't show individual
-level data
-
-
-### Exclusion based on posterior probabilities
-
-In order to reliably assess associations between clusters and baseline data, we
-will focus on subjects with posterior probabilities for cluster assignment above
-a set threshold. This ensures subjects which were not confidently assigned to a
-cluster do not affect potential associations. 
-
-Subjects with little follow-up typically have low posterior probabilities as 
-there is less of a temporal trend to rely upon when assigning a cluster. As
-such, subjects with short follow-up available will typically be removed from
-the association testing when filtering by posterior probabilities (@fig-pprob-fup-fc). 
-
-```{R}
-#| label: fig-pprob-fup-fc
-#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period). Subjects with more than 20 FC observations have been removed from the plot for clarity."
-p <- myDF %>%
-  filter(n.total <= 20) %>%
-  ggplot(aes(x = followup, y = probmax)) +
-  geom_point(aes(color = n.total)) +
-  geom_smooth(method = "lm", formula = "y ~ x") +
-  theme_minimal() +
-  xlab("Follow-up time (years)") +
-  ylab("Posterior probability") +
-  ylim(0, NA) +
-  viridis::scale_color_viridis(option = "viridis") 
-
-ggsave("plots/postprob-fup.png", p, width = 10, height = 8, units = "in")
-ggsave("plots/postprob-fup.pdf", p, width = 10, height = 8, units = "in")
-p
-```
-
-```{R}
-#| label: fig-pprob-fup-fc-cluster
-#| fig-cap: "The relationship between posterior probability of cluster assignment and subject follow-up (defined as last FC observation within the study period) by cluster. Subjects with more than 20 FC observations have been removed from the plot for clarity."
-#| fig-height: 10
-
-p <- myDF %>%
-  filter(n.total <= 20) %>%
-  ggplot(aes(x = followup, y = probmax)) +
-  geom_point(aes(color = n.total)) +
-  geom_smooth(method = "lm", formula = "y ~ x") +
-  theme_minimal() +
-  xlab("Follow-up time (years)") +
-  ylab("Posterior probability") +
-  ylim(0, NA) +
-  viridis::scale_color_viridis(option = "viridis") +
-  facet_grid(rows = vars(class))
-
-ggsave("plots/postprob-fup-clusters.png",
-       p,
-       width = 10,
-       height = 16,
-       units = "in")
-ggsave("plots/postprob-fup-clusters.pdf",
-       p,
-       width = 10,
-       height = 16,
-       units = "in")
-p
-```
-
-
-
-```{R}
-pprob.df <- subset(myDF, probmax > 0.5)
-model.fc$pprob <- subset(model.fc$pprob, ids %in% pprob.df$ids)
-```
-
-Based upon @tbl-pprob-fc-cutoff and the above plots, we will only look at
-associations with cluster membership for subjects with a posterior 
-probability greater than 0.5.
-
-```{R}
-#| label: tbl-pprob-fc-cutoff
-#| tbl-cap: "Percentage of subjects included in the analysis based upon different posterior probability cutoffs."
-included <- c()
-percs <- seq(0.5, 0.8, by = 0.05)
-
-for (perc in percs) {
-  included <- c(included,
-                paste0(round(sum(myDF$probmax > perc) / nrow(myDF), 4) * 100, "%"))
-}
-
-included.df <- data.frame(perc = percs, included = included)
-included.df %>%
-  knitr::kable(col.names = c("Posterior prob cutoff", "Percentage included"),
-               align = c("c", "c"))
-```
---->
 
