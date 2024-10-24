@@ -240,6 +240,7 @@ p_sex <- myDF.fc %>%
 p_age <- myDF.fc %>%
   ggplot(aes(x = class_combined, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
@@ -264,12 +265,10 @@ wrap_elements(p_diagnosis) +
 wrap_elements(p_sex) + p_mlr$plot$sexMale +
   patchwork::plot_annotation(tag_levels = "A")
 
-#age
-wrap_elements(p_age) + p_mlr$plot$age +
-  patchwork::plot_annotation(tag_levels = "A")
-
-#age
-wrap_elements(p_baseline_fc) + p_mlr$plot$baseline_fc +
+#age + sex + baseline_fc 
+(wrap_elements(p_age) + p_mlr$plot$age) /
+  (wrap_elements(p_sex) + p_mlr$plot$sexMale) /
+  (wrap_elements(p_baseline_fc) + p_mlr$plot$baseline_fc) +
   patchwork::plot_annotation(tag_levels = "A")
 ```
 
