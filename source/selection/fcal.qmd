@@ -492,7 +492,6 @@ ggsave("paper/alluvial-FCAL-all.pdf",
   height = 6.75,
   units = "in"
 )
-saveRDS(p, paste0(prefix, "processed/plots/fc-alluvial.RDS"))
 ```
 
 
@@ -887,135 +886,118 @@ for (G in G.fcal) {
 }
 ```
 
-#### IBD Association
 
-For the cluster membership model, an IBDU or UC diagnosis for cluster 5 was
-found to be statistically significant ($p = 0.01755$ and $p = 0.00645$
-respectively). The coefficient for UC for cluster 4 was also
-statistically different from zero (p = $0.00009$). For this comparison, cluster
-6 was the reference cluster and CD was the reference level in for the diagnosis
-factor. 
+
+Having chosen the 10-cluster model to be the most appropiate, we have produced
+a version of @fig-fcal-alluvial-unadjusted using the labels assigned for the
+10-cluster model. 
 
 ```{R}
-cluster <- numeric()
+alluvial.df <- matrix(nrow = 0, ncol = 3)
+colnames(alluvial.df) <- c("ids", "class", "G")
+for (G in G.fcal) {
+  alluvial.df <- rbind(alluvial.df, cbind(models.fcal[[G]]$pprob[, 1:2], G = G))
+}
+alluvial.df <- as.data.frame(alluvial.df)
 
-dict.fcal <- subset(dict, ids %in% unique(fcal$ids))
+alluvial.df$ids <- as.character(alluvial.df$ids)
+alluvial.df$class <- as.factor(alluvial.df$class)
 
-for (id in dict.fcal$ids) {
-  cluster <- c(
-    cluster,
-    subset(models.fcal[[8]]$pprob, ids == id)$class
+# eliminate label switching
+
+alluvial.df[alluvial.df[, "G"] == 2, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 2, "class"],
+    from = c(1, 2),
+    to = c(4, 10)
   )
-}
 
-dict.fcal$diagnosis <- as.factor(dict.fcal$diagnosis)
-dict.fcal$cluster <- as.factor(cluster)
-rm(cluster)
+alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
+    from = c(seq(1, 3)),
+    to = c(10, 4, 1)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
+    from = c(seq(1, 4)),
+    to = c(10, 2, 4, 1)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
+    from = c(seq(1, 5)),
+    to = c(1, 4, 9, 10, 2)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
+    from = c(seq(1, 6)),
+    to = c(7, 2, 9, 1, 10, 4)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
+    from = c(seq(1, 7)),
+    to = c(2, 4, 9, 10, 1, 5, 7)
+  )
+
+alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
+    from = c(seq(1, 8)),
+    to = c(5, 9, 4, 10, 7, 2, 8, 1)
+  )
+
+
+alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 9, "class"],
+    from = c(seq(1, 9)),
+    to = c(4, 9, 8, 3, 7, 2, 5, 1, 10)
+  )
+
+
+alluvial.df[alluvial.df[, "G"] == 11, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 11, "class"],
+    from = c(seq(1, 11)),
+    to = c(7, 6, 5, 1, 11, 10, 3, 2, 9, 4, 8)
+  )
+
+
+p <- ggplot(
+  alluvial.df,
+  aes(
+    x = G,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
+  scale_x_discrete(expand = c(.1, .1)) +
+  geom_flow() +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = rainbow(11)) +
+  xlab("Assumed number of clusters") +
+  ylab("Frequency")
+print(p)
+
+p <- p + ggtitle("", "")
+ggsave("paper/alluvial-FCAL-anchored.png",
+  p,
+  width = 12,
+  height = 6.75,
+  units = "in"
+)
+ggsave("paper/alluvial-FCAL-anchored.pdf",
+  p,
+  width = 12,
+  height = 6.75,
+  units = "in"
+)
+saveRDS(p, paste0(prefix, "processed/plots/fc-alluvial.RDS"))
 ```
-
-::: {.panel-tabset}
-
-##### Population
-
-```{R}
-describe_cat("diagnosis", dict.fcal)
-```
-
-##### Cluster = 1
-
-```{R}
-describe_cat("diagnosis", subset(dict.fcal, cluster == 1))
-```
-##### Cluster = 2
-
-```{R}
-describe_cat("diagnosis", subset(dict.fcal, cluster == 2))
-```
-
-##### Cluster = 3
-
-```{R}
-describe_cat("diagnosis", subset(dict.fcal, cluster == 3))
-```
-
-##### Cluster = 4
-
-```{R}
-describe_cat("diagnosis", subset(dict.fcal, cluster == 4))
-```
-
-##### Cluster = 5
-
-```{R}
-describe_cat("diagnosis", subset(dict.fcal, cluster == 5))
-```
-
-##### Cluster = 6
-
-```{R}
-describe_cat("diagnosis", subset(dict.fcal, cluster == 6))
-```
-
-##### Cluster = 7
-
-```{R}
-describe_cat("diagnosis", subset(dict.fcal, cluster == 6))
-```
-
-
-##### Cluster = 8
-
-```{R}
-describe_cat("diagnosis", subset(dict.fcal, cluster == 6))
-```
-
-:::
-
-##### Fisher’s exact test
-
-```{R}
-fisher.test(dict.fcal$diagnosis,
-  dict.fcal$cluster,
-  simulate.p.value = TRUE, # calculate p-values using Monte Carlo
-  B = 1e5
-) # replicates for Monte Carlo test
-```
-
-#### Number of observations by cluster 
-
-```{R}
-stats.by.clust <- data.frame(Cluster = character(),
-                              Median = numeric(),
-                              IQR = numeric())
-counts.by.clust <- data.frame(Cluster = character(),
-                              Count = numeric())
-
-
-
-for (G in sort(unique(dict.fcal$cluster))) {
-  cluster.subset <- subset(dict.fcal, cluster == G) 
-  fcal.subset <- subset(fcal, ids %in% cluster.subset$ids)
-  tab <- table(fcal.subset$ids)
-  stats.by.clust <- rbind(stats.by.clust,
-                           data.frame(Cluster = G,
-                                      Median = median(tab),
-                                      IQR = IQR(tab)))
-  
-  counts.by.clust <- rbind(counts.by.clust,
-                           data.frame(Cluster = G,
-                                      Count = as.numeric(tab)))
-}
-stats.by.clust %>% knitr::kable()
-```
-
-```{R}
-aov(Cluster ~ Count, data = counts.by.clust) %>%
-  summary() %>%
-  pander()
-```
-
-
-
 
 
 ## Fixed effects specified via Gaussian radial basis functions
