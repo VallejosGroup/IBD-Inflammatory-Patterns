@@ -74,7 +74,7 @@ plotCat <- function(dat, var, class = "class_combined") {
   }
   p <- p +
     patchwork::plot_layout(nrow = length(labels), ncol = 1, guides = "collect") +
-    patchwork::plot_annotation(tag_levels = "A") &
+    #patchwork::plot_annotation(tag_levels = "A") &
     scale_y_continuous(labels = scales::percent, limits = c(0, 1))
   return(p)
 }
@@ -123,15 +123,17 @@ mlrPlot <- function(dat, var, class = "class_combined") {
   tab$sig <- FALSE
   tab[tab$Upper < 0, "sig"] <- TRUE
   tab[tab$Lower > 0, "sig"] <- TRUE
+  p <- list()
+
   for (variable in unique(tab$Var2)) {
-    p <- tab %>%
+    p[[variable]] <- tab %>%
       filter(Var2 == variable) %>%
       ggplot(aes(
-        x = var,
+        x = Var1,
         y = Estimate,
         ymin = Lower,
         ymax = Upper,
-        color = sig)) +
+        color = ifelse(sig == TRUE, "red", "black"))) +
       geom_errorbar() +
       geom_point(size = 3.5) +
       geom_hline(yintercept = 0, lty = 2) +
@@ -140,8 +142,9 @@ mlrPlot <- function(dat, var, class = "class_combined") {
       ylab("Estimate (95% CI)") +
       theme_bw() +
       scale_color_manual(values = c("black", "#FF007F")) +
-      theme(legend.position = "none")
-    print(p)
+      theme(legend.position = "none") +
+      ggtitle(variable)
+    #print(p)
   }
-  return(p.val)
+  list(coeff = summary(mlr)$coefficients , z = z, p.val = p.val, plot = p)
 }

@@ -173,12 +173,18 @@ versus
 This is not unexpected, as FC1 and FC6 share similar patterns within the first
 2 years.  
 
-### Univariate associations with respect to cluster assignments
+### Associations with respect to cluster assignments
 
 This section displays descriptive plots to summarize marginal associations
 between cluster assignments and individual-level covariates. Due to their small
 size, we combine the three clusters with oscillatory FC patterns into one for
-the purpose of this analysis.
+the purpose of this analysis. We also explore univariate and multivariate 
+associations with respect to cluster assignment using multinomial logistic 
+regression. As a sensitivity analysis, we also consider restricting the analysis 
+to only consider individuals whose class assignment was less uncertain 
+(with posterior probability > 0.5).
+
+The following code is used to combine the three oscillatory FC clusters. 
 
 ```{r combine class}
 myDF.fc <- myDF.fc %>% 
@@ -195,20 +201,19 @@ group.size <- c(group.size[1], sum(group.size[c(2, 3, 9)]), group.size[4:8], gro
 
 # Sort by sensible order rather than alphanumerical order
 myDF.fc$class_combined <- factor(myDF.fc$class_combined,
-                                 levels = c("FC1", "FC2-3-9", "FC4", "FC5",
+                                      levels = c("FC1", "FC2-3-9", "FC4", "FC5",
+                                            "FC6", "FC7", "FC8", "FC10"))
+myDF.fc$class_combined_size <- factor(myDF.fc$class_combined,
+                                      levels = c("FC1", "FC2-3-9", "FC4", "FC5",
                                             "FC6", "FC7", "FC8", "FC10"),
-                                 labels = paste0(c("FC1", "FC2-3-9", "FC4", "FC5", 
-                                                   "FC6", "FC7", "FC8", "FC10"),
-                                                 " (n = ", group.size, ")"))
+                                      labels = paste0(c("FC1", "FC2-3-9", "FC4", "FC5", 
+                                                        "FC6", "FC7", "FC8", "FC10"),
+                                                        " (n = ", group.size, ")"))
 ```
-
-As a sensitivity analysis, we also consider restricting the analysis to only
-consider individuals whose class assignment was less uncertain (with posterior
-probability > 0.5).
 
 <!--- CAV: add here a table with summary statistics per cluster ---> 
 
-#### IBD type
+#### For all individuals
 
 <!--- IBD type has been included in the cluster assignment sub model as a covariate
 and will therefore be analysed differently to the other variables considered.
@@ -222,29 +227,75 @@ and a summary table ([@tbl-fc-ibd]).
 Only ulcerative colitis in cluster 1 was found to be statistically significant. 
 --->
 
+Here, we consider associations with respect to information available at 
+diagnosis: age, sex, IBD type and baseline FC. 
+
+```{r}
+p_diagnosis <- myDF.fc %>%
+  plotCat("diagnosis") 
+
+p_sex <- myDF.fc %>%
+  plotCat("sex")
+
+p_age <- myDF.fc %>%
+  ggplot(aes(x = class_combined, y = age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+p_baseline_fc <- myDF.fc %>%
+  ggplot(aes(x = class_combined, y = baseline_fc)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("FC at diagnosis")
+
+p_mlr <- myDF.fc %>%
+  mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
+  mlrPlot(var = c("diagnosis", "age", "sex", "baseline_fc"), class = "class_combined")
+
+#diagnosis
+wrap_elements(p_diagnosis) + 
+  p_mlr$plot$`diagnosisUlcerative Colitis` + p_mlr$plot$`diagnosisIBDU` +
+  patchwork::plot_annotation(tag_levels = "A")
+
+#sex
+wrap_elements(p_sex) + p_mlr$plot$sexMale +
+  patchwork::plot_annotation(tag_levels = "A")
+
+#age
+wrap_elements(p_age) + p_mlr$plot$age +
+  patchwork::plot_annotation(tag_levels = "A")
+
+#age
+wrap_elements(p_baseline_fc) + p_mlr$plot$baseline_fc +
+  patchwork::plot_annotation(tag_levels = "A")
+```
+
+Restricted to those with posterior probability > 0.5
+
 ```{r}
 p1 <- myDF.fc %>%
-  plotCat("diagnosis") +
-  plot_annotation(title = "All subjects")
-
-p2 <- myDF.fc %>%
   filter(probmax_combined > 0.5) %>%
   plotCat("diagnosis") + 
   plot_annotation(title = "All subjects with prob > 0.5")
 
-p1 
-p2
-
-wrap_elements(p1) / wrap_elements(p2) + plot_layout(ncol = 2)
-```
-
-```{R}
-myDF.fc %>%
-  mlrPlot(var = "diagnosis")
-
-myDF.fc %>%
+p2 <- myDF.fc %>%
+  mutate(class_combined = relevel(class_combined, ref = "FC10 (n = 209)")) %>%
+  mutate(diagnosis = relevel(diagnosis, ref = "IBDU")) %>%
   filter(probmax_combined > 0.5) %>%
   mlrPlot(var = "diagnosis")
+
+wrap_elements(p1) + p2$plot$`diagnosisUlcerative Colitis` + p2$plot$`diagnosisCrohn's Disease`
+
+p3 <- myDF.fc %>%
+  mutate(class_combined = relevel(class_combined, ref = "FC10 (n = 209)")) %>%
+  mutate(diagnosis = relevel(diagnosis, ref = "IBDU")) %>%
+  filter(probmax_combined > 0.5) %>%
+  mlrPlot(var = c("diagnosis", "age", "sex", "baseline_fc"))
+
+wrap_elements(p1) + p3$plot$`diagnosisUlcerative Colitis` + p3$plot$`diagnosisCrohn's Disease`
 ```
 
 As seen above, the distribution of diagnosis types is not evenly distributed 
@@ -478,8 +529,9 @@ categories. @tbl-mlr-fc provides all p-values for all covariates.
 #| tbl-cap: "Table of p-values for the Wald tests of the multinomial logistic regression model."
 
 myDF.fc %>%
+  mutate(class_combined = relevel(class_combined, ref = "FC10 (n = 209)")) %>%
   filter(probmax_combined > 0.5) %>%
-  mlrPlot(var = c("age", "sex", "diagnosis"))
+  mlrPlot(var = c("age", "sex", "diagnosis", "baseline_fc"))
 ```
 
 ### Crohn's disease only data
