@@ -1176,7 +1176,9 @@ p1
 
 ```{R}
 temp <- dict.crp.uc %>%
-  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
+  mutate(timeToTherapy = if_else(advancedT == 1,
+                                 7,
+                                 as.numeric(timeToTherapy))) %>%
   mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
   mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
    mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
