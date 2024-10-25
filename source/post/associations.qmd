@@ -339,16 +339,16 @@ with missing values in any of the considered variables will be excluded.
 
 ```{r}
 myDF.fc <- myDF.fc %>%
-  mutate(missingN = is.na(Smoke) + is.na(Location) + is.na(L4) + 
+  mutate(missingN_cd = is.na(Smoke) + is.na(Location) + is.na(L4) + 
            is.na(Behaviour) + is.na(Perianal))
 
 myDF.fc %>% 
   filter(diagnosis == "Crohn's Disease") %>% 
-  count(missingN)
+  count(missingN_cd)
 
 myDF.fc %>% 
   filter(diagnosis == "Crohn's Disease") %>% 
-  subset(missingN == 1 & !is.na(Smoke))
+  subset(missingN_cd == 1 & !is.na(Smoke))
 ```
 
 Here is the code to explore the associations:
@@ -413,7 +413,7 @@ p_perianal_cd <- myDF.fc %>%
 
 p_mlr_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
-  filter(missingN == 0) %>%
+  filter(missingN_cd == 0) %>%
   mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
   mlrPlot(var = c("age", "sex", "baseline_fc", 
                   "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
@@ -436,6 +436,20 @@ wrap_elements(p_perianal_cd) + p_mlr_cd$plot$PerianalYes +
 ```
 
 #### Ulcerative Colitis only
+
+```{r}
+myDF.fc <- myDF.fc %>%
+  mutate(missingN_uc = is.na(Smoke) + is.na(Extent))
+
+myDF.fc %>% 
+  filter(diagnosis == "Ulcerative Colitis") %>% 
+  count(missingN_uc)
+
+myDF.fc %>% 
+  filter(diagnosis == "Ulcerative Colitis") %>% 
+  subset(missingN_uc == 1 & !is.na(Smoke))
+```
+
 
 ```{r}
 p_sex_uc <- myDF.fc %>%
@@ -468,48 +482,26 @@ p_smoke_uc <- myDF.fc %>%
   mutate(Smoke = ifelse(!is.na(Smoke), Smoke, "Missing")) %>%
   plotCat("Smoke")
 
-p_location_uc <- myDF.fc %>%
+p_extent_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
-  mutate(Location = ifelse(!is.na(Location), Location, "Missing")) %>%
-  plotCat("Location")
-
-p_L4_uc <- myDF.fc %>%
-  filter(diagnosis == "Ulcerative Colitis") %>%
-  mutate(L4 = ifelse(!is.na(L4), L4, "Missing")) %>%
-  plotCat("L4")
-
-p_behaviour_uc <- myDF.fc %>%
-  filter(diagnosis == "Ulcerative Colitis") %>%
-  mutate(Behaviour = ifelse(!is.na(Behaviour), Behaviour, "Missing")) %>%
-  plotCat("Behaviour")
-
-p_perianal_uc <- myDF.fc %>%
-  filter(diagnosis == "Ulcerative Colitis") %>%
-  mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
-  plotCat("Perianal")
+  mutate(Extent = ifelse(!is.na(Extent), Extent, "Missing")) %>%
+  plotCat("Extent")
 
 p_mlr_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
-  #filter(missingN == 0) %>%
+  filter(missingN_uc == 0) %>%
   mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
-  mlrPlot(var = c("age", "sex", "baseline_fc"),
-                  #"Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
+  mlrPlot(var = c("age", "sex", "baseline_fc", "Smoke", "Extent"),
           class = "class_combined")
 
 wrap_elements(p_sex_uc) + p_mlr_uc$plot$sex + 
   plot_annotation(title = "Sex (UC patients only)")
-wrap_elements(p_age_uc) +# p_mlr_uc$plot$age + 
+wrap_elements(p_age_uc) + p_mlr_uc$plot$age + 
   plot_annotation(title = "Age (UC patients only)")
-wrap_elements(p_smoke) + p_mlr$plot$SmokeYes + 
+wrap_elements(p_smoke_uc) + p_mlr_uc$plot$SmokeYes + 
   plot_annotation(title = "Smoking (UC patients only)")
-wrap_elements(p_location) + p_mlr$plot$LocationL2 + p_mlr$plot$LocationL3 + 
-  plot_annotation(title = "Location (UC patients only)")
-wrap_elements(p_L4) + p_mlr$plot$L4Yes +
-  plot_annotation(title = "L4 (UC patients only)")
-wrap_elements(p_behaviour) + p_mlr$plot$`Behaviour_mergedB2 or B3` +
-  plot_annotation(title = "Behaviour (UC patients only)")
-wrap_elements(p_perianal) + p_mlr$plot$PerianalYes + 
-  plot_annotation(title = "Perianal (UC patients only)")
+wrap_elements(p_extent_uc) + p_mlr_uc$plot$ExtentE2 + p_mlr_uc$plot$ExtentE3 + 
+  plot_annotation(title = "Extent (UC patients only)")
 ```
 
 #### Combined plots
