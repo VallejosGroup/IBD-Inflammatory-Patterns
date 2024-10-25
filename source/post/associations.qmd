@@ -330,7 +330,8 @@ myDF.fc <- myDF.fc %>%
   mutate(Behaviour_merged = plyr::mapvalues(Behaviour,
                                       from = c("B1", "B2", "B3", NA),
                                       to = c("B1", "B2 or B3", "B2 or B3", NA))) %>%
-  mutate(L4 = ifelse(!is.na(L4), L4, "No")) 
+  mutate(L4 = ifelse(!is.na(L4), L4, "No")) %>%
+  mutate(paeds = ifelse(age <= 16, "Yes", "No"))
 ```
 
 For the purposes of the multinomial logistic regression model, individuals
@@ -353,11 +354,11 @@ myDF.fc %>%
 Here is the code to explore the associations:
 
 ```{r}
-p_sex <- myDF.fc %>%
+p_sex_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   plotCat("sex")
 
-p_age <- myDF.fc %>%
+p_age_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   ggplot(aes(x = class_combined, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
@@ -366,7 +367,11 @@ p_age <- myDF.fc %>%
   xlab("Cluster") +
   ylab("Age at diagnosis")
 
-p_baseline_fc <- myDF.fc %>%
+p_paeds_cd <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  plotCat("paeds")
+
+p_baseline_fc_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   ggplot(aes(x = class_combined, y = baseline_fc)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
@@ -374,27 +379,27 @@ p_baseline_fc <- myDF.fc %>%
   xlab("Cluster") +
   ylab("FC at diagnosis")
 
-p_smoke <- myDF.fc %>%
+p_smoke_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(Smoke = ifelse(!is.na(Smoke), Smoke, "Missing")) %>%
   plotCat("Smoke")
 
-p_location <- myDF.fc %>%
+p_location_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(Location = ifelse(!is.na(Location), Location, "Missing")) %>%
   plotCat("Location")
 
-p_L4 <- myDF.fc %>%
+p_L4_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(L4 = ifelse(!is.na(L4), L4, "Missing")) %>%
   plotCat("L4")
 
-p_behaviour <- myDF.fc %>%
+p_behaviour_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(Behaviour = ifelse(!is.na(Behaviour_merged), Behaviour_merged, "Missing")) %>%
   plotCat("Behaviour")
 
-p_perianal <- myDF.fc %>%
+p_perianal_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
   plotCat("Perianal")
@@ -406,7 +411,7 @@ p_perianal <- myDF.fc %>%
 #  mutate(BehaviourP = as.factor(paste0(Behaviour, "-", Perianal))) %>%
 #  plotCat("BehaviourP")
 
-p_mlr <- myDF.fc %>%
+p_mlr_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN == 0) %>%
   mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
@@ -414,30 +419,30 @@ p_mlr <- myDF.fc %>%
                   "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
           class = "class_combined")
 
-wrap_elements(p_sex) + p_mlr$plot$sex + 
+wrap_elements(p_sex_cd) + p_mlr_cd$plot$sex + 
   plot_annotation(title = "Sex (CD patients only)")
-wrap_elements(p_age) + p_mlr$plot$age + 
+wrap_elements(p_age_cd) + p_mlr_cd$plot$age + 
   plot_annotation(title = "Age (CD patients only)")
-wrap_elements(p_smoke) + p_mlr$plot$SmokeYes + 
+wrap_elements(p_smoke_cd) + p_mlr_cd$plot$SmokeYes + 
   plot_annotation(title = "Smoking (CD patients only)")
-wrap_elements(p_location) + p_mlr$plot$LocationL2 + p_mlr$plot$LocationL3 + 
+wrap_elements(p_location_cd) + p_mlr_cd$plot$LocationL2 + p_mlr$plot$LocationL3 + 
   plot_annotation(title = "Location (CD patients only)")
-wrap_elements(p_L4) + p_mlr$plot$L4Yes +
+wrap_elements(p_L4_cd) + p_mlr_cd$plot$L4Yes +
   plot_annotation(title = "L4 (CD patients only)")
-wrap_elements(p_behaviour) + p_mlr$plot$`Behaviour_mergedB2 or B3` +
+wrap_elements(p_behaviour_cd) + p_mlr_cd$plot$`Behaviour_mergedB2 or B3` +
   plot_annotation(title = "Behaviour (CD patients only)")
-wrap_elements(p_perianal) + p_mlr$plot$PerianalYes + 
+wrap_elements(p_perianal_cd) + p_mlr_cd$plot$PerianalYes + 
   plot_annotation(title = "Perianal (CD patients only)")
 ```
 
 #### Ulcerative Colitis only
 
 ```{r}
-p_sex <- myDF.fc %>%
+p_sex_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   plotCat("sex")
 
-p_age <- myDF.fc %>%
+p_age_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   ggplot(aes(x = class_combined, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
@@ -446,7 +451,11 @@ p_age <- myDF.fc %>%
   xlab("Cluster") +
   ylab("Age at diagnosis")
 
-p_baseline_fc <- myDF.fc %>%
+p_paeds_uc <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  plotCat("paeds")
+
+p_baseline_fc_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   ggplot(aes(x = class_combined, y = baseline_fc)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
@@ -454,36 +463,65 @@ p_baseline_fc <- myDF.fc %>%
   xlab("Cluster") +
   ylab("FC at diagnosis")
 
-p_smoke <- myDF.fc %>%
+p_smoke_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   mutate(Smoke = ifelse(!is.na(Smoke), Smoke, "Missing")) %>%
   plotCat("Smoke")
 
-p_location <- myDF.fc %>%
+p_location_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   mutate(Location = ifelse(!is.na(Location), Location, "Missing")) %>%
   plotCat("Location")
 
-p_L4 <- myDF.fc %>%
+p_L4_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   mutate(L4 = ifelse(!is.na(L4), L4, "Missing")) %>%
   plotCat("L4")
 
-p_behaviour <- myDF.fc %>%
+p_behaviour_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   mutate(Behaviour = ifelse(!is.na(Behaviour), Behaviour, "Missing")) %>%
   plotCat("Behaviour")
 
-p_perianal <- myDF.fc %>%
+p_perianal_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
   plotCat("Perianal")
 
-p_smoke
-p_location
-p_L4
-p_behaviour
-p_perianal
+p_mlr_uc <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  #filter(missingN == 0) %>%
+  mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
+  mlrPlot(var = c("age", "sex", "baseline_fc"),
+                  #"Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
+          class = "class_combined")
+
+wrap_elements(p_sex_uc) + p_mlr_uc$plot$sex + 
+  plot_annotation(title = "Sex (UC patients only)")
+wrap_elements(p_age_uc) +# p_mlr_uc$plot$age + 
+  plot_annotation(title = "Age (UC patients only)")
+wrap_elements(p_smoke) + p_mlr$plot$SmokeYes + 
+  plot_annotation(title = "Smoking (UC patients only)")
+wrap_elements(p_location) + p_mlr$plot$LocationL2 + p_mlr$plot$LocationL3 + 
+  plot_annotation(title = "Location (UC patients only)")
+wrap_elements(p_L4) + p_mlr$plot$L4Yes +
+  plot_annotation(title = "L4 (UC patients only)")
+wrap_elements(p_behaviour) + p_mlr$plot$`Behaviour_mergedB2 or B3` +
+  plot_annotation(title = "Behaviour (UC patients only)")
+wrap_elements(p_perianal) + p_mlr$plot$PerianalYes + 
+  plot_annotation(title = "Perianal (UC patients only)")
+```
+
+#### Combined plots
+
+```{r}
+(wrap_elements(p_sex_cd) + p_mlr_cd$plot$sex) /
+  (wrap_elements(p_sex_uc) + p_mlr_uc$plot$sex) +
+  plot_annotation(title = "Sex (top = CD; bottom = UC)")
+
+(wrap_elements(p_age_cd) + p_mlr_cd$plot$age) /
+  (wrap_elements(p_age_uc) + p_mlr_uc$plot$age) +
+  plot_annotation(title = "Age (top = CD; bottom = UC)")
 ```
 
 
