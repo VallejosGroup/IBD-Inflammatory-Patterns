@@ -363,11 +363,20 @@ p_perianal <- myDF.fc %>%
   mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
   plotCat("Perianal")
 
-p_smoke
-p_location
-p_L4
-p_behaviour
-p_perianal
+p_behaviour_p <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  mutate(Behaviour = ifelse(!is.na(Behaviour), Behaviour, "Missing")) %>%
+  mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
+  mutate(BehaviourP = as.factor(paste0(Behaviour, "-", Perianal))) %>%
+  plotCat("BehaviourP")
+
+p_sex + plot_annotation(title = "Sex (CD patients only)")
+p_age + plot_annotation(title = "Age (CD patients only)")
+p_smoke + plot_annotation(title = "Smoking (CD patients only)")
+p_location + plot_annotation(title = "Location (CD patients only)")
+p_L4 + plot_annotation(title = "L4 (CD patients only)")
+p_behaviour + plot_annotation(title = "Behaviour (CD patients only)")
+p_perianal + plot_annotation(title = "Perianal (CD patients only)")
 ```
 
 #### Ulcerative Colitis only
