@@ -316,6 +316,42 @@ wrap_elements(p_diagnosis) +
 
 #### Crohn's disease only
 
+For CD patients, we also consider additional phenotyping information and 
+advance therapy usage. Due to small numbers, B2 and B3 are merged into a 
+single group (complicated CD) when analysing Montreal behaviour. Upper GI 
+inflammation (L4) was missing for a high proportion of individuals (approx 
+`r round(mean(is.na(myDF.fc$L4)) * 100)`%. This is because the required 
+investigations are only carried out where upper GI inflammation is suspected. 
+As such, we have manually mapped missing L4 values as "No" (i.e. no upper GI 
+inflammation for the associated patients). 
+
+```{r}
+myDF.fc <- myDF.fc %>%
+  mutate(Behaviour_merged = plyr::mapvalues(Behaviour,
+                                      from = c("B1", "B2", "B3", NA),
+                                      to = c("B1", "B2 or B3", "B2 or B3", NA))) %>%
+  mutate(L4 = ifelse(!is.na(L4), L4, "No")) 
+```
+
+For the purposes of the multinomial logistic regression model, individuals
+with missing values in any of the considered variables will be excluded. 
+
+```{r}
+myDF.fc <- myDF.fc %>%
+  mutate(missingN = is.na(Smoke) + is.na(Location) + is.na(L4) + 
+           is.na(Behaviour) + is.na(Perianal))
+
+myDF.fc %>% 
+  filter(diagnosis == "Crohn's Disease") %>% 
+  count(missingN)
+
+myDF.fc %>% 
+  filter(diagnosis == "Crohn's Disease") %>% 
+  subset(missingN == 1 & !is.na(Smoke))
+```
+
+Here is the code to explore the associations:
+
 ```{r}
 p_sex <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
@@ -355,7 +391,7 @@ p_L4 <- myDF.fc %>%
 
 p_behaviour <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
-  mutate(Behaviour = ifelse(!is.na(Behaviour), Behaviour, "Missing")) %>%
+  mutate(Behaviour = ifelse(!is.na(Behaviour_merged), Behaviour_merged, "Missing")) %>%
   plotCat("Behaviour")
 
 p_perianal <- myDF.fc %>%
@@ -363,20 +399,35 @@ p_perianal <- myDF.fc %>%
   mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
   plotCat("Perianal")
 
-p_behaviour_p <- myDF.fc %>%
-  filter(diagnosis == "Crohn's Disease") %>%
-  mutate(Behaviour = ifelse(!is.na(Behaviour), Behaviour, "Missing")) %>%
-  mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
-  mutate(BehaviourP = as.factor(paste0(Behaviour, "-", Perianal))) %>%
-  plotCat("BehaviourP")
+#p_behaviour_p <- myDF.fc %>%
+#  filter(diagnosis == "Crohn's Disease") %>%
+#  mutate(Behaviour = ifelse(!is.na(Behaviour_merged), Behaviour_merged, "Missing")) %>%
+#  mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
+#  mutate(BehaviourP = as.factor(paste0(Behaviour, "-", Perianal))) %>%
+#  plotCat("BehaviourP")
 
-p_sex + plot_annotation(title = "Sex (CD patients only)")
-p_age + plot_annotation(title = "Age (CD patients only)")
-p_smoke + plot_annotation(title = "Smoking (CD patients only)")
-p_location + plot_annotation(title = "Location (CD patients only)")
-p_L4 + plot_annotation(title = "L4 (CD patients only)")
-p_behaviour + plot_annotation(title = "Behaviour (CD patients only)")
-p_perianal + plot_annotation(title = "Perianal (CD patients only)")
+p_mlr <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  filter(missingN == 0) %>%
+  mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
+  mlrPlot(var = c("age", "sex", "baseline_fc", 
+                  "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
+          class = "class_combined")
+
+wrap_elements(p_sex) + p_mlr$plot$sex + 
+  plot_annotation(title = "Sex (CD patients only)")
+wrap_elements(p_age) + p_mlr$plot$age + 
+  plot_annotation(title = "Age (CD patients only)")
+wrap_elements(p_smoke) + p_mlr$plot$SmokeYes + 
+  plot_annotation(title = "Smoking (CD patients only)")
+wrap_elements(p_location) + p_mlr$plot$LocationL2 + p_mlr$plot$LocationL3 + 
+  plot_annotation(title = "Location (CD patients only)")
+wrap_elements(p_L4) + p_mlr$plot$L4Yes +
+  plot_annotation(title = "L4 (CD patients only)")
+wrap_elements(p_behaviour) + p_mlr$plot$`Behaviour_mergedB2 or B3` +
+  plot_annotation(title = "Behaviour (CD patients only)")
+wrap_elements(p_perianal) + p_mlr$plot$PerianalYes + 
+  plot_annotation(title = "Perianal (CD patients only)")
 ```
 
 #### Ulcerative Colitis only
