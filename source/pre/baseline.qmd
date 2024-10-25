@@ -1262,22 +1262,29 @@ uc.pheno <- read_xlsx(paste0(prefix, "2024-10-23/UC-pheno.xlsx"),
 temp <- unique(subset(fcal, diagnosis == "Ulcerative Colitis")$ids)
 
 uc.pheno <- subset(uc.pheno, ids %in% temp)
+uc.pheno <- select(uc.pheno, -diagnosis)
+dict <- merge(dict, uc.pheno, by = "ids", all.x = TRUE, all.y = FALSE)
+dict <- dict %>%
+  mutate(Smoke = if_else(is.na(Smoke.x), Smoke.y, Smoke.x)) %>%
+  select(-Smoke.x, -Smoke.y)
 ```
-
-
 
 #### Montreal extent
 
 ```{R}
-uc.pheno <- uc.pheno %>%
+dict <- dict %>%
   mutate(Extent = if_else(!is.na(Extent), paste0("E", Extent), NA))
 ```
 
 ```{R}
-counts <- data.frame(table(uc.pheno$Extent, useNA = "ifany"))
+dict.fc.uc <- subset(dict,
+                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)))
+
+
+counts <- data.frame(table(dict.fc.uc$Extent, useNA = "ifany"))
 colnames(counts) <- c("Montreal extent", "Frequency")
 
-uc.pheno %>%
+dict.fc.uc %>%
     ggplot(aes(x = Extent)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
@@ -1289,8 +1296,8 @@ uc.pheno %>%
 #### Smoking status
 
 ```{R}
-uc.pheno$Smoke <- 
-  plyr::mapvalues(uc.pheno$Smoke,
+dict$Smoke <- 
+  plyr::mapvalues(dict$Smoke,
                   from = c("0",
                            "never",
                            "1",
@@ -1306,10 +1313,13 @@ uc.pheno$Smoke <-
 ```
 
 ```{R}
-counts <- data.frame(table(uc.pheno$Smoke, useNA = "ifany"))
+dict.fc.uc <- subset(dict,
+                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)))
+
+counts <- data.frame(table(dict.fc.uc$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
-uc.pheno %>%
+dict.fc.uc %>%
     ggplot(aes(x = Smoke)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
