@@ -54,7 +54,7 @@ library(ggmosaic)
 
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
-model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-10.RDS"))
+model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
 crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-9.RDS"))
@@ -90,14 +90,18 @@ myDF.fc <- fcal %>%
   group_by(ids) %>%
   summarise(n.total = n(),
             followup = max(calpro_time),) %>%
-  mutate(followup_cut = cut(followup, breaks = c(seq(0, 6, by = 2), 7)),
+  mutate(followup_cut = cut(followup, breaks = c(0, 4, 6, 7)),
          n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
   
 myDF.fc <- merge(myDF.fc, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
 myDF.fc <- myDF.fc %>% 
   mutate(probmax = pmax(prob1, prob2, prob3, prob4, prob5, 
-                        prob6, prob7, prob8, prob9, prob10))
+                        prob6, prob7, prob8)) #, prob9, prob10))
 myDF.fc <- merge(myDF.fc, dict, by = "ids", all.x = TRUE, all.y = FALSE)
+
+myDF.fc$class <- factor(myDF.fc$class,
+                        levels = 1:8,
+                        labels = paste0("FC", 1:8))
 ```
 
 ### Posterior cluster assignment probabilities 
@@ -117,13 +121,18 @@ myDF.fc_means <- myDF.fc %>%
 
 # Assign level order otherwise alphanumerical order used
 myDF.fc_means$prob <- factor(myDF.fc_means$prob,
-                          levels = c(paste0("prob", 1:10), "probmax"),
-                          labels = c(paste0("FC", 1:10), "probmax"))
+                          levels = c(paste0("prob", 1:8), "probmax"),
+                          labels = c(paste0("FC", 1:8), "probmax"))
+                          #levels = c(paste0("prob", 1:10), "probmax"),
+                          #labels = c(paste0("FC", 1:10), "probmax"))
 
 myDF.fc_means$class <- factor(myDF.fc_means$class,
-                           levels = 1:10,
-                           labels = paste0("Assigned to FC", 1:10, "\n n = ",
+                           levels = paste0("FC", 1:8),
+                           labels = paste0("Assigned to FC", 1:8, "\n n = ",
                                            as.vector(table(myDF.fc$class))))
+                          # levels = 1:10,
+                          # labels = paste0("Assigned to FC", 1:10, "\n n = ",
+                           #                as.vector(table(myDF.fc$class))))
 
 
 col.vec <- c("#df5c7f",
@@ -133,16 +142,16 @@ col.vec <- c("#df5c7f",
 "#8581da",
 "#de6d3c",
 "#74b0c3",
-"#bc9d7a",
-"#6cb886",
-"#c597bd")
+"#bc9d7a")
+#"#6cb886",
+#"#c597bd")
 
 
 p <- myDF.fc_means %>%
   filter(prob != "probmax") %>%
   ggplot(aes(fill = prob, y = value, x = followup_cut)) +
   geom_bar(position = "fill", stat = "identity") +
-  facet_wrap(.~class, ncol = 5) + 
+  facet_wrap(.~class, ncol = 4) + 
   theme_minimal() +
   theme(legend.title = element_text(hjust = 0.5),
         strip.background = element_rect(color = "lightgray",
@@ -187,28 +196,28 @@ to only consider individuals whose class assignment was less uncertain
 The following code is used to combine the three oscillatory FC clusters. 
 
 ```{r combine class}
-myDF.fc <- myDF.fc %>% 
-  mutate(class_combined = ifelse(class %in% c(2, 3, 9), 
-                                 "FC2-3-9",
-                                 paste0("FC", class)),
-         prob239 = prob2 + prob3 + prob9,
-         probmax_combined =  pmax(prob1, prob4, prob5, 
-                                  prob6, prob7, prob8, prob10, prob239))
+# myDF.fc <- myDF.fc %>% 
+#   mutate(class_combined = ifelse(class %in% c(2, 3, 9), 
+#                                  "FC2-3-9",
+#                                  paste0("FC", class)),
+#          prob239 = prob2 + prob3 + prob9,
+#          probmax_combined =  pmax(prob1, prob4, prob5, 
+#                                   prob6, prob7, prob8, prob10, prob239))
 
 # Calculate sample size per group
-group.size <- as.vector(table(myDF.fc$class))
-group.size <- c(group.size[1], sum(group.size[c(2, 3, 9)]), group.size[4:8], group.size[10])
+# group.size <- as.vector(table(myDF.fc$class))
+# group.size <- c(group.size[1], sum(group.size[c(2, 3, 9)]), group.size[4:8], group.size[10])
 
 # Sort by sensible order rather than alphanumerical order
-myDF.fc$class_combined <- factor(myDF.fc$class_combined,
-                                      levels = c("FC1", "FC2-3-9", "FC4", "FC5",
-                                            "FC6", "FC7", "FC8", "FC10"))
-myDF.fc$class_combined_size <- factor(myDF.fc$class_combined,
-                                      levels = c("FC1", "FC2-3-9", "FC4", "FC5",
-                                            "FC6", "FC7", "FC8", "FC10"),
-                                      labels = paste0(c("FC1", "FC2-3-9", "FC4", "FC5", 
-                                                        "FC6", "FC7", "FC8", "FC10"),
-                                                        " (n = ", group.size, ")"))
+# myDF.fc$class_combined <- factor(myDF.fc$class_combined,
+#                                       levels = c("FC1", "FC2-3-9", "FC4", "FC5",
+#                                             "FC6", "FC7", "FC8", "FC10"))
+# myDF.fc$class_combined_size <- factor(myDF.fc$class_combined,
+#                                       levels = c("FC1", "FC2-3-9", "FC4", "FC5",
+#                                             "FC6", "FC7", "FC8", "FC10"),
+#                                       labels = paste0(c("FC1", "FC2-3-9", "FC4", "FC5", 
+#                                                         "FC6", "FC7", "FC8", "FC10"),
+#                                                         " (n = ", group.size, ")"))
 ```
 
 <!--- CAV: add here a table with summary statistics per cluster ---> 
@@ -232,13 +241,13 @@ diagnosis: age, sex, IBD type and baseline FC.
 
 ```{r}
 p_diagnosis <- myDF.fc %>%
-  plotCat("diagnosis") 
+  plotCat("diagnosis", class = "class") 
 
 p_sex <- myDF.fc %>%
-  plotCat("sex")
+  plotCat("sex", class = "class")
 
 p_age <- myDF.fc %>%
-  ggplot(aes(x = class_combined, y = age)) +
+  ggplot(aes(x = class, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   geom_boxplot(width=0.1, color="black", alpha=0.2) +
   theme_minimal() +
@@ -246,42 +255,70 @@ p_age <- myDF.fc %>%
   ylab("Age at diagnosis")
 
 p_baseline_fc <- myDF.fc %>%
-  ggplot(aes(x = class_combined, y = baseline_fc)) +
+  ggplot(aes(x = class, y = baseline_fc)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
   xlab("Cluster") +
   ylab("FC at diagnosis")
 
 p_mlr <- myDF.fc %>%
-  mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex", "baseline_fc"), class = "class_combined")
+  mutate(class = relevel(class, ref = "FC3")) %>%
+  mlrPlot(var = c("diagnosis", "age", "sex", "baseline_fc"), class = "class")
 
-#diagnosis
-wrap_elements(p_diagnosis) + 
-  p_mlr$plot$`diagnosisUlcerative Colitis` + p_mlr$plot$`diagnosisIBDU` +
-  patchwork::plot_annotation(tag_levels = "A")
+aux <- myDF.fc %>%
+  mutate(class = relevel(class, ref = "FC3")) %>%
+  mlrPlot(var = c("followup_cut"), class = "class")
+
+aux <- myDF.fc %>%
+  subset(probmax > 0.5) %>%
+  mutate(class = relevel(class, ref = "FC3")) %>%
+  mlrPlot(var = c("followup_cut"), class = "class")
+
+aux$plot_multi$`followup_cut(2,4]` +
+  aux$plot_multi$`followup_cut(4,6]` +
+  aux$plot_multi$`followup_cut(6,7]`
+
+p_followup <- myDF.fc %>%
+   subset(probmax > 0.5) %>%
+  plotCat("followup_cut", class = "class") 
+
+# diagnosis
+wrap_elements(p_diagnosis) +
+  p_mlr$plot_multi$`diagnosisUlcerative Colitis` + p_mlr$plot_multi$`diagnosisIBDU` +
+  patchwork::plot_annotation(tag_levels = "A", title = "All subjects - Multivariate CI") 
+
+wrap_elements(p_diagnosis) +
+  p_mlr$plot_uni$`diagnosisUlcerative Colitis` + p_mlr$plot_uni$`diagnosisIBDU` +
+  patchwork::plot_annotation(tag_levels = "A", title = "All subjects - Univariate CI")
 
 #age + sex + baseline_fc 
-(wrap_elements(p_age) + p_mlr$plot$age) /
-  (wrap_elements(p_sex) + p_mlr$plot$sexMale) /
-  (wrap_elements(p_baseline_fc) + p_mlr$plot$baseline_fc) +
-  patchwork::plot_annotation(tag_levels = "A")
+wrap_elements(p_age) + p_mlr$plot_multi$age + p_mlr$plot_uni$age +
+  patchwork::plot_annotation(tag_levels = "A", 
+                             title = "All subjects - B: Multivariate CI; C: Univariate CI")
+
+wrap_elements(p_sex) + p_mlr$plot_multi$sex + p_mlr$plot_uni$sex +
+  patchwork::plot_annotation(tag_levels = "A", 
+                             title = "All subjects - B: Multivariate CI; C: Univariate CI")
+
+wrap_elements(p_baseline_fc) + p_mlr$plot_multi$baseline_fc + p_mlr$plot_uni$baseline_fc +
+  patchwork::plot_annotation(tag_levels = "A", 
+                             title = "All subjects - B: Multivariate CI; C: Univariate CI")
 ```
 
 Restricted to those with posterior probability > 0.5
 
 ```{r}
 p_diagnosis <- myDF.fc %>%
-  filter(probmax_combined > 0.5) %>%
-  plotCat("diagnosis") 
+  filter(probmax > 0.5) %>%
+  plotCat("diagnosis", class = "class") 
 
 p_sex <- myDF.fc %>%
-  filter(probmax_combined > 0.5) %>%
-  plotCat("sex")
+  filter(probmax > 0.5) %>%
+  plotCat("sex", class = "class")
 
 p_age <- myDF.fc %>%
-  filter(probmax_combined > 0.5) %>%
-  ggplot(aes(x = class_combined, y = age)) +
+  filter(probmax > 0.5) %>%
+  ggplot(aes(x = class, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   geom_boxplot(width=0.1, color="black", alpha=0.2) +
   theme_minimal() +
@@ -289,28 +326,39 @@ p_age <- myDF.fc %>%
   ylab("Age at diagnosis")
 
 p_baseline_fc <- myDF.fc %>%
-  filter(probmax_combined > 0.5) %>%
-  ggplot(aes(x = class_combined, y = baseline_fc)) +
+  filter(probmax > 0.5) %>%
+  ggplot(aes(x = class, y = baseline_fc)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
   xlab("Cluster") +
   ylab("FC at diagnosis")
 
 p_mlr <- myDF.fc %>%
-  filter(probmax_combined > 0.5) %>%
-  mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex", "baseline_fc"), class = "class_combined")
+  filter(probmax > 0.5) %>%
+  mutate(class = relevel(class, ref = "FC3")) %>%
+  mlrPlot(var = c("diagnosis", "age", "sex", "baseline_fc"), class = "class")
 
-#diagnosis
-wrap_elements(p_diagnosis) + 
-  p_mlr$plot$`diagnosisUlcerative Colitis` + p_mlr$plot$`diagnosisIBDU` +
-  patchwork::plot_annotation(tag_levels = "A")
+# diagnosis
+wrap_elements(p_diagnosis) +
+  p_mlr$plot_multi$`diagnosisUlcerative Colitis` + p_mlr$plot_multi$`diagnosisIBDU` +
+  patchwork::plot_annotation(tag_levels = "A", title = "Subjects prob > 0.5 - Multivariate CI") 
+
+wrap_elements(p_diagnosis) +
+  p_mlr$plot_uni$`diagnosisUlcerative Colitis` + p_mlr$plot_uni$`diagnosisIBDU` +
+  patchwork::plot_annotation(tag_levels = "A", title = "Subjects prob > 0.5 - Univariate CI")
 
 #age + sex + baseline_fc 
-(wrap_elements(p_age) + p_mlr$plot$age) /
-  (wrap_elements(p_sex) + p_mlr$plot$sexMale) /
-  (wrap_elements(p_baseline_fc) + p_mlr$plot$baseline_fc) +
-  patchwork::plot_annotation(tag_levels = "A")
+wrap_elements(p_age) + p_mlr$plot_multi$age + p_mlr$plot_uni$age +
+  patchwork::plot_annotation(tag_levels = "A", 
+                             title = "Subjects prob > 0.5 - B: Multivariate CI; C: Univariate CI")
+
+wrap_elements(p_sex) + p_mlr$plot_multi$sex + p_mlr$plot_uni$sex +
+  patchwork::plot_annotation(tag_levels = "A", 
+                             title = "Subjects prob > 0.5 - B: Multivariate CI; C: Univariate CI")
+
+wrap_elements(p_baseline_fc) + p_mlr$plot_multi$baseline_fc + p_mlr$plot_uni$baseline_fc +
+  patchwork::plot_annotation(tag_levels = "A", 
+                             title = "Subjects prob > 0.5 - B: Multivariate CI; C: Univariate CI")
 ```
 
 
@@ -356,11 +404,11 @@ Here is the code to explore the associations:
 ```{r}
 p_sex_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
-  plotCat("sex")
+  plotCat("sex", class = "class")
 
 p_age_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
-  ggplot(aes(x = class_combined, y = age)) +
+  ggplot(aes(x = class, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   geom_boxplot(width=0.1, color="black", alpha=0.2) +
   theme_minimal() +
@@ -369,11 +417,11 @@ p_age_cd <- myDF.fc %>%
 
 p_paeds_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
-  plotCat("paeds")
+  plotCat("paeds", class = "class")
 
 p_baseline_fc_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
-  ggplot(aes(x = class_combined, y = baseline_fc)) +
+  ggplot(aes(x = class, y = baseline_fc)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
   xlab("Cluster") +
@@ -382,27 +430,27 @@ p_baseline_fc_cd <- myDF.fc %>%
 p_smoke_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(Smoke = ifelse(!is.na(Smoke), Smoke, "Missing")) %>%
-  plotCat("Smoke")
+  plotCat("Smoke", class = "class")
 
 p_location_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(Location = ifelse(!is.na(Location), Location, "Missing")) %>%
-  plotCat("Location")
+  plotCat("Location", class = "class")
 
 p_L4_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(L4 = ifelse(!is.na(L4), L4, "Missing")) %>%
-  plotCat("L4")
+  plotCat("L4", class = "class")
 
 p_behaviour_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(Behaviour = ifelse(!is.na(Behaviour_merged), Behaviour_merged, "Missing")) %>%
-  plotCat("Behaviour")
+  plotCat("Behaviour", class = "class")
 
 p_perianal_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   mutate(Perianal = ifelse(!is.na(Perianal), Perianal, "Missing")) %>%
-  plotCat("Perianal")
+  plotCat("Perianal", class = "class")
 
 #p_behaviour_p <- myDF.fc %>%
 #  filter(diagnosis == "Crohn's Disease") %>%
@@ -414,24 +462,37 @@ p_perianal_cd <- myDF.fc %>%
 p_mlr_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
-  mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
+  mutate(class = relevel(class, ref = "FC3")) %>%
   mlrPlot(var = c("age", "sex", "baseline_fc", 
                   "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
-          class = "class_combined")
+          class = "class")
 
-wrap_elements(p_sex_cd) + p_mlr_cd$plot$sex + 
+
+wrap_elements(p_sex_cd) + p_mlr_cd$plot_multi$sex + p_mlr_cd$plot_uni$sex +
   plot_annotation(title = "Sex (CD patients only)")
-wrap_elements(p_age_cd) + p_mlr_cd$plot$age + 
+wrap_elements(p_age_cd) + p_mlr_cd$plot_multi$age + p_mlr_cd$plot_uni$age +
   plot_annotation(title = "Age (CD patients only)")
-wrap_elements(p_smoke_cd) + p_mlr_cd$plot$SmokeYes + 
+wrap_elements(p_baseline_fc_cd) + p_mlr_cd$plot_multi$baseline_fc + 
+  p_mlr_cd$plot_uni$baseline_fc +
+  plot_annotation(title = "Baseline_FC (CD patients only)")
+
+wrap_elements(p_smoke_cd) + p_mlr_cd$plot_multi$SmokeYes + p_mlr_cd$plot_uni$SmokeYes +
   plot_annotation(title = "Smoking (CD patients only)")
-wrap_elements(p_location_cd) + p_mlr_cd$plot$LocationL2 + p_mlr$plot$LocationL3 + 
-  plot_annotation(title = "Location (CD patients only)")
-wrap_elements(p_L4_cd) + p_mlr_cd$plot$L4Yes +
+
+wrap_elements(p_location_cd) + p_mlr_cd$plot_multi$LocationL2 + p_mlr_cd$plot_multi$LocationL3 + 
+  plot_annotation(title = "Location (CD patients only) - multivariate CI")
+wrap_elements(p_location_cd) + p_mlr_cd$plot_uni$LocationL2 + p_mlr_cd$plot_uni$LocationL3 + 
+  plot_annotation(title = "Location (CD patients only) - multivariate CI")
+
+wrap_elements(p_L4_cd) + p_mlr_cd$plot_multi$L4Yes + p_mlr_cd$plot_uni$L4Yes +
   plot_annotation(title = "L4 (CD patients only)")
-wrap_elements(p_behaviour_cd) + p_mlr_cd$plot$`Behaviour_mergedB2 or B3` +
+
+wrap_elements(p_behaviour_cd) + p_mlr_cd$plot_multi$`Behaviour_mergedB2 or B3` +
+  p_mlr_cd$plot_uni$`Behaviour_mergedB2 or B3` +
   plot_annotation(title = "Behaviour (CD patients only)")
-wrap_elements(p_perianal_cd) + p_mlr_cd$plot$PerianalYes + 
+
+wrap_elements(p_perianal_cd) + p_mlr_cd$plot_multi$PerianalYes + 
+  p_mlr_cd$plot_uni$PerianalYes + 
   plot_annotation(title = "Perianal (CD patients only)")
 ```
 
@@ -454,11 +515,11 @@ myDF.fc %>%
 ```{r}
 p_sex_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
-  plotCat("sex")
+  plotCat("sex", class = "class")
 
 p_age_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
-  ggplot(aes(x = class_combined, y = age)) +
+  ggplot(aes(x = class, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   geom_boxplot(width=0.1, color="black", alpha=0.2) +
   theme_minimal() +
@@ -467,11 +528,11 @@ p_age_uc <- myDF.fc %>%
 
 p_paeds_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
-  plotCat("paeds")
+  plotCat("paeds", class = "class")
 
 p_baseline_fc_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
-  ggplot(aes(x = class_combined, y = baseline_fc)) +
+  ggplot(aes(x = class, y = baseline_fc)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
   theme_minimal() +
   xlab("Cluster") +
@@ -480,28 +541,38 @@ p_baseline_fc_uc <- myDF.fc %>%
 p_smoke_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   mutate(Smoke = ifelse(!is.na(Smoke), Smoke, "Missing")) %>%
-  plotCat("Smoke")
+  plotCat("Smoke", class = "class")
 
 p_extent_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   mutate(Extent = ifelse(!is.na(Extent), Extent, "Missing")) %>%
-  plotCat("Extent")
+  plotCat("Extent", class = "class")
 
 p_mlr_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
-  mutate(class_combined = relevel(class_combined, ref = "FC4")) %>%
+  mutate(class = relevel(class, ref = "FC3")) %>%
   mlrPlot(var = c("age", "sex", "baseline_fc", "Smoke", "Extent"),
-          class = "class_combined")
+          class = "class")
 
-wrap_elements(p_sex_uc) + p_mlr_uc$plot$sex + 
+wrap_elements(p_sex_uc) + p_mlr_uc$plot_multi$sex + p_mlr_uc$plot_uni$sex + 
   plot_annotation(title = "Sex (UC patients only)")
-wrap_elements(p_age_uc) + p_mlr_uc$plot$age + 
+
+wrap_elements(p_age_uc) + p_mlr_uc$plot_multi$age + p_mlr_uc$plot_uni$age +
   plot_annotation(title = "Age (UC patients only)")
-wrap_elements(p_smoke_uc) + p_mlr_uc$plot$SmokeYes + 
+
+wrap_elements(p_baseline_fc_uc) + p_mlr_uc$plot_multi$baseline_fc + 
+  p_mlr_uc$plot_uni$baseline_fc +
+  plot_annotation(title = "Baseline_FC (UC patients only)")
+
+wrap_elements(p_smoke_uc) + p_mlr_uc$plot_multi$SmokeYes + p_mlr_uc$plot_uni$SmokeYes + 
   plot_annotation(title = "Smoking (UC patients only)")
-wrap_elements(p_extent_uc) + p_mlr_uc$plot$ExtentE2 + p_mlr_uc$plot$ExtentE3 + 
-  plot_annotation(title = "Extent (UC patients only)")
+
+wrap_elements(p_extent_uc) + p_mlr_uc$plot_multi$ExtentE2 + p_mlr_uc$plot_multi$ExtentE3 + 
+  plot_annotation(title = "Extent (UC patients only) - Multivariate CI")
+
+wrap_elements(p_extent_uc) + p_mlr_uc$plot_uni$ExtentE2 + p_mlr_uc$plot_uni$ExtentE3 + 
+  plot_annotation(title = "Extent (UC patients only) - Univariate CI")
 ```
 
 #### Combined plots
