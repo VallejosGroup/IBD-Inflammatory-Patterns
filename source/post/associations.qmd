@@ -48,6 +48,7 @@ library(ggalluvial)
 library(pander)
 library(qqplotr)
 library(table1)
+library(viridis)
 
 library(ggmosaic)
 
@@ -95,13 +96,19 @@ myDF.fc <- fcal %>%
   
 myDF.fc <- merge(myDF.fc, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
 myDF.fc <- myDF.fc %>% 
-  mutate(probmax = pmax(prob1, prob2, prob3, prob4, prob5, 
-                        prob6, prob7, prob8)) #, prob9, prob10))
+  mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
+                        prob5, prob6, prob7, prob8)) #, prob9, prob10))
 myDF.fc <- merge(myDF.fc, dict, by = "ids", all.x = TRUE, all.y = FALSE)
 
-myDF.fc$class <- factor(myDF.fc$class,
-                        levels = 1:8,
-                        labels = paste0("FC", 1:8))
+myDF.fc <- myDF.fc %>%
+  mutate(class_order = plyr::mapvalues(
+    class, from = seq_len(8), to = c(7, 6, 4, 8, 1, 5, 2, 3))) %>%
+  mutate(class_order = factor(
+    class_order, levels = 1:8, labels = paste0("FC", 1:8))) %>%
+  mutate(prob_order1 = prob5, prob_order2 = prob7,
+         prob_order3 = prob8, prob_order4 = prob3,
+         prob_order5 = prob6, prob_order6 = prob2,
+         prob_order7 = prob1, prob_order8 = prob4)
 ```
 
 ### Posterior cluster assignment probabilities 
@@ -114,25 +121,22 @@ myDF.fc$class <- factor(myDF.fc$class,
 #| fig-height: 8
 
 myDF.fc_means <- myDF.fc %>% 
-  group_by(class, followup_cut) %>%
-  summarise(across(starts_with("prob"), function(x) mean(x, na.rm = TRUE)),
+  group_by(class_order, followup_cut) %>%
+  summarise(across(starts_with("prob_order"), function(x) mean(x, na.rm = TRUE)),
             .groups = "drop") %>%
-  pivot_longer(cols = starts_with("prob"), names_to = "prob")
+  pivot_longer(cols = starts_with("prob_order"), names_to = "prob_order")
 
-# Assign level order otherwise alphanumerical order used
-myDF.fc_means$prob <- factor(myDF.fc_means$prob,
-                          levels = c(paste0("prob", 1:8), "probmax"),
-                          labels = c(paste0("FC", 1:8), "probmax"))
-                          #levels = c(paste0("prob", 1:10), "probmax"),
-                          #labels = c(paste0("FC", 1:10), "probmax"))
+# Assign level order otherwise alphanumerical order used 
+# and add sample sizes to labels
+myDF.fc_means <- myDF.fc_means %>%
+  mutate(prob_order = factor(prob_order,
+                             levels = c(paste0("prob_order", 1:8)),
+                             labels = c(paste0("FC", 1:8))),
+         class_order = factor(class_order,
+                              levels = paste0("FC", 1:8),
+                              labels = paste0("Assigned to FC", 1:8, "\n n = ",
+                                              as.vector(table(myDF.fc$class_order)))))
 
-myDF.fc_means$class <- factor(myDF.fc_means$class,
-                           levels = paste0("FC", 1:8),
-                           labels = paste0("Assigned to FC", 1:8, "\n n = ",
-                                           as.vector(table(myDF.fc$class))))
-                          # levels = 1:10,
-                          # labels = paste0("Assigned to FC", 1:10, "\n n = ",
-                           #                as.vector(table(myDF.fc$class))))
 
 
 col.vec <- c("#df5c7f",
@@ -147,11 +151,11 @@ col.vec <- c("#df5c7f",
 #"#c597bd")
 
 
+
 p <- myDF.fc_means %>%
-  filter(prob != "probmax") %>%
-  ggplot(aes(fill = prob, y = value, x = followup_cut)) +
+  ggplot(aes(fill = prob_order, y = value, x = followup_cut)) +
   geom_bar(position = "fill", stat = "identity") +
-  facet_wrap(.~class, ncol = 4) + 
+  facet_wrap(.~class_order, ncol = 4) + 
   theme_minimal() +
   theme(legend.title = element_text(hjust = 0.5),
         strip.background = element_rect(color = "lightgray",
@@ -160,7 +164,12 @@ p <- myDF.fc_means %>%
   labs(x = "Follow-up cutoff (years)",
        y = "",
        fill = "Mean posterior\nprobability of\ncluster assignment") +
-  scale_fill_manual(values = col.vec) 
+  scale_fill_viridis_d(option = "inferno") 
+
+# other colour options
+p
+p + scale_fill_viridis_d(option = "D") 
+p + scale_fill_brewer(palette = "Blues")
 
 ggsave("plots/fc-prob-fup.png", p, width = 11, height = 8, units = "in")
 ggsave("plots/fc-prob-fup.pdf", p, width = 11, height = 8, units = "in")
