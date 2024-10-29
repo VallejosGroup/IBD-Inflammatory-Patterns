@@ -1369,9 +1369,20 @@ ggsave("plots/fc-uc-at-firstline.png", p, width = 10, height = 14, units = "in")
 p
 ```
 
-### Advanced therapy for CD and UC 
+```{R}
+dict.fc.uc <- subset(myDF.fc, diagnosis == "Ulcerative Colitis" & ids %in% fcal$ids)
 
-### Advanced therapy in UC
+#Apply censoring
+dict.fc.uc <- dict.fc.uc %>%
+  mutate(AT_line_1  = if_else(AT == 0, 7, as.numeric(AT_line_1 ))) %>%
+  mutate(AT = if_else(AT_line_1 > 7, 0, 1)) %>%
+  mutate(AT_line_1 = if_else(AT_line_1  > 7, 7, AT_line_1),
+         AT = if_else(AT_line_1 == 7, 0, AT))
+survfit(Surv(AT_line_1, AT) ~ class_order, data = dict.fc.uc) %>%
+  ggsurvplot(pval = TRUE)
+```
+
+### Advanced therapy for CD and UC 
 
 #### All lines
 
