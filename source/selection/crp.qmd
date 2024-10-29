@@ -592,7 +592,7 @@ spaghettiPlot(new.crp,
 )
 invisible(dev.off())
 
-cairo_pdf(paste0("plots/spaghetti/fcal-ncs-reordered.pdf"),
+cairo_pdf(paste0("plots/spaghetti/crp-ncs-reordered.pdf"),
           width = 10,
           height = 16)
 grid::grid.newpage()
