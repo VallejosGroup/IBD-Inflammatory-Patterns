@@ -1003,72 +1003,117 @@ associated with better disease outcomes [@Noor2024; @Dhaens2008].
 
 ```{R}
 #| warning: false
-cd.bio1 <- read_xlsx(paste0(prefix,
-                            "2024-07-30/cd-bio_to-do Master Copy (NathanNoID)",
-                            ".xlsx"))
+cd.bio1 <- read.csv(paste0(prefix,
+                            "2024-10-29/cd-bio_to-do Master Copy (NathanNoID)",
+                            ".csv"))
 
-cd.bio1.all <- cd.bio1[, c(1, 2, 5, 8, 11, 14, 17, 20, 23)]
-
-cd.bio1 <- cd.bio1[, c(1, 4, 5, 6)]
-names(cd.bio1) <- c("ids", "advancedT", "Treatment", "startDate")
-cd.bio1$startDate <- plyr::mapvalues(cd.bio1$startDate,
-                                     c("2017  00:00:00", "?2018"),
-                                     c("2017", "2018"))
-
+bad.dates <- c("na",
+               "2017  00:00:00",
+               "?2018",
+               "01/10/2019 (induction course), restarted 01/06/2020",
+               "?2018-2023",
+               "?2022",
+               "UNKNOWN",
+               "No Follow up")
 
 ineligble <-  c("(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
                "(Toculizamab for RA?)")
 
+cd.bio1 <- cd.bio1 %>%
+  select(ids,
+         Date.started...7, 
+         Date.started...10,
+         Date.started...13,
+         Date.started...16,
+         Date.started...19,
+         Date.started...22,
+         Date.started...25)
 
-cd.bio1$Treatment <- plyr::mapvalues(
-  cd.bio1$Treatment,
-  from = c("1",
-           "2",
-           "(Adalimumab for RA?)",
-           "2- adalimumab for both Crohn's and Ank spon",
-           "2- Adalimumab initiated for ank spond",
-           "2- Adalimumab started for Hidradinitis Supprativa",
-           "2- for ankylosing spondylitis",
-           "3",
-           "4",
-           "5",
-           "6",
-           "7",
-           "8",
-           "9"),
-  to = c("IFX",
-         "ADA",
-         "ADA",
-         "ADA",
-         "ADA",
-         "ADA",
-         "ADA",
-         "VDZ",
-         "UST",
-         "RIS",
-         "CET",
-         "GOL",
-         "UPA",
-         "TOF"),
-  warn_missing = FALSE)
- 
-cd.bio1 <- fix_date_df(cd.bio1, "startDate", excel = TRUE)
+colnames(cd.bio1) <- c("ids",
+                       "X1ST.LINE.START",
+                       "X2ND.LINE.START",
+                       "X3RD.LINE.START",
+                       "X4TH.LINE.START",
+                       "X5TH.LINE.START",
+                       "X6th.line.start",
+                       "X7TH.LINE.START")
+cd.bio1$X8TH.LINE.START <- NA
 
-cd.bio2 <- read_xlsx(paste0(prefix,
-                            "2024-07-30/cd-bio-first-line (Phil's data-Nathan)",
-                            ".xlsx"))
-cd.bio2$advancedT <- 1
+temp <- function(x) {
+  x[x %in% bad.dates]  <- NA
+  x
+}
 
-cd.bio2 <- cd.bio2[, c(1, 4, 2, 3)]
-names(cd.bio2) <- c("ids", "advancedT", "Treatment", "startDate")
-cd.bio2 <- fix_date_df(cd.bio2, "startDate")
+cd.bio1 <- as.data.frame(lapply(cd.bio1, temp))
 
-cd.bio2$Treatment <- plyr::mapvalues(
-  cd.bio2$Treatment,
-  from = c(1, "A", "I", "U", "V"),
-  to = c("IFX", "ADA", "IFX", "UST", "VDZ"))
+cd.bio1 <- fix_date_df(cd.bio1, colnames(cd.bio1)[-1], excel = TRUE)
 
-cd.bio <- rbind(cd.bio1, cd.bio2)
+cd.bio2 <- read.csv(paste0(prefix,
+                            "2024-10-29/cd-bio_general",
+                            ".csv"))
+
+cd.bio2 <- cd.bio2 %>%
+  select(ids,
+         Date.1st.biologic,
+         X2ND.LINE.START,
+         X3RD.LINE.START, 
+         X4TH.LINE.START,
+         X5TH.LINE.START,
+         X6th.line.start,
+         X7th.line.start,
+         X8th.line.start)
+
+colnames(cd.bio2) <- c("ids",
+                       "X1ST.LINE.START",
+                       "X2ND.LINE.START",
+                       "X3RD.LINE.START",
+                       "X4TH.LINE.START",
+                       "X5TH.LINE.START",
+                       "X6th.line.start",
+                       "X7TH.LINE.START",
+                       "X8TH.LINE.START")
+
+cd.bio2 <- as.data.frame(lapply(cd.bio2, temp))
+
+cd.bio2 <- fix_date_df(cd.bio2, colnames(cd.bio2)[-1], excel = TRUE)
+
+cd.bio <- rbind(cd.bio1, cd.bio2) %>%
+  distinct(ids, .keep_all = TRUE)
+
+
+cd.bio <- cd.bio %>%
+  drop_na(X1ST.LINE.START) %>% # Require at least one bio
+  filter(ids %in% dict$ids) %>% # Only subjects included in study 
+  mutate(AT = 1) # All subjects have an AT
+
+# Subtract date of diagnosis and scale to years
+cd.bio <- merge(cd.bio,
+                dict[, c("ids", "date.of.diag")],
+                by = "ids",
+                all.x = FALSE,
+                all.y = FALSE) %>%
+  mutate(X1ST.LINE.START = as.numeric(X1ST.LINE.START - date.of.diag)/365.25,
+         X2ND.LINE.START = as.numeric(X2ND.LINE.START - date.of.diag)/365.25,
+         X3RD.LINE.START = as.numeric(X3RD.LINE.START - date.of.diag)/365.25,
+         X4TH.LINE.START = as.numeric(X4TH.LINE.START - date.of.diag)/365.25,
+         X5TH.LINE.START = as.numeric(X5TH.LINE.START - date.of.diag)/365.25,
+         X6th.line.start = as.numeric(X6th.line.start - date.of.diag)/365.25,
+         X7TH.LINE.START = as.numeric(X7TH.LINE.START - date.of.diag)/365.25,
+         X8TH.LINE.START = as.numeric(X8TH.LINE.START - date.of.diag)/365.25)
+
+
+# Set negative times to 0
+cd.bio[cd.bio < 0] <- 0
+
+names(cd.bio) <- c("ids",
+                   paste0("AT_line_", 1:8),
+                   "AT",
+                   "date.of.diag")
+
+dict <- cd.bio %>%
+  select(-date.of.diag) %>%
+  merge(x = dict, all.x = TRUE, all.y = TRUE, by = "ids") %>%
+  mutate(AT = if_else(diagnosis == "Crohn's Disease" & is.na(AT), 0, AT)) 
 ```
 
 
@@ -1077,179 +1122,38 @@ cd.bio <- rbind(cd.bio1, cd.bio2)
 #### Faecal calprotectin
 
 ```{R}
-#| label: fig-first-year-cd-fc
-#| fig-cap: "First line therapy by year for Crohn's disease cohort."
-#| warning: false
+dict.fc.cd <- subset(dict, diagnosis == "Crohn's Disease" & ids %in% fcal$ids)
 
-dict.fc.cd <- subset(dict.fc, diagnosis == "Crohn's Disease")
-dict.fc.cd <- merge(dict.fc.cd, cd.bio, all.x = TRUE, all.y = FALSE)
+#Apply censoring
 dict.fc.cd <- dict.fc.cd %>%
-  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
-dict.fc.cd$firstY <- dict.fc.cd$advancedT
-
-dict.fc.cd$timeToTherapy <- with(dict.fc.cd, startDate - date.of.diag) / 365.25
-
-for (i in 1:nrow(dict.fc.cd)) {
-  if (dict.fc.cd[i, "advancedT"] == 0) { # If been on AT
-    # If been on AT later than one year of diag
-    
-    if (is.na(dict.fc.cd[i, "startDate"])) {
-      dict.fc.cd[i, "firstY"] <- 1 
-    } else if (dict.fc.cd[i, "startDate"] - dict.fc.cd[i, "date.of.diag"] > 365.25) {
-      dict.fc.cd[i, "firstY"] <- 1 # Map to "No"
-    }
-  }
-}
-# Change to more interpretable value
-dict.fc.cd$firstY <- as.logical(plyr::mapvalues(dict.fc.cd$firstY,
-                                     from = c(0, 1),
-                                     to = c(TRUE, FALSE)))
-
-cols <- c(
-  "#E26D5C",
-  "#17C3B2",
-  "#FFCB77",
-  "#67AAF9"
-)
-dict.fc.cd$Treatment <- plyr::mapvalues(dict.fc.cd$Treatment,
-                                        from = "(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
-                                        to = NA)
-
-#dict.fc.cd <- dict.fc.cd %>%
-#  drop_na(Treatment)
+  mutate(AT_line_1  = if_else(AT == 0, 7, as.numeric(AT_line_1 ))) %>%
+  mutate(AT = if_else(AT_line_1 > 7, 0, 1)) %>%
+  mutate(AT_line_1 = if_else(AT_line_1  > 7, 7, AT_line_1),
+         AT = if_else(AT_line_1 == 7, 0, AT))
 
 
-dict.fc.cd$Treatment <- factor(dict.fc.cd$Treatment,
-                               labels = c("Adalimumab",
-                                          "Infliximab",
-                                          "Ustekinumab",
-                                          "Vedolizumab"))
-
-p1 <- dict.fc.cd %>%
-  drop_na(Treatment) %>%
-  ggplot(aes(
-    color = Treatment,
-    fill = Treatment ,
-    x = year(startDate)
-  )) +
-  geom_bar(position = "stack") +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45),
-    panel.grid.minor.x = element_blank()
-  ) +
-  labs(
-    x = "Year",
-    y = "Frequency",
-    fill = "First-line\nadvanced therapy",
-    color = "First-line\nadvanced therapy"
-  ) +
-  scale_x_continuous(breaks = seq(2004, 2024, by = 2)) +
-  scale_fill_manual(values = cols) +
-  scale_color_manual(values = cols)
-p1
-```
-
-```{R}
-temp <- dict.fc.cd %>%
-  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
-  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
-  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
-   mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
-
-
-temp <- temp %>%
-  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
-         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
-
-
-survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
+survfit(Surv(AT_line_1, AT) ~ 1, data = dict.fc.cd) %>%
   ggsurvplot()
 ```
 
 #### CRP
 
 ```{R}
-dict.crp.cd <- subset(dict.crp, diagnosis == "Crohn's Disease")
-dict.crp.cd <- merge(dict.crp.cd, cd.bio, all.x = TRUE, all.y = FALSE)
+dict.crp.cd <- subset(dict, diagnosis == "Crohn's Disease" & ids %in% crp$ids)
+
+#Apply censoring
 dict.crp.cd <- dict.crp.cd %>%
-  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
-dict.crp.cd$firstY <- dict.crp.cd$advancedT
-
-for (i in 1:nrow(dict.crp.cd)) {
-  if (dict.crp.cd[i, "advancedT"] == 0) { # If been on AT
-    # If been on AT later than one year of diag
-    
-    if (is.na(dict.crp.cd[i, "startDate"])) {
-      dict.crp.cd[i, "firstY"] <- 1 
-    } else if (dict.crp.cd[i, "startDate"] - dict.crp.cd[i, "date.of.diag"] > 365.25) {
-      dict.crp.cd[i, "firstY"] <- 1 # Map to "No"
-    }
-  }
-}
-
-# Change to more interpretable value
-dict.crp.cd$firstY <- as.logical(plyr::mapvalues(dict.crp.cd$firstY,
-                                     from = c(0, 1),
-                                     to = c(TRUE, FALSE)))
-
-dict.crp.cd$timeToTherapy <- with(dict.crp.cd, startDate - date.of.diag) / 365.25
-```
+  mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
+  mutate(AT = if_else(AT_line_1 > 7, 0, 1)) %>%
+   mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1))
 
 
-```{R}
-#| warning: false
-dict.crp.cd$Treatment <- plyr::mapvalues(dict.crp.cd$Treatment,
-                                        from = "(Toculizamab for RA?)",
-                                        to = NA)
-
-#dict.fc.cd <- dict.fc.cd %>%
-#  drop_na(Treatment)
+dict.crp.cd <- dict.crp.cd %>%
+  mutate(AT_line_1= if_else(AT_line_1 < 0, 0, AT_line_1),
+         AT = if_else(AT_line_1 == 7, 0, AT))
 
 
-dict.crp.cd$Treatment <- factor(dict.crp.cd$Treatment,
-                               labels = c("Adalimumab",
-                                          "Infliximab",
-                                          "Ustekinumab",
-                                          "Vedolizumab"))
-
-p1 <- dict.crp.cd %>%
-  drop_na(Treatment) %>%
-  ggplot(aes(
-    color = Treatment,
-    fill = Treatment ,
-    x = year(startDate)
-  )) +
-  geom_bar(position = "stack") +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45),
-    panel.grid.minor.x = element_blank()
-  ) +
-  labs(
-    x = "Year",
-    y = "Frequency",
-    fill = "First-line\nadvanced therapy",
-    color = "First-line\nadvanced therapy"
-  ) +
-  scale_x_continuous(breaks = seq(2004, 2024, by = 2)) +
-  scale_fill_manual(values = cols) +
-  scale_color_manual(values = cols)
-p1 
-```
-
-```{R}
-temp <- dict.crp.cd %>%
-  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
-  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
-  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
-   mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
-
-temp <- temp %>%
-  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
-         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
-
-survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
+survfit(Surv(AT_line_1, AT) ~ 1, data = dict.crp.cd) %>%
   ggsurvplot()
 ```
 
@@ -1357,207 +1261,85 @@ uc.bio.dates <- merge(uc.bio.dates,
                       by = "ids",
                       all.x = FALSE,
                       all.y = FALSE) %>%
-  mutate(X1ST.LINE.START = X1ST.LINE.START - date.of.diag,
-         X2ND.LINE.START = X2ND.LINE.START - date.of.diag,
-         X3RD.LINE.START = X3RD.LINE.START - date.of.diag,
-         X4TH.LINE.START = X4TH.LINE.START - date.of.diag,
-         X5TH.LINE.START = X5TH.LINE.START - date.of.diag,
-         X6th.line.start = X6th.line.start - date.of.diag,
-         X7TH.LINE.START = X7TH.LINE.START - date.of.diag,
-         X8TH.LINE.START = X8TH.LINE.START - date.of.diag)
+  mutate(X1ST.LINE.START = as.numeric(X1ST.LINE.START - date.of.diag)/365.25,
+         X2ND.LINE.START = as.numeric(X2ND.LINE.START - date.of.diag)/365.25,
+         X3RD.LINE.START = as.numeric(X3RD.LINE.START - date.of.diag)/365.25,
+         X4TH.LINE.START = as.numeric(X4TH.LINE.START - date.of.diag)/365.25,
+         X5TH.LINE.START = as.numeric(X5TH.LINE.START - date.of.diag)/365.25,
+         X6th.line.start = as.numeric(X6th.line.start - date.of.diag)/365.25,
+         X7TH.LINE.START = as.numeric(X7TH.LINE.START - date.of.diag)/365.25,
+         X8TH.LINE.START = as.numeric(X8TH.LINE.START - date.of.diag)/365.25)
 
 
 uc.bio.dates[uc.bio.dates < 0] <- 0
 names(uc.bio.dates) <- c("ids",
                          paste0("AT_line_", 1:8),
                          "date.of.diag")
+
+
+
+
+
 dict <- uc.bio.dates %>%
   select(-date.of.diag) %>%
   merge(x = dict, all.x = TRUE, all.y = TRUE, by = "ids")
-```
 
-
-```{R}
-uc.bio <- uc.bio.all[, c(2, 20, 21, 23, 101)]
-
-names(uc.bio) <- c("censor", "Treatment", "startDate", "stopDate", "ids")
-
-uc.bio$Treatment <- toupper(uc.bio$Treatment)
-uc.bio$Treatment <- factor(uc.bio$Treatment,
-                           levels =  c("A",
-                                       "F",
-                                       "G",
-                                       "I",
-                                       "T",
-                                       "U",
-                                       "V"),
-                           labels = c("ADA",
-                                      "FIL",
-                                      "GOL",
-                                      "IFX",
-                                      "TOF",
-                                      "UST",
-                                      "VED"))
-
-uc.bio$stopDate <- plyr::mapvalues(uc.bio$stopDate, "13/02/20223", "13/02/2022")
-
-uc.bio <- fix_date_df(uc.bio, c("startDate", "stopDate"), excel = TRUE)
+dict <- dict %>%
+  mutate(AT_line_1 = if_else(!is.na(AT_line_1.x), AT_line_1.x, AT_line_1.y),
+         AT_line_2 = if_else(!is.na(AT_line_2.x), AT_line_2.x, AT_line_2.y),
+         AT_line_3 = if_else(!is.na(AT_line_3.x), AT_line_3.x, AT_line_3.y),
+         AT_line_4 = if_else(!is.na(AT_line_4.x), AT_line_4.x, AT_line_4.y),
+         AT_line_5 = if_else(!is.na(AT_line_5.x), AT_line_5.x, AT_line_5.y),
+         AT_line_6 = if_else(!is.na(AT_line_6.x), AT_line_6.x, AT_line_6.y),
+         AT_line_7 = if_else(!is.na(AT_line_7.x), AT_line_7.x, AT_line_7.y),
+         AT_line_8 = if_else(!is.na(AT_line_8.x), AT_line_8.x, AT_line_8.y)) %>%
+  select(-AT_line_1.x,
+         -AT_line_2.x,
+         -AT_line_3.x,
+         -AT_line_4.x,
+         -AT_line_5.x,
+         -AT_line_6.x,
+         -AT_line_7.x,
+         -AT_line_8.x,
+         -AT_line_1.y,
+         -AT_line_2.y,
+         -AT_line_3.y,
+         -AT_line_4.y,
+         -AT_line_5.y,
+         -AT_line_6.y,
+         -AT_line_7.y,
+         -AT_line_8.y) %>%
+  mutate(AT = if_else(!is.na(AT_line_1), 1, 0))
 ```
 
 ::: {.panel-tabset group="biomarker"}
 
 #### Faecal calprotectin
 
-```{R}
-#| label: fig-first-year-uc-fc
-#| fig-cap: "First line therapy by year for ulcerative colitis cohort."
-#| warning: false
-
-dict.fc.uc <- subset(dict.fc, diagnosis == "Ulcerative Colitis")
-dict.fc.uc <- merge(dict.fc.uc, uc.bio, all.x = TRUE, all.y = FALSE)
-dict.fc.uc <- dict.fc.uc %>%
-  mutate(advancedT = if_else(is.na(Treatment), 0, 1))
-dict.fc.uc$firstY <- dict.fc.uc$advancedT
-
-dict.fc.uc$timeToTherapy <- with(dict.fc.uc, startDate - date.of.diag) / 365.25
-
-for (i in 1:nrow(dict.fc.uc)) {
-  if (dict.fc.uc[i, "advancedT"] == 1) { # If been on AT
-    # If been on AT later than one year of diag
-    if (is.na(dict.fc.uc[i, "startDate"])) {
-      dict.fc.uc[i, "firstY"] <- 0 
-    } else if (dict.fc.uc[i, "startDate"] - dict.fc.uc[i, "date.of.diag"] > 365.25) {
-      dict.fc.uc[i, "firstY"] <- 0 # Map to "No"
-    }
-  }
-}
-
-
-cols <- c(
-  "#E26D5C",
-  "#17C3B2",
-  "#FFCB77",
-  "#67AAF9",
-  "pink",
-  "purple",
-  "orange"
-)
-
-#dict.fc.cd <- dict.fc.cd %>%
-#  drop_na(Treatment)
-
-p1 <- dict.fc.uc %>%
-  drop_na(Treatment) %>%
-  ggplot(aes(
-    color = Treatment,
-    fill = Treatment ,
-    x = year(startDate)
-  )) +
-  geom_bar(position = "stack") +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45),
-    panel.grid.minor.x = element_blank()
-  ) +
-  labs(
-    x = "Year",
-    y = "Frequency",
-    fill = "First-line\nadvanced therapy",
-    color = "First-line\nadvanced therapy"
-  ) +
-  scale_x_continuous(breaks = seq(2004, 2024, by = 2)) +
-  scale_fill_manual(values = cols) +
-  scale_color_manual(values = cols)
-p1
-```
 
 ```{R}
-temp <- dict.fc.uc %>%
-  mutate(timeToTherapy = if_else(advancedT == 0, 7, as.numeric(timeToTherapy))) %>%
-  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
-   mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
+dict.fc.uc <- dict %>%
+  filter(diagnosis == "Ulcerative Colitis" & ids %in% fcal$ids) %>%
+  mutate(AT_line_1 = if_else(AT == 0, 7, AT_line_1)) %>%
+  mutate(AT = if_else(AT_line_1 > 7, 0, 1),
+         AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+  mutate(AT = if_else(AT_line_1 == 7, 0, AT))
 
-temp <- temp %>%
-  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
-         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
-
-survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
+survfit(Surv(AT_line_1, AT) ~ 1, data = dict.fc.uc) %>%
   ggsurvplot()
 ```
 
 #### CRP
 
 ```{R}
-dict.crp.uc <- subset(dict.crp, diagnosis == "Ulcerative Colitis")
-dict.crp.uc <- merge(dict.crp.uc, uc.bio, all.x = TRUE, all.y = FALSE)
-dict.crp.uc <- dict.crp.uc %>%
-  mutate(advancedT = if_else(is.na(Treatment), 1, 0))
-dict.crp.uc$firstY <- dict.crp.uc$advancedT
+dict.crp.uc <- dict %>%
+  filter(diagnosis == "Ulcerative Colitis" & ids %in% crp$ids) %>%
+  mutate(AT_line_1 = if_else(AT == 0, 7, AT_line_1)) %>%
+  mutate(AT = if_else(AT_line_1 > 7, 0, 1),
+         AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+  mutate(AT = if_else(AT_line_1 == 7, 0, AT))
 
-for (i in 1:nrow(dict.crp.uc)) {
-  if (dict.crp.uc[i, "advancedT"] == 0) { # If been on AT
-    # If been on AT later than one year of diag
-    
-    if (is.na(dict.crp.uc[i, "startDate"])) {
-      dict.crp.uc[i, "firstY"] <- 1 
-    } else if (dict.crp.uc[i, "startDate"] - dict.crp.uc[i, "date.of.diag"] > 365.25) {
-      dict.crp.uc[i, "firstY"] <- 1 # Map to "No"
-    }
-  }
-}
-
-# Change to more interpretable value
-dict.crp.uc$firstY <- as.logical(plyr::mapvalues(dict.crp.uc$firstY,
-                                     from = c(0, 1),
-                                     to = c(TRUE, FALSE)))
-
-dict.crp.uc$timeToTherapy <- with(dict.crp.uc, startDate - date.of.diag) / 365.25
-```
-
-
-```{R}
-#| warning: false
-
-p1 <- dict.crp.uc %>%
-  drop_na(Treatment) %>%
-  ggplot(aes(
-    color = Treatment,
-    fill = Treatment ,
-    x = year(startDate)
-  )) +
-  geom_bar(position = "stack") +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45),
-    panel.grid.minor.x = element_blank()
-  ) +
-  labs(
-    x = "Year",
-    y = "Frequency",
-    fill = "First-line\nadvanced therapy",
-    color = "First-line\nadvanced therapy"
-  ) +
-  scale_x_continuous(breaks = seq(2004, 2024, by = 2)) +
-  scale_fill_manual(values = cols) +
-  scale_color_manual(values = cols)
-p1 
-```
-
-```{R}
-temp <- dict.crp.uc %>%
-  mutate(timeToTherapy = if_else(advancedT == 1,
-                                 7,
-                                 as.numeric(timeToTherapy))) %>%
-  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
-  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
-   mutate(timeToTherapy  = if_else(timeToTherapy  > 7, 7, timeToTherapy))
-
-
-temp <- temp %>%
-  mutate(timeToTherapy = if_else(timeToTherapy < 0, 0, timeToTherapy),
-         advancedT = if_else(timeToTherapy == 7, 0, advancedT))
-
-survfit(Surv(timeToTherapy, advancedT) ~ 1, data = temp) %>%
+survfit(Surv(AT_line_1, AT) ~ 1, data = dict.crp.uc) %>%
   ggsurvplot()
 ```
 
@@ -1603,7 +1385,5 @@ table1(~ age + sex + diagnosis | model,
 
 ```{R}
 saveRDS(dict, paste0(prefix, "processed/dict.RDS"))
-saveRDS(dict.fc.cd, paste0(prefix, "processed/dict-fc-cd.RDS"))
-saveRDS(dict.crp.cd, paste0(prefix, "processed/dict-crp-cd.RDS"))
 ```
 
