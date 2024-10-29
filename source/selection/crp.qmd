@@ -497,6 +497,138 @@ for (G in G.crp) {
 ```
 
 
+
+### Chosen model
+
+```{R}
+new.crp <- data.frame(
+    ids = numeric(),
+    crp_result = numeric(),
+    crp_time = numeric(),
+    class = numeric()
+  )
+  
+for (clust in 1:8) {
+  ids.clust <- subset(models.crp.ma[[8]]$pprob, class == clust)$ids
+  n.clust <- length(ids.clust)
+  rand <- sample(n.clust, n.clust) # Randomise the order of the ids
+  iters <- floor(n.clust / 6) # How many groups of six are there?
+
+  # Matrix to hold the smoothed data
+  crp.ma <- matrix(NA, nrow = iters, ncol = 7)
+  for (i in 0:(iters - 1)) {
+    # Find ids for group of five
+    ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
+    crp.subset <- subset(crp_median, ids %in% ids.select)
+    # Median process as per CRP preprocessing
+    for (j in seq(0, 6)) {
+      if (j == 6) {
+        sub.obs <- subset(
+          crp.subset,
+          crp_time >= j - 0.5 & crp_time <= j + 1
+        )
+      } else {
+        sub.obs <- subset(
+          crp.subset,
+          crp_time >= j - 0.5 & crp_time < j + 0.5
+        )
+      }
+      if (nrow(sub.obs) > 0) {
+        crp.ma[i + 1, j + 1] <- median(sub.obs$crp_result)
+      }
+    }
+  }
+
+  rownames(crp.ma) <- 1:iters
+  crp.ma <- reshape2::melt(t(crp.ma),
+                           id.vars = row.names(crp.ma),
+                           na.rm = TRUE
+  )
+  colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
+  crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
+  crp.ma$crp_time <- crp.ma$crp_time - 1
+  # Take into account uneven spacing at start and end
+  crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+    from = c(0, 6),
+    to = c(0.25, 6.25)
+  )
+  crp.ma$class <- clust # Identify cluster assignment
+  new.crp <- rbind(new.crp, crp.ma)
+}
+```
+
+#### Labelling
+
+The labels/order of the clusters generated above are random. To improve the
+readability and assist with interpretation of associations, it would be
+beneficial to order clusters by some analogue for disease severity. This section
+explores possible solutions for this task. 
+
+##### Cumulative inflammation across follow-up
+
+One possible solution is to order clusters by cumulative inflammation which is
+given by the area under the curve for each mean cluster trajectory.
+
+```{R}
+rank.full <- rankCumulative(models.crp.ma[[8]], tmax = 6.25, var.time = "crp_time")
+
+png(paste0("plots/spaghetti/crp-ncs-reordered.png"),
+    width = 10,
+    height = 16,
+    units = "in",
+    res = 300)
+grid::grid.newpage()
+spaghettiPlot(new.crp,
+  models.crp.ma,
+  G = 8,
+  log = TRUE,
+  tmax = 6.25,
+  sizes = TRUE,
+  knots = FALSE,
+  var.time = "crp_time",
+  clusters = TRUE,
+  ylim = "data",
+  mapping =  rank.full$Original
+)
+invisible(dev.off())
+
+cairo_pdf(paste0("plots/spaghetti/fcal-ncs-reordered.pdf"),
+          width = 10,
+          height = 16)
+grid::grid.newpage()
+spaghettiPlot(new.crp,
+  models.crp.ma,
+  G = 8,
+  log = TRUE,
+  tmax = 6.25,
+  sizes = TRUE,
+  knots = FALSE,
+  var.time = "crp_time",
+  clusters = TRUE,
+  ylim = "data",
+  mapping =  rank.full$Original
+)
+invisible(dev.off())
+
+spaghettiPlot(new.crp,
+  models.crp.ma,
+  G = 8,
+  log = TRUE,
+  tmax = 6.25,
+  sizes = TRUE,
+  knots = FALSE,
+  var.time = "crp_time",
+  clusters = TRUE,
+  ylim = "data",
+  mapping =  rank.full$Original
+)
+
+
+```
+
+
+### Alluvial anchored plot
+
 ```{R}
 alluvial.df <- matrix(nrow = 0, ncol = 3)
 colnames(alluvial.df) <- c("ids", "class", "G")
@@ -515,57 +647,57 @@ alluvial.df$class <- as.factor(alluvial.df$class)
 alluvial.df[alluvial.df[, "G"] == 2, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 2, "class"],
     from = c(1, 2),
-    to = c(6, 4)
+    to = c(1, 2)
   )
 
 alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
     from = c(seq(1, 3)),
-    to = c(1, 2, 3)
+    to = c(1, 2, 6)
   )
 
 alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
     from = c(seq(1, 4)),
-    to = c(1, 2, 3, 4)
+    to = c(6, 1, 2, 7)
   )
 
 alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
     from = c(seq(1, 5)),
-    to = c(1, 2, 3, 4, 5)
+    to = c(6, 5, 2, 1, 7)
   )
 
 alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
     from = c(seq(1, 6)),
-    to = c(1, 2, 3, 4, 5, 6)
+    to = c(2, 1, 6, 3, 7, 5)
   )
 
 alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
     from = c(seq(1, 7)),
-    to = c(1, 2, 3, 4, 5, 6, 7)
+    to = c(2, 1, 4, 6, 5, 7, 3)
   )
 
 alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
-    from = c(seq(1, 8)),
-    to = c(1, 2, 3, 4, 5, 6, 7, 8)
+    from = rank.full$Original,
+    to = rank.full$New
   )
 
 
 alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 9, "class"],
     from = c(seq(1, 9)),
-    to = c(1, 2, 3, 4, 5, 6, 7, 8, 9)
+    to = c(8, 2, 7, 1, 5, 9, 6, 3, 4)
   )
 
 
 alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 10, "class"],
     from = c(seq(1, 10)),
-    to = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    to = c(9, 4, 1, 5, 6, 7, 2, 10, 3, 8)
   )
 
 
@@ -587,7 +719,7 @@ p <- ggplot(
   geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
   theme(legend.position = "none") +
-  scale_fill_manual(values = rainbow(11)) +
+  scale_fill_manual(values = c(viridis::viridis(8), "#FFF282", "#F8F3C3")) +
   xlab("Assumed number of clusters") +
   ylab("Frequency")
 print(p)
