@@ -1071,6 +1071,7 @@ cd.bio2$Treatment <- plyr::mapvalues(
 cd.bio <- rbind(cd.bio1, cd.bio2)
 ```
 
+
 ::: {.panel-tabset group="biomarker"}
 
 #### Faecal calprotectin
@@ -1328,13 +1329,56 @@ dict.fc.uc %>%
   wrap_table(gt(counts), space = "free_y") 
 ```
 
+
 ### Advanced therapies in UC
 
 ```{R}
 #| warning: false
-uc.bio <- read.csv(paste0(prefix, "2024-10-17/UC-cleaned.csv"))
+uc.bio.all <- read.csv(paste0(prefix, "2024-10-17/UC-cleaned.csv"), na.strings = c("na", "NA"))
+```
 
-uc.bio <- uc.bio[, c(2, 20, 21, 23, 101)]
+```{R}
+uc.bio.dates <- uc.bio.all %>%
+  select(ids,
+         X1ST.LINE.START,
+         X2ND.LINE.START,
+         X3RD.LINE.START,
+         X4TH.LINE.START,
+         X5TH.LINE.START,
+         X6th.line.start,
+         X7TH.LINE.START,
+         X8TH.LINE.START)
+uc.bio.dates <- fix_date_df(uc.bio.dates,
+                            names(uc.bio.dates)[-1],
+                            excel = TRUE)
+uc.bio.dates <- subset(uc.bio.dates, ids %in% unique(fcal$ids))
+uc.bio.dates <- merge(uc.bio.dates,
+                      dict[, c("ids", "date.of.diag")],
+                      by = "ids",
+                      all.x = FALSE,
+                      all.y = FALSE) %>%
+  mutate(X1ST.LINE.START = X1ST.LINE.START - date.of.diag,
+         X2ND.LINE.START = X2ND.LINE.START - date.of.diag,
+         X3RD.LINE.START = X3RD.LINE.START - date.of.diag,
+         X4TH.LINE.START = X4TH.LINE.START - date.of.diag,
+         X5TH.LINE.START = X5TH.LINE.START - date.of.diag,
+         X6th.line.start = X6th.line.start - date.of.diag,
+         X7TH.LINE.START = X7TH.LINE.START - date.of.diag,
+         X8TH.LINE.START = X8TH.LINE.START - date.of.diag)
+
+
+uc.bio.dates[uc.bio.dates < 0] <- 0
+names(uc.bio.dates) <- c("ids",
+                         paste0("AT_line_", 1:8),
+                         "date.of.diag")
+dict <- uc.bio.dates %>%
+  select(-date.of.diag) %>%
+  merge(x = dict, all.x = TRUE, all.y = TRUE, by = "ids")
+```
+
+
+```{R}
+uc.bio <- uc.bio.all[, c(2, 20, 21, 23, 101)]
 
 names(uc.bio) <- c("censor", "Treatment", "startDate", "stopDate", "ids")
 
@@ -1356,10 +1400,6 @@ uc.bio$Treatment <- factor(uc.bio$Treatment,
                                       "VED"))
 
 uc.bio$stopDate <- plyr::mapvalues(uc.bio$stopDate, "13/02/20223", "13/02/2022")
-
-uc.bio <- uc.bio %>%
-  mutate(startDate = if_else(startDate == "na", NA, startDate),
-         stopDate = if_else(stopDate == "na", NA, stopDate))
 
 uc.bio <- fix_date_df(uc.bio, c("startDate", "stopDate"), excel = TRUE)
 ```

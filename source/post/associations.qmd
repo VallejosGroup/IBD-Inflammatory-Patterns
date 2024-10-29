@@ -57,7 +57,7 @@ fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
 model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
 crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
-model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-9.RDS"))
+model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
 ```
 
 This page explores potential associations between information available at
@@ -1152,6 +1152,118 @@ with(
   fisher.test(table(class, firstY), workspace = 2000000)
 )
 ```
+
+
+### Advanced therapy in UC
+
+```{R}
+dict.fc.uc <- dict %>%
+  filter(ids %in% fcal$ids) %>%
+  filter(diagnosis == "Ulcerative Colitis")
+```
+
+```{R}
+fc.uc.at <- reshape2::melt(dict.fc.uc,
+                           id.vars = "ids",
+                           measure.vars = paste0("AT_line_", seq(1, 8)),
+                           variable.name = "Line") %>%
+  drop_na(value) %>%
+  mutate(value = as.numeric(value/365.25))
+fc.uc.at$Line <- as.factor(str_replace(fc.uc.at$Line, "AT_line_", ""))
+
+myDF.fc.uc <- subset(myDF.fc, diagnosis == "Ulcerative Colitis")
+
+
+
+
+fc.uc.at <- merge(fc.uc.at,
+                  myDF.fc[, c("ids", "class")],
+                  by = "ids",
+                  all.x = TRUE,
+                  all.y = FALSE)
+
+scaling <- table(fc.uc.at$class)/table(myDF.fc.uc$class)
+
+time.pred <- seq(0, 7, by = 0.01)
+
+pred.fc.df <- data.frame(
+      calpro_time = c(time.pred, time.pred),
+      diagnosis = c(
+        rep("Crohn's Disease", length(time.pred)),
+        rep("Ulcerative Colitis", length(time.pred))
+      )
+    )
+pred.fc.df.update <- lcmm::predictY(model.fc,
+                                    pred.fc.df,
+                                    var.time = "calpro_time",
+                                    draws = TRUE
+                                    )$pred
+
+pred <- predictY(model.fc, pred.fc.df, var.time = "calpro_time", draws = TRUE)$pred
+
+pred <- as.data.frame(pred[1:length(time.pred), ])
+pred$time <- time.pred
+
+plots <- list()
+
+ylimit <- log(2500)
+
+title.mapping <- c(7, 6, 4, 8, 1, 5, 2, 3)
+
+for (g in 1:8) {
+  prediction <- pred[, c(g, g + 8, g + 16, 25)]
+  names(prediction) <- c("mean", "lower", "upper", "time")
+
+  scaler <- scaling[[g]]
+
+  temp <- fc.uc.at %>%
+    filter(class == paste0("FC", g)) %>%
+    filter(value < 7) 
+  
+  dens <- density(temp$value, kernel = "gaussian", from = 0, to = 7)
+  dens <- data.frame(x = dens$x, y = dens$y)
+  dens$y <- dens$y * 20 * scaler
+  
+  plots[[g]] <- dens %>%
+    ggplot() +
+    geom_area(aes(x = x,
+                  y = y),
+                 fill = "#AB87FF",
+                 color =  "#7903F0",
+                 linewidth = 1.2,
+                 lty = 3,
+                 alpha = 0.7) + 
+    geom_line(aes(x = time, y = mean),
+              prediction,
+              color = "red",
+              linewidth = 1.2) +
+    geom_hline(yintercept = log(250), lty = 2, color =  "#007add") +
+    scale_y_continuous(
+      name = "Log (FC (\u03BCg/g))",
+      limits = c(0, ylimit),
+      sec.axis = sec_axis(transform = ~./ylimit,
+                          name = "Advanced therapy density")) +
+    theme_minimal() +
+    theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5))  +
+    xlab("Time (years)") +
+    ggtitle(paste0("FC", title.mapping[g]))
+}
+
+
+mapping <- c(5, 7, 8, 3, 6, 2, 1, 4)
+
+for (i in 1:8) {
+  if (i == 1) {
+    p <- plots[[mapping[i]]]
+  } else {
+    p <- p + plots[[mapping[i]]]
+  }
+}
+
+p <- p + plot_layout(ncol = 2)
+ggsave("plots/fc-uc-at.png", p, width = 10, height = 14, units = "in")
+```
+
 
 ### Demographics table
 
