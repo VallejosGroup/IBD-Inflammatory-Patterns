@@ -21,13 +21,13 @@ p <- p1 / p2  +
 
 ggsave("paper/Figure-S7.pdf",
        p,
-       width = 10,
-       height = 10,
+       width = 12,
+       height = 12,
        units = "in")
 
 
 ggsave("paper/Figure-S7.png",
        p,
-       width = 10,
-       height = 10,
+       width = 12,
+       height = 12,
        units = "in")

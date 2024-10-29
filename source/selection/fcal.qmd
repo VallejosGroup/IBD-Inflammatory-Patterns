@@ -973,29 +973,21 @@ given by the area under the curve for each mean cluster trajectory.
 
 ```{R}
 rank.full <- rankCumulative(models.fcal[[8]], tmax = 7)
-temp <- rank.full$Original[c(1, 5, 2, 6, 3, 7, 4, 8)]
 
-grid::grid.newpage()
-spaghettiPlot(new.fc,
-  models.fcal,
-  G = 8,
-  log = TRUE,
-  tmax = 7,
-  sizes = TRUE,
-  knots = FALSE,
-  var.time = "calpro_time",
-  clusters = TRUE,
-  mapping =  rank.full$Original
-)
+rank.full %>%
+  ggplot(aes(x = paste0("FC", New), y = Area)) +
+  geom_bar(stat = "identity", fill = "#745C97", color = "#39375B") +
+  ylab("Cumulative inflammation (Area)") +
+  xlab("Cluster") +
+  theme_minimal()
 ```
 
-
-##### Cumulative inflammation across first year
-
-
 ```{R}
-rank.full <- rankCumulative(models.fcal[[8]], tmax = 1)
-
+png(paste0("plots/spaghetti/fcal-ncs-reordered.png"),
+    width = 10,
+    height = 16,
+    units = "in",
+    res = 300)
 grid::grid.newpage()
 spaghettiPlot(new.fc,
   models.fcal,
@@ -1008,19 +1000,51 @@ spaghettiPlot(new.fc,
   clusters = TRUE,
   mapping =  rank.full$Original
 )
+invisible(dev.off())
+
+cairo_pdf(paste0("plots/spaghetti/fcal-ncs-reordered.pdf"),
+          width = 10,
+          height = 16)
+grid::grid.newpage()
+spaghettiPlot(new.fc,
+  models.fcal,
+  G = 8,
+  log = TRUE,
+  tmax = 7,
+  sizes = TRUE,
+  knots = FALSE,
+  var.time = "calpro_time",
+  clusters = TRUE,
+  mapping =  rank.full$Original
+)
+invisible(dev.off())
+
+spaghettiPlot(new.fc,
+  models.fcal,
+  G = 8,
+  log = TRUE,
+  tmax = 7,
+  sizes = TRUE,
+  knots = FALSE,
+  var.time = "calpro_time",
+  clusters = TRUE,
+  mapping =  rank.full$Original
+)
+
+
 ```
 
 
 #### Alluvial anchored plot
 
-Having chosen the 10-cluster model to be the most appropriate, we have produced
+Having chosen the 8-cluster model to be the most appropriate, we have produced
 a version of @fig-fcal-alluvial-unadjusted using the labels assigned for the
-10-cluster model. 
+8-cluster model. 
 
 ```{R}
 alluvial.df <- matrix(nrow = 0, ncol = 3)
 colnames(alluvial.df) <- c("ids", "class", "G")
-for (G in G.fcal) {
+for (G in 2:10) {
   alluvial.df <- rbind(alluvial.df, cbind(models.fcal[[G]]$pprob[, 1:2], G = G))
 }
 alluvial.df <- as.data.frame(alluvial.df)
@@ -1033,59 +1057,58 @@ alluvial.df$class <- as.factor(alluvial.df$class)
 alluvial.df[alluvial.df[, "G"] == 2, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 2, "class"],
     from = c(1, 2),
-    to = c(4, 10)
+    to = c(4, 8)
   )
 
 alluvial.df[alluvial.df[, "G"] == 3, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 3, "class"],
     from = c(seq(1, 3)),
-    to = c(10, 4, 1)
+    to = c(8, 4, 3)
   )
 
 alluvial.df[alluvial.df[, "G"] == 4, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 4, "class"],
     from = c(seq(1, 4)),
-    to = c(10, 2, 4, 1)
+    to = c(8, 7, 4, 3)
   )
 
 alluvial.df[alluvial.df[, "G"] == 5, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 5, "class"],
     from = c(seq(1, 5)),
-    to = c(1, 4, 9, 10, 2)
+    to = c(3, 4, 6, 8, 7)
   )
 
 alluvial.df[alluvial.df[, "G"] == 6, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 6, "class"],
     from = c(seq(1, 6)),
-    to = c(7, 2, 9, 1, 10, 4)
+    to = c(1, 7, 6, 3, 8, 4)
   )
 
 alluvial.df[alluvial.df[, "G"] == 7, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 7, "class"],
     from = c(seq(1, 7)),
-    to = c(2, 4, 9, 10, 1, 5, 7)
+    to = c(5, 4, 6, 8, 3, 7, 1)
   )
 
 alluvial.df[alluvial.df[, "G"] == 8, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 8, "class"],
-    from = c(seq(1, 8)),
-    to = c(5, 9, 4, 10, 7, 2, 8, 1)
+    from = rank.full$Original,
+    to = rank.full$New
   )
 
 
 alluvial.df[alluvial.df[, "G"] == 9, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 9, "class"],
     from = c(seq(1, 9)),
-    to = c(4, 9, 8, 3, 7, 2, 5, 1, 10)
+    to = c(4, 6, 2, 9, 1, 5, 7, 3, 8)
   )
 
 
-alluvial.df[alluvial.df[, "G"] == 11, "class"] <-
-  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 11, "class"],
-    from = c(seq(1, 11)),
-    to = c(7, 6, 5, 1, 11, 10, 3, 2, 9, 4, 8)
+alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
+  plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 10, "class"],
+    from = c(seq(1, 10)),
+    to = c(3, 5, 9, 4, 7, 10, 1, 2, 6, 8)
   )
-
 
 p <- ggplot(
   alluvial.df,
@@ -1103,7 +1126,7 @@ p <- ggplot(
   geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
   theme(legend.position = "none") +
-  scale_fill_manual(values = rainbow(11)) +
+  scale_fill_manual(values = c(viridis::inferno(8), "#F2F3C9", "white")) +
   xlab("Assumed number of clusters") +
   ylab("Frequency")
 print(p)
