@@ -571,7 +571,16 @@ given by the area under the curve for each mean cluster trajectory.
 
 ```{R}
 rank.full <- rankCumulative(models.crp.ma[[8]], tmax = 6.25, var.time = "crp_time")
+rank.full %>%
+  ggplot(aes(x = paste0("FC", New), y = Area)) +
+  geom_bar(stat = "identity", fill = "#745C97", color = "#39375B") +
+  ylab("Cumulative inflammation (Area)") +
+  xlab("Cluster") +
+  theme_minimal()
+```
 
+
+```{R}
 png(paste0("plots/spaghetti/crp-ncs-reordered.png"),
     width = 10,
     height = 16,
