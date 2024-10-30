@@ -52,7 +52,7 @@ rm(G.cand, G.cands)
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 
 ####################################################################
-### Load CRP moving average (no autocorrelation struture) models ###
+### Load CRP moving average (no autocorrelation structure) models ###
 ####################################################################
 G.crp <- numeric()
 models.crp <- list()
@@ -69,6 +69,20 @@ rm(G.cand, G.cands)
 
 
 ```{R}
+
+fc.remapping <- function(x) {
+  plyr::mapvalues(x,
+                  from = seq(1, 8),
+                  to = c(7, 6, 4, 8, 1, 5, 2, 3))
+}
+
+crp.remapping <- function(x) {
+  plyr::mapvalues(x,
+                  from = seq(1, 8),
+                  to = c(2, 3, 1, 4, 5, 7, 6, 8))
+}
+
+
 col.vec <- c(
   "1" = "#77AADD",
   "2" = "#EE8866",
@@ -77,13 +91,11 @@ col.vec <- c(
   "5" = "#99DDFF",
   "6" = "#44BB99",
   "7" = "#BBCC33",
-  "8" = "#AAAA00",
-  "9" = "#344966",
-  "10" = "#7F2982"
+  "8" = "#344966"
 )
 
-fcal.pprob <- models.fcal[[10]]$pprob
-crp.pprob <- models.crp[[10]]$pprob
+fcal.pprob <- models.fcal[[8]]$pprob
+crp.pprob <- models.crp[[8]]$pprob
 
 fcal.ids <- fcal.pprob$ids
 crp.ids <- crp.pprob$ids
@@ -96,15 +108,20 @@ fcal.pprob <- subset(fcal.pprob, ids %in% ids.comb)
 crp.pprob <- subset(crp.pprob, ids %in% ids.comb)
 
 
-classes <- rbind(
-  data.frame(fcal.pprob[, c(1, 2)], type = "FC"),
-  data.frame(crp.pprob[, c(1, 2)], type = "CRP")
-)
+fc.classes <- data.frame(fcal.pprob[, c(1, 2)], type = "FC")
+fc.classes$class <- fc.remapping(fc.classes$class)
+
+crp.classes <- data.frame(crp.pprob[, c(1, 2)], type = "CRP")
+crp.classes$class <- crp.remapping(crp.classes$class)
+
+classes <- rbind(fc.classes, crp.classes)
+
 classes$class <- as.factor(classes$class)
 classes$type <- as.factor(classes$type)
 classes$type <- relevel(classes$type, "FC")
 
-p1 <- ggplot(classes, aes(
+p1 <- classes %>%
+  ggplot(aes(
   x = type,
   stratum = class,
   alluvium = ids,
@@ -132,11 +149,11 @@ new.data <- rbind(
 )
 
 
-preds.fcal <- predictY(models.fcal[[10]], newdata = new.data, draws = TRUE)
+preds.fcal <- predictY(models.fcal[[8]], newdata = new.data, draws = TRUE)
 plot.fcal <- data.frame(time = calpro_time,
                         pred = preds.fcal$pred[, "Ypred_class1"],
                         class = "1")
-for (class in as.character(2:10)) {
+for (class in as.character(2:8)) {
   plot.fcal <- rbind(
     plot.fcal,
     data.frame(
@@ -147,7 +164,11 @@ for (class in as.character(2:10)) {
   )
 }
 
-p2 <- ggplot(plot.fcal, aes(x = time, y = pred, color = class)) +
+plot.fcal$class <- fc.remapping(plot.fcal$class)
+
+
+p2 <- plot.fcal %>%
+  ggplot(aes(x = time, y = pred, color = class)) +
   geom_line(size = 0.7) +
   theme_minimal() +
   xlab("Time (years)") +
@@ -157,8 +178,6 @@ p2 <- ggplot(plot.fcal, aes(x = time, y = pred, color = class)) +
   theme(axis.line = element_line(colour = "gray")) +
   scale_color_manual(values = col.vec)
 
-
-
 crp_time <- seq(0, 7, by = 0.1)
 
 new.data <- cbind(crp_time, ns(crp_time, df = 4, Boundary.knots = c(0, 7)))
@@ -167,12 +186,12 @@ new.data <- rbind(
   data.frame(new.data, diagnosis = "UC")
 )
 
-preds.crp <- predictY(models.crp[[10]], newdata = new.data, draws = TRUE)
+preds.crp <- predictY(models.crp[[8]], newdata = new.data, draws = TRUE)
 plot.crp <- data.frame(
   time = crp_time,
   pred = preds.crp$pred[, "Ypred_class1"], class = "1"
 )
-for (class in as.character(2:10)) {
+for (class in as.character(2:8)) {
   plot.crp <- rbind(
     plot.crp,
     data.frame(
@@ -183,7 +202,10 @@ for (class in as.character(2:10)) {
   )
 }
 
-p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
+plot.crp$class <- crp.remapping(plot.crp$class)
+
+p3 <- plot.crp %>%
+  ggplot(aes(x = time, y = pred, color = class)) +
   geom_line(size = 0.7) +
   theme_minimal() +
   xlab("Time (years)") +
@@ -208,11 +230,11 @@ ggsave("paper/big-comp.pdf", p, width = 10, height = 6.75)
 
 ```{R}
 #| include: false
-ids.shared <- intersect(models.fcal[[10]]$pprob$ids, models.crp[[10]]$pprob$ids)
+ids.shared <- intersect(models.fcal[[8]]$pprob$ids, models.crp[[8]]$pprob$ids)
 
-fc.df <- subset(models.fcal[[10]]$pprob, ids %in% ids.shared)[,c(1, 2)]
+fc.df <- subset(models.fcal[[8]]$pprob, ids %in% ids.shared)[,c(1, 2)]
 colnames(fc.df) <- c("ids", "FCcluster")
-crp.df <- subset(models.crp[[10]]$pprob, ids %in% ids.shared)[,c(1, 2)]
+crp.df <- subset(models.crp[[8]]$pprob, ids %in% ids.shared)[,c(1, 2)]
 colnames(crp.df) <- c("ids", "CRPcluster")
 mapping <- merge(fc.df, crp.df, by = "ids")
 
