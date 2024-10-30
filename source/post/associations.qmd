@@ -959,7 +959,6 @@ fc.cd.at$Line <- as.factor(str_replace(fc.cd.at$Line, "AT_line_", ""))
 
 myDF.fc.cd <- subset(myDF.fc, diagnosis == "Crohn's Disease")
 
-
 fc.cd.at <- merge(fc.cd.at,
                   myDF.fc[, c("ids", "class")],
                   by = "ids",
@@ -1046,6 +1045,105 @@ for (i in 1:8) {
 
 p <- p + plot_layout(ncol = 2)
 ggsave("plots/fc-cd-at.png", p, width = 10, height = 14, units = "in")
+p
+```
+
+
+```{R}
+fc.cd.at <- reshape2::melt(dict.fc.cd,
+                           id.vars = "ids",
+                           measure.vars = paste0("AT_line_", seq(1, 8)),
+                           variable.name = "Line") %>%
+  drop_na(value)
+fc.cd.at$Line <- as.factor(str_replace(fc.cd.at$Line, "AT_line_", ""))
+
+myDF.fc.cd <- subset(myDF.fc, diagnosis == "Crohn's Disease")
+
+
+fc.cd.at <- merge(fc.cd.at,
+                  myDF.fc[, c("ids", "class")],
+                  by = "ids",
+                  all.x = TRUE,
+                  all.y = FALSE)
+
+
+time.pred <- seq(0, 7, by = 0.01)
+
+pred.fc.df <- data.frame(
+      calpro_time = c(time.pred, time.pred),
+      diagnosis = c(
+        rep("Crohn's Disease", length(time.pred)),
+        rep("Ulcerative Colitis", length(time.pred))
+      )
+    )
+pred.fc.df.update <- lcmm::predictY(model.fc,
+                                    pred.fc.df,
+                                    var.time = "calpro_time",
+                                    draws = TRUE
+                                    )$pred
+
+pred <- predictY(model.fc, pred.fc.df, var.time = "calpro_time", draws = TRUE)$pred
+
+pred <- as.data.frame(pred[1:length(time.pred), ])
+pred$time <- time.pred
+
+plots <- list()
+
+ylimit <- log(2500)
+title.mapping <- c(7, 6, 4, 8, 1, 5, 2, 3)
+
+
+for (g in 1:8) {
+  prediction <- pred[, c(g, g + 8, g + 16, 25)]
+  names(prediction) <- c("mean", "lower", "upper", "time")
+
+
+  temp <- fc.cd.at %>%
+    filter(class == paste0(g)) %>%
+    filter(value < 7) 
+  
+  
+  temp %>% 
+    summarise()
+  
+  
+  
+  
+  
+  
+  plots[[g]] <- temp %>%
+    ggplot() +
+    geom_histogram(aes(x = value, y = after_stat(count)),
+                   fill = "#AB87FF",
+                   color =  "#7903F0") + 
+    geom_line(aes(x = time, y = mean),
+              prediction,
+              color = "red",
+              linewidth = 1.2) +
+    geom_hline(yintercept = log(250), lty = 2, color =  "#007add") +
+    scale_y_continuous(
+      name = "Log (FC (\u03BCg/g))",
+      limits = c(0, ylimit),
+      sec.axis = sec_axis(transform = ~./ylimit,
+                          name = "Advanced therapy density")) +
+    theme_minimal() +
+    theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5))  +
+    xlab("Time (years)") +
+    ggtitle(paste0("FC", title.mapping[g]))
+}
+
+mapping <- c(5, 7, 8, 3, 6, 2, 1, 4)
+
+for (i in 1:8) {
+  if (i == 1) {
+    p <- plots[[mapping[i]]]
+  } else {
+    p <- p + plots[[mapping[i]]]
+  }
+}
+
+p <- p + plot_layout(ncol = 2)
+ggsave("plots/fc-cd-at-hist.png", p, width = 10, height = 14, units = "in")
 p
 ```
 
@@ -1138,6 +1236,7 @@ p <- p + plot_layout(ncol = 2)
 ggsave("plots/fc-cd-at-firstline.png", p, width = 10, height = 14, units = "in")
 p
 ```
+
 
 ```{R}
 dict.fc.cd <- subset(myDF.fc, diagnosis == "Crohn's Disease" & ids %in% fcal$ids)
@@ -1387,6 +1486,10 @@ survfit(Surv(AT_line_1, AT) ~ class_order, data = dict.fc.uc) %>%
 #### All lines
 
 ```{R}
+
+```
+
+```{R}
 dict.fc <- dict %>%
   filter(ids %in% fcal$ids) %>%
   filter(diagnosis == "Crohn's Disease" | diagnosis == "Ulcerative Colitis")
@@ -1476,7 +1579,7 @@ for (g in 1:8) {
     theme_minimal() +
     theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5))  +
     xlab("Time (years)") +
-    ggtitle(paste0("FC", title.mapping[g]))
+    ggtitle(paste0("FC", title.mapping[g], "CD: "))
 }
 
 
@@ -1493,6 +1596,232 @@ for (i in 1:8) {
 p <- p + plot_layout(ncol = 2)
 ggsave("plots/fc-at.png", p, width = 10, height = 14, units = "in")
 p
+```
+
+
+W/ Density
+
+```{R}
+dens.cd.big <- data.frame(x = numeric(),
+                          y = numeric(),
+                          CumulativeY = numeric(),
+                          class = character())
+
+
+dens.uc.big <- data.frame(x = numeric(),
+                          y = numeric(),
+                          CumulativeY = numeric(),
+                          class = character())
+
+
+km.df <- data.frame(time = numeric(),
+                    cumhaz = numeric(),
+                    class = character(),
+                    diag = character())
+
+for (g in 1:8) {
+  temp.cd <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Crohn's Disease")
+  
+  
+  temp.cd  <- temp.cd  %>%
+    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
+    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
+    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
+  
+  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.cd)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "CD"))
+  
+  
+  temp.uc <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Ulcerative Colitis")
+  
+
+  temp.uc  <- temp.uc  %>%
+    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
+    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
+    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
+  
+  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.uc, stype = 2)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "UC"))
+  
+  temp.cd <- temp.cd %>%
+    filter(AT == 1)
+  
+  dens.cd <- density(temp.cd$AT_line_1, kernel = "gaussian", from = 0, to = 7, na.rm = TRUE)
+  dens.cd <- data.frame(x = dens.cd$x, y = dens.cd$y)
+  dens.cd$CumulativeY <- cumsum(dens.cd$y)
+  dens.cd$class <- paste0("FC", g)
+  dens.cd.big <- rbind(dens.cd.big,
+                       dens.cd)
+
+  temp.uc <- temp.uc %>%
+    filter(AT == 1)
+  dens.uc <- density(temp.uc$AT_line_1, kernel = "gaussian", from = 0, to = 7, na.rm = TRUE)
+  dens.uc <- data.frame(x = dens.uc$x, y = dens.uc$y)
+#  dens.uc$y <- dens.uc$y/nrow(temp.uc)
+  dens.uc$CumulativeY <- cumsum(dens.uc$y)
+  dens.uc$class <- paste0("FC", g)
+  dens.uc.big <- rbind(dens.uc.big,
+                       dens.uc)
+}
+
+dens.cd.big$diag <- "CD"
+dens.uc.big$diag <- "UC"
+
+dens <- rbind(dens.cd.big, dens.uc.big)
+
+
+p1 <- ggplot(dens, aes(x = x, y = y, color = diag, fill = diag)) +
+  geom_area(alpha = .5, position = 'identity') +
+  geom_line(aes(y = cumhaz, x = time), data = km.df, lty = 2) +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() 
+p1
+```
+
+w/ trajectories
+
+```{R}
+km.df <- data.frame(time = numeric(),
+                    cumhaz = numeric(),
+                    class = character(),
+                    diag = character())
+
+traj.df <- data.frame(prediction = numeric(),
+                      time = numeric(),
+                      class = character())
+
+
+
+time.pred <- seq(0, 7, by = 0.01)
+
+pred.fc.df <- data.frame(
+      calpro_time = c(time.pred, time.pred),
+      diagnosis = c(
+        rep("Crohn's Disease", length(time.pred)),
+        rep("Ulcerative Colitis", length(time.pred))
+      )
+    )
+pred.fc.df.update <- lcmm::predictY(model.fc,
+                                    pred.fc.df,
+                                    var.time = "calpro_time",
+                                    draws = TRUE
+                                    )$pred
+
+pred <- predictY(model.fc, pred.fc.df, var.time = "calpro_time", draws = TRUE)$pred
+
+pred <- as.data.frame(pred[1:length(time.pred), ])
+pred$time <- time.pred
+
+
+for (g in 1:8) {
+  traj <- pred[, c(g, ncol(pred)), ]
+  names(traj) <- c("prediction", "time")
+  traj$class <- paste0("FC", g)
+  traj.df <- rbind(traj.df, traj)
+  
+  temp.cd <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Crohn's Disease")
+
+  temp.cd  <- temp.cd  %>%
+    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
+    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
+    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
+  
+  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.cd)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "CD"))
+  
+  
+  temp.uc <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Ulcerative Colitis")
+  
+
+  temp.uc  <- temp.uc  %>%
+    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
+    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
+    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
+  
+  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.uc)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "UC"))
+  temp.cd <- temp.cd %>%
+    filter(AT == 1)
+}
+
+traj.df$class <- plyr::mapvalues(traj.df$class, 
+                                 from = paste0("FC", seq(1, 8)),
+                                 to = paste0("FC", c(7, 6, 4, 8, 1, 5, 2, 3)))
+
+dens <- rbind(dens.cd.big, dens.uc.big)
+
+p1 <- ggplot(km.df, aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag, fill = diag), lty = 2) +
+  geom_line(aes(x = time, y = prediction/log(2500) ), data = traj.df, color = "black") +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() + 
+  scale_y_continuous(name = "Cumulative",
+                     
+      sec.axis = sec_axis(transform = ~.*log(2500),
+                          name = "Log (FC (\u03BCg/g))"))
+p1
+```
+
+
+
+```{R}
+
+dat <- data.frame(Cluster = character(), CD = numeric(), UC = numeric())
+
+    
+for (g in 1:8) {
+  total <- myDF.fc %>%
+    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
+    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
+    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1)) %>%
+    filter(class_order == paste0("FC", g)) %>%
+    summarise(CD = sum(diagnosis == "Crohn's Disease"),
+              UC = sum(diagnosis == "Ulcerative Colitis"))
+    
+  therapy <- myDF.fc %>%
+    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
+    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
+    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1)) %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(AT == 1) %>%
+    summarise(CD = sum(diagnosis == "Crohn's Disease"),
+              UC = sum(diagnosis == "Ulcerative Colitis"))
+  
+  dat <- rbind(dat,
+               data.frame(Cluster = paste0("FC", g),
+                          CD = (therapy$CD/total$CD) * 100,
+                          UC = (therapy$UC/total$UC) * 100))
+}
 ```
 
 ### Demographics table
