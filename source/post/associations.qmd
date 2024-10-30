@@ -91,7 +91,7 @@ myDF.fc <- fcal %>%
   group_by(ids) %>%
   summarise(n.total = n(),
             followup = max(calpro_time),) %>%
-  mutate(followup_cut = cut(followup, breaks = c(0, 4, 6, 7)),
+  mutate(followup_cut = cut(followup, breaks = c(0, 2, 4, 6, 7)),
          n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
   
 myDF.fc <- merge(myDF.fc, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
@@ -475,7 +475,7 @@ p_perianal_cd <- myDF.fc %>%
 p_mlr_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
-  mutate(class_order = relevel(class_order, ref = "FC8")) %>%
+  mutate(class_order = relevel(class_order, ref = "FC4")) %>%
   mlrPlot(var = c("age", "sex", #"baseline_fc", 
                   "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
           class = "class_order")
