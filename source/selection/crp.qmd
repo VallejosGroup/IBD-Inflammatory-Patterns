@@ -146,7 +146,7 @@ alluvial.df[alluvial.df[, "G"] == 10, "class"] <-
   plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == 10, "class"],
     from = c(seq(1, 10)),
     to = c(9, 7, 1, 5, 3, 4, 2, 10, 6, 8)
-    )
+  )
 
 # eliminate label switching
 
@@ -392,7 +392,6 @@ buildDT(crp.metrics)
 
 
 ```{R}
-
 for (G in G.crp) {
   # Data frame to hold processed data
   new.crp <- data.frame(
@@ -401,13 +400,13 @@ for (G in G.crp) {
     crp_time = numeric(),
     class = numeric()
   )
-  
+
   for (clust in 1:G) {
     ids.clust <- subset(models.crp.ma[[G]]$pprob, class == clust)$ids
     n.clust <- length(ids.clust)
     rand <- sample(n.clust, n.clust) # Randomise the order of the ids
     iters <- floor(n.clust / 6) # How many groups of six are there?
-  
+
     # Matrix to hold the smoothed data
     crp.ma <- matrix(NA, nrow = iters, ncol = 7)
     for (i in 0:(iters - 1)) {
@@ -432,11 +431,11 @@ for (G in G.crp) {
         }
       }
     }
-  
+
     rownames(crp.ma) <- 1:iters
     crp.ma <- reshape2::melt(t(crp.ma),
-                             id.vars = row.names(crp.ma),
-                             na.rm = TRUE
+      id.vars = row.names(crp.ma),
+      na.rm = TRUE
     )
     colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
     crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
@@ -449,10 +448,11 @@ for (G in G.crp) {
     crp.ma$class <- clust # Identify cluster assignment
     new.crp <- rbind(new.crp, crp.ma)
   }
-  
+
   cairo_pdf(paste0("plots/spaghetti/crp-", G, ".pdf"),
-            width = 10,
-            height = 17.5)
+    width = 10,
+    height = 17.5
+  )
   grid::grid.newpage()
   spaghettiPlot(new.crp,
     models.crp.ma,
@@ -464,7 +464,7 @@ for (G in G.crp) {
     ylim = "data"
   )
   invisible(dev.off())
-  
+
   png(paste0("plots/spaghetti/crp-", G, ".png"),
     width = 10,
     height = 17.5,
@@ -482,7 +482,7 @@ for (G in G.crp) {
     ylim = "data"
   )
   invisible(dev.off())
-  
+
   grid::grid.newpage()
   spaghettiPlot(new.crp,
     models.crp.ma,
@@ -502,12 +502,12 @@ for (G in G.crp) {
 
 ```{R}
 new.crp <- data.frame(
-    ids = numeric(),
-    crp_result = numeric(),
-    crp_time = numeric(),
-    class = numeric()
-  )
-  
+  ids = numeric(),
+  crp_result = numeric(),
+  crp_time = numeric(),
+  class = numeric()
+)
+
 for (clust in 1:8) {
   ids.clust <- subset(models.crp.ma[[8]]$pprob, class == clust)$ids
   n.clust <- length(ids.clust)
@@ -541,8 +541,8 @@ for (clust in 1:8) {
 
   rownames(crp.ma) <- 1:iters
   crp.ma <- reshape2::melt(t(crp.ma),
-                           id.vars = row.names(crp.ma),
-                           na.rm = TRUE
+    id.vars = row.names(crp.ma),
+    na.rm = TRUE
   )
   colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
   crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
@@ -570,7 +570,10 @@ One possible solution is to order clusters by cumulative inflammation which is
 given by the area under the curve for each mean cluster trajectory.
 
 ```{R}
-rank.full <- rankCumulative(models.crp.ma[[8]], tmax = 6.25, var.time = "crp_time")
+rank.full <- rankCumulative(models.crp.ma[[8]],
+  tmax = 6.25,
+  var.time = "crp_time"
+)
 rank.full %>%
   ggplot(aes(x = paste0("CRP", New), y = Area)) +
   geom_bar(stat = "identity", fill = "#745C97", color = "#39375B") +
@@ -581,10 +584,11 @@ rank.full %>%
 
 ```{R}
 png(paste0("plots/spaghetti/crp-ncs-reordered.png"),
-    width = 10,
-    height = 16,
-    units = "in",
-    res = 300)
+  width = 10,
+  height = 16,
+  units = "in",
+  res = 300
+)
 grid::grid.newpage()
 spaghettiPlot(new.crp,
   models.crp.ma,
@@ -596,13 +600,14 @@ spaghettiPlot(new.crp,
   var.time = "crp_time",
   clusters = TRUE,
   ylim = "data",
-  mapping =  rank.full$Original
+  mapping = rank.full$Original
 )
 invisible(dev.off())
 
 cairo_pdf(paste0("plots/spaghetti/crp-ncs-reordered.pdf"),
-          width = 10,
-          height = 16)
+  width = 10,
+  height = 16
+)
 grid::grid.newpage()
 spaghettiPlot(new.crp,
   models.crp.ma,
@@ -614,7 +619,7 @@ spaghettiPlot(new.crp,
   var.time = "crp_time",
   clusters = TRUE,
   ylim = "data",
-  mapping =  rank.full$Original
+  mapping = rank.full$Original
 )
 invisible(dev.off())
 
@@ -628,12 +633,117 @@ spaghettiPlot(new.crp,
   var.time = "crp_time",
   clusters = TRUE,
   ylim = "data",
-  mapping =  rank.full$Original
+  mapping = rank.full$Original
 )
-
-
 ```
 
+
+```{R}
+for (G in c(7, 9)) {
+  new.crp <- data.frame(
+    ids = numeric(),
+    crp_result = numeric(),
+    crp_time = numeric(),
+    class = numeric()
+  )
+
+  for (clust in 1:G) {
+    ids.clust <- subset(models.crp.ma[[G]]$pprob, class == clust)$ids
+    n.clust <- length(ids.clust)
+    rand <- sample(n.clust, n.clust) # Randomise the order of the ids
+    iters <- floor(n.clust / 6) # How many groups of six are there?
+
+    # Matrix to hold the smoothed data
+    crp.ma <- matrix(NA, nrow = iters, ncol = 7)
+    for (i in 0:(iters - 1)) {
+      # Find ids for group of five
+      ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
+      crp.subset <- subset(crp_median, ids %in% ids.select)
+      # Median process as per CRP preprocessing
+      for (j in seq(0, 6)) {
+        if (j == 6) {
+          sub.obs <- subset(
+            crp.subset,
+            crp_time >= j - 0.5 & crp_time <= j + 1
+          )
+        } else {
+          sub.obs <- subset(
+            crp.subset,
+            crp_time >= j - 0.5 & crp_time < j + 0.5
+          )
+        }
+        if (nrow(sub.obs) > 0) {
+          crp.ma[i + 1, j + 1] <- median(sub.obs$crp_result)
+        }
+      }
+    }
+
+    rownames(crp.ma) <- 1:iters
+    crp.ma <- reshape2::melt(t(crp.ma),
+      id.vars = row.names(crp.ma),
+      na.rm = TRUE
+    )
+    colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
+    crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
+    crp.ma$crp_time <- crp.ma$crp_time - 1
+    # Take into account uneven spacing at start and end
+    crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+      from = c(0, 6),
+      to = c(0.25, 6.25)
+    )
+    crp.ma$class <- clust # Identify cluster assignment
+    new.crp <- rbind(new.crp, crp.ma)
+  }
+
+
+  rank.full <- rankCumulative(models.crp.ma[[G]],
+    tmax = 6.25,
+    var.time = "crp_time"
+  )
+  png(paste0("plots/spaghetti/crp-ncs-reordered-", G, ".png"),
+    width = 10,
+    height = 16,
+    units = "in",
+    res = 300
+  )
+
+  grid::grid.newpage()
+  spaghettiPlot(
+    new.crp,
+    models.crp.ma,
+    G = G,
+    log = TRUE,
+    tmax = 6.25,
+    sizes = TRUE,
+    knots = FALSE,
+    var.time = "crp_time",
+    clusters = TRUE,
+    ylim = "data",
+    mapping = rank.full$Original
+  )
+  invisible(dev.off())
+
+  cairo_pdf(paste0("plots/spaghetti/crp-ncs-reordered-", G, ".pdf"),
+    width = 10,
+    height = 16
+  )
+  grid::grid.newpage()
+  spaghettiPlot(
+    new.crp,
+    models.crp.ma,
+    G = G,
+    log = TRUE,
+    tmax = 6.25,
+    sizes = TRUE,
+    knots = FALSE,
+    var.time = "crp_time",
+    clusters = TRUE,
+    ylim = "data",
+    mapping = rank.full$Original
+  )
+  invisible(dev.off())
+}
+```
 
 ### Alluvial anchored plot
 
