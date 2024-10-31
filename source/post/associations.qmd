@@ -179,7 +179,7 @@ myDF.fc_means <- myDF.fc_means %>%
                               labels = paste0("Assigned to FC", 1:8, "\n n = ",
                                               as.vector(table(myDF.fc$class_order)))))
 
-p2 <- myDF.fc_means %>%
+fc_fup <- myDF.fc_means %>%
   ggplot(aes(fill = prob_order, y = value, x = followup_cut)) +
   geom_bar(position = "fill", stat = "identity") +
   facet_wrap(.~class_order, ncol = 4) + 
@@ -193,12 +193,12 @@ p2 <- myDF.fc_means %>%
        fill = "Mean posterior\nprobability of\ncluster assignment") +
   scale_fill_viridis_d(option = "inferno") 
 
-p2
+fc_fup
 # p + scale_fill_viridis_d(option = "D") 
 # p + scale_fill_brewer(palette = "Blues")
 
-ggsave("plots/fc-prob-fup.png", p2, width = 11, height = 8, units = "in")
-ggsave("plots/fc-prob-fup.pdf", p2, width = 11, height = 8, units = "in")
+ggsave("plots/fc-prob-fup.png", fc_fup, width = 11, height = 8, units = "in")
+ggsave("plots/fc-prob-fup.pdf", fc_fup, width = 11, height = 8, units = "in")
 ```
 
 
@@ -981,7 +981,7 @@ myDF.crp_means <- myDF.crp_means %>%
                               labels = paste0("Assigned to CRP", 1:8, "\n n = ",
                                               as.vector(table(myDF.crp$class_order)))))
 
-p2 <- myDF.crp_means %>%
+crp_fup <- myDF.crp_means %>%
   ggplot(aes(fill = prob_order, y = value, x = followup_cut)) +
   geom_bar(position = "fill", stat = "identity") +
   facet_wrap(.~class_order, ncol = 4) + 
@@ -995,10 +995,19 @@ p2 <- myDF.crp_means %>%
        fill = "Mean posterior\nprobability of\ncluster assignment") +
   scale_fill_viridis_d(option = "D") 
 
-p2
+crp_fup
 
-ggsave("plots/crp-prob-fup.png", p2, width = 11, height = 8, units = "in")
-ggsave("plots/crp-prob-fup.pdf", p2, width = 11, height = 8, units = "in")
+ggsave("plots/crp-prob-fup.png", crp_fup, width = 11, height = 8, units = "in")
+ggsave("plots/crp-prob-fup.pdf", crp_fup, width = 11, height = 8, units = "in")
+
+
+p <- fc_fup / crp_fup + plot_annotation(tag_levels = "A") & 
+  theme(plot.tag = element_text(size = 20, face = "bold"),
+        legend.title = element_text(size = 14), 
+        legend.text = element_text(size = 12))
+
+ggsave("plots/prob-fup.pdf", p, width = 11, height = 16, units = "in")
+ggsave("plots/prob-fup.png", p, width = 11, height = 16, units = "in")
 ```
 
 ### Associations with respect to cluster assignments
