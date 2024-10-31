@@ -739,6 +739,28 @@ fcal <- subset(fcal, ids %in% diagnostic$ids)
 
 After this exclusion, `r length(unique(fcal$ids))` subjects remain in the data. 
 
+```{R}
+##The following code is used to save the cleaned data generated so far. 
+
+diag.time <- c()
+fc.ids <-  unique(fcal$ids)
+
+for (id in fc.ids) {
+  temp <- subset(fcal, ids == id)
+  temp <- temp[order(temp$calpro_time), ]
+  diag.time <- c(diag.time, temp[1, "calpro_time"])
+}
+
+
+fc.dist <- data.frame(ids = fc.ids, diagnostic = diag.time)
+
+if (!dir.exists(paste0(prefix, "processed"))) {
+  dir.create(paste0(prefix, "processed"))
+}
+
+saveRDS(fc.dist, paste0(prefix, "processed/fc-diag-dist.RDS"))
+```
+
 ### Retiming - part 2
 
 Here, we show the distribution of the diagnostic FCAL measurements with

@@ -21,6 +21,7 @@ project:
   post-render:
     - "scripts/Fig3.R"
     - "scripts/outline-traj.R"
+    - "scripts/Diagnostic-biomarker-spread.R"
   execute-dir: project
 format:
   html:
