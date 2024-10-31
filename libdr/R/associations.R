@@ -106,26 +106,57 @@ plotCat <- function(dat, var, class = "class_combined") {
   return(m_coeff)
 }
 
-.plotCI <- function(tab, variable) {
+.plotCI <- function(tab, variable, tab2 = NULL) {
 
-  tab %>%
-    filter(Var2 == variable) %>%
-    ggplot(aes(
-      x = Var1,
-      y = Estimate,
-      ymin = Lower,
-      ymax = Upper,
-      color = ifelse(Sig == TRUE, "red", "black"))) +
-    geom_errorbar() +
-    geom_point(size = 3.5) +
-    geom_hline(yintercept = 0, lty = 2) +
-    coord_flip() + # flip coordinates (puts labels on y axis)
-    xlab("") +
-    ylab("Estimate (95% CI)") +
-    theme_bw() +
-    scale_color_manual(values = c("black", "#FF007F")) +
-    theme(legend.position = "none") +
-    ggtitle(variable)
+  if(is.null(tab2)) {
+    p <- tab %>%
+      filter(Var2 == variable) %>%
+      ggplot(aes(
+        x = Var1,
+        y = Estimate,
+        ymin = Lower,
+        ymax = Upper,
+        color = ifelse(Sig == TRUE, "red", "black"))) +
+      geom_errorbar() +
+      geom_point(size = 3.5) +
+      geom_hline(yintercept = 0, lty = 2) +
+      coord_flip() + # flip coordinates (puts labels on y axis)
+      xlab("") +
+      ylab("Estimate (95% CI)") +
+      theme_bw() +
+      scale_color_manual(values = c("black", "#FF007F")) +
+      theme(legend.position = "none") +
+      ggtitle(variable)
+  } else {
+
+    # Add a model identifier to each dataset
+    tab$model <- "Univariate"
+    tab2$model <- "Multivariate"
+
+    # Combine the two tables
+    combined_tab <- bind_rows(tab, tab2)
+    combined_tab$model <- as.factor(combined_tab$model)
+
+    # Filter for the specified variable and plot
+    p <- combined_tab %>%
+      filter(Var2 == variable) %>%
+      ggplot(aes(
+        x = Var1,
+        y = Estimate,
+        ymin = Lower,
+        ymax = Upper,
+        color = model)) + # Use model as color
+      geom_errorbar(position = position_dodge(width = 0.5)) +  # Dodge for separation
+      geom_point(position = position_dodge(width = 0.5), size = 3.5) +
+      geom_hline(yintercept = 0, lty = 2) +
+      coord_flip() +  # Flip coordinates (puts labels on y axis)
+      xlab("") +
+      ylab("Estimate (95% CI)") +
+      theme_bw() +
+      ggtitle(variable)
+  }
+
+  return(p)
 }
 
 #' Forest plot of multinomial logistic regression model
@@ -164,6 +195,12 @@ mlrPlot <- function(dat, var, class = "class_combined") {
     for (variable in unique(tab_uni$Var2)) {
       p_uni[[variable]] <- .plotCI(tab_uni, variable)
     }
+
+    ## Combined plot
+    p_both <- list()
+    for (variable in unique(tab_uni$Var2)) {
+      p_both[[variable]] <- .plotCI(tab = tab_uni, variable, tab2 = tab_multi)
+    }
   }
 
   # Output
@@ -174,7 +211,8 @@ mlrPlot <- function(dat, var, class = "class_combined") {
     out <- list(tab_multi = tab_multi,
                 plot_multi = p_multi,
                 tab_uni = tab_uni,
-                plot_uni = p_uni)
+                plot_uni = p_uni,
+                plot_both = p_both)
   }
   return(out)
 }
