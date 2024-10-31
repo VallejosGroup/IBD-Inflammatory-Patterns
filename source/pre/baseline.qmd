@@ -1147,11 +1147,9 @@ dict.crp.cd <- dict.crp.cd %>%
   mutate(AT = if_else(AT_line_1 > 7, 0, 1)) %>%
    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1))
 
-
 dict.crp.cd <- dict.crp.cd %>%
   mutate(AT_line_1= if_else(AT_line_1 < 0, 0, AT_line_1),
          AT = if_else(AT_line_1 == 7, 0, AT))
-
 
 survfit(Surv(AT_line_1, AT) ~ 1, data = dict.crp.cd) %>%
   ggsurvplot()

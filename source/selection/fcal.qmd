@@ -559,39 +559,49 @@ rm(output)
 ```{R PProb distributions NCS}
 #| fig-width: 8
 #| fig-height: 4.5
-pprobs.2 <- c(); groups.2 <- models.fcal[[2]]
-pprobs.3 <- c(); groups.3 <- models.fcal[[3]]
-pprobs.4 <- c(); groups.4 <- models.fcal[[4]]
-pprobs.5 <- c(); groups.5 <- models.fcal[[5]]
-pprobs.6 <- c(); groups.6 <- models.fcal[[6]]
-pprobs.7 <- c(); groups.7 <- models.fcal[[7]]
-pprobs.8 <- c(); groups.8 <- models.fcal[[8]]
-pprobs.9 <- c(); groups.9 <- models.fcal[[9]]
-pprobs.10 <- c(); groups.10 <- models.fcal[[10]]
-pprobs.11 <- c(); groups.11 <- models.fcal[[11]]
+pprobs.2 <- c()
+groups.2 <- models.fcal[[2]]
+pprobs.3 <- c()
+groups.3 <- models.fcal[[3]]
+pprobs.4 <- c()
+groups.4 <- models.fcal[[4]]
+pprobs.5 <- c()
+groups.5 <- models.fcal[[5]]
+pprobs.6 <- c()
+groups.6 <- models.fcal[[6]]
+pprobs.7 <- c()
+groups.7 <- models.fcal[[7]]
+pprobs.8 <- c()
+groups.8 <- models.fcal[[8]]
+pprobs.9 <- c()
+groups.9 <- models.fcal[[9]]
+pprobs.10 <- c()
+groups.10 <- models.fcal[[10]]
+pprobs.11 <- c()
+groups.11 <- models.fcal[[11]]
 
 
-for (i in 1:nrow(models.fcal[[2]]$pprob)){
+for (i in 1:nrow(models.fcal[[2]]$pprob)) {
   class.2 <- groups.2$pprob[i, 2]
-  pprobs.2 <- c(pprobs.2, groups.2$pprob[i, class.2 + 2 ])
+  pprobs.2 <- c(pprobs.2, groups.2$pprob[i, class.2 + 2])
   class.3 <- groups.3$pprob[i, 2]
-  pprobs.3 <- c(pprobs.3, groups.3$pprob[i, class.3 + 2 ])
+  pprobs.3 <- c(pprobs.3, groups.3$pprob[i, class.3 + 2])
   class.4 <- groups.4$pprob[i, 2]
-  pprobs.4 <- c(pprobs.4, groups.4$pprob[i, class.4 + 2 ])
+  pprobs.4 <- c(pprobs.4, groups.4$pprob[i, class.4 + 2])
   class.5 <- groups.5$pprob[i, 2]
-  pprobs.5 <- c(pprobs.5, groups.5$pprob[i, class.5 + 2 ])
+  pprobs.5 <- c(pprobs.5, groups.5$pprob[i, class.5 + 2])
   class.6 <- groups.6$pprob[i, 2]
-  pprobs.6 <- c(pprobs.6, groups.6$pprob[i, class.6 + 2 ])
+  pprobs.6 <- c(pprobs.6, groups.6$pprob[i, class.6 + 2])
   class.7 <- groups.7$pprob[i, 2]
-  pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2 ])
+  pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2])
   class.8 <- groups.8$pprob[i, 2]
-  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2 ])
+  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2])
   class.9 <- groups.9$pprob[i, 2]
-  pprobs.9 <- c(pprobs.9, groups.9$pprob[i, class.9 + 2 ])
+  pprobs.9 <- c(pprobs.9, groups.9$pprob[i, class.9 + 2])
   class.10 <- groups.10$pprob[i, 2]
-  pprobs.10 <- c(pprobs.10, groups.10$pprob[i, class.10 + 2 ])
+  pprobs.10 <- c(pprobs.10, groups.10$pprob[i, class.10 + 2])
   class.11 <- groups.11$pprob[i, 2]
-  pprobs.11 <- c(pprobs.11, groups.11$pprob[i, class.11 + 2 ])
+  pprobs.11 <- c(pprobs.11, groups.11$pprob[i, class.11 + 2])
 }
 pprobs.2 <- tibble(prob = pprobs.2)
 pprobs.3 <- tibble(prob = pprobs.3)
@@ -614,39 +624,47 @@ pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
 pprobs.9$Model <- as.factor(rep("Nine clusters", nrow(pprobs.9)))
 pprobs.10$Model <- as.factor(rep("Ten clusters", nrow(pprobs.10)))
 pprobs.11$Model <- as.factor(rep("Eleven clusters", nrow(pprobs.11)))
-pprobs <- rbind(pprobs.2,
-                pprobs.3,
-                pprobs.4,
-                pprobs.5,
-                pprobs.6,
-                pprobs.7,
-                pprobs.8,
-                pprobs.9,
-                pprobs.10,
-                pprobs.11)
+pprobs <- rbind(
+  pprobs.2,
+  pprobs.3,
+  pprobs.4,
+  pprobs.5,
+  pprobs.6,
+  pprobs.7,
+  pprobs.8,
+  pprobs.9,
+  pprobs.10,
+  pprobs.11
+)
 
 p <- pprobs %>%
   ggplot(aes(x = prob, y = Model)) +
-  stat_slab(fill = "#5D5179",color = "gray",
-                    size = 0.8,
-                    alpha = 0.7) +
+  stat_slab(
+    fill = "#5D5179", color = "gray",
+    size = 0.8,
+    alpha = 0.7
+  ) +
   geom_dots(color = "#4F759B", dotsize = 1) +
   xlab("Posterior probability for cluster membership") +
-  ylab("") + 
-  ggtitle("Distribution of Posterior Probabilities Across Models",
-          "Subject-specific posterior probabilities for assigned cluster") +
-  theme_minimal() + 
+  ylab("") +
+  ggtitle(
+    "Distribution of Posterior Probabilities Across Models",
+    "Subject-specific posterior probabilities for assigned cluster"
+  ) +
+  theme_minimal() +
   scale_y_discrete(limits = rev)
 ggsave("plots/pprob-distribution.png",
-       p,
-       width = 8.5,
-       height = 7.5,
-       units = "in")
+  p,
+  width = 8.5,
+  height = 7.5,
+  units = "in"
+)
 ggsave("plots/pprob-distribution.pdf",
-       p,
-       width = 8.5,
-       height = 7.5,
-       units = "in")
+  p,
+  width = 8.5,
+  height = 7.5,
+  units = "in"
+)
 print(p)
 ```
 
@@ -775,22 +793,24 @@ The optimum AIC is <b>
 ```{R FCAL spaghetti plots}
 for (G in G.fcal) {
   # Data frame to hold processed data
-  new.fc <- data.frame(ids = numeric(),
-                       calpro_result = numeric(),
-                       calpro_time = numeric(),
-                       class = numeric())
-  
+  new.fc <- data.frame(
+    ids = numeric(),
+    calpro_result = numeric(),
+    calpro_time = numeric(),
+    class = numeric()
+  )
+
   for (clust in 1:G) {
     ids.clust <- subset(models.fcal[[G]]$pprob, class == clust)$ids
     n.clust <- length(ids.clust)
     rand <- sample(n.clust, n.clust) # Randomise the order of the ids
-    iters <- floor(n.clust / 6) # How many groups of six are there? 
-    
+    iters <- floor(n.clust / 6) # How many groups of six are there?
+
     # Matrix to hold the smoothed data
     fcal.ma <- matrix(NA, nrow = iters, ncol = 7)
     fcal.time <- matrix(NA, nrow = iters, ncol = 7)
-    
-    
+
+
     for (i in 0:(iters - 1)) {
       # Find ids for group of five
       ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
@@ -814,97 +834,105 @@ for (G in G.fcal) {
         }
       }
     }
-    
+
     rownames(fcal.ma) <- 1:iters
-    fcal.ma <- reshape2::melt(t(fcal.ma ),
-                              id.vars = row.names(fcal.ma),
-                              na.rm = TRUE)
+    fcal.ma <- reshape2::melt(t(fcal.ma),
+      id.vars = row.names(fcal.ma),
+      na.rm = TRUE
+    )
     colnames(fcal.ma) <- c("calpro_time", "ids", "calpro_result")
-    fcal.ma  <- fcal.ma[, c(2, 3, 1)] # Make ids first column
-    
-    
+    fcal.ma <- fcal.ma[, c(2, 3, 1)] # Make ids first column
+
+
     rownames(fcal.time) <- 1:iters
-    fcal.time <- reshape2::melt(t(fcal.time ),
-                              id.vars = row.names(fcal.time),
-                              na.rm = TRUE)
+    fcal.time <- reshape2::melt(t(fcal.time),
+      id.vars = row.names(fcal.time),
+      na.rm = TRUE
+    )
     colnames(fcal.time) <- c("calpro_time", "ids", "pred_time")
-    fcal.time  <- fcal.time[, c(2, 3, 1)] # Make ids first column
-    
+    fcal.time <- fcal.time[, c(2, 3, 1)] # Make ids first column
+
     fcal.ma <- merge(fcal.ma, fcal.time, by = c("ids", "calpro_time"))
     fcal.ma <- fcal.ma %>%
       mutate(calpro_time = pred_time) %>%
       select(-pred_time)
-    
+
     fcal.ma$class <- clust # Identify cluster assignment
     new.fc <- rbind(new.fc, fcal.ma)
   }
-  
-  if(!dir.exists("plots/spaghetti")) dir.create("plots/spaghetti")
+
+  if (!dir.exists("plots/spaghetti")) dir.create("plots/spaghetti")
   png(paste0("plots/spaghetti/fcal-ncs-", G, ".png"),
     width = 10,
     height = 17.5,
     units = "in",
-    res = 300)
+    res = 300
+  )
   grid::grid.newpage()
   spaghettiPlot(new.fc,
-                models.fcal,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = FALSE,
-                var.time = "calpro_time",
-                clusters = TRUE)
+    models.fcal,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = FALSE,
+    var.time = "calpro_time",
+    clusters = TRUE
+  )
   invisible(dev.off())
-  
+
   cairo_pdf(paste0("plots/spaghetti/fcal-ncs-", G, ".pdf"),
     width = 10,
-    height = 17.5)
+    height = 17.5
+  )
   grid::grid.newpage()
   spaghettiPlot(new.fc,
-                models.fcal,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = FALSE,
-                var.time = "calpro_time",
-                clusters = TRUE)
+    models.fcal,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = FALSE,
+    var.time = "calpro_time",
+    clusters = TRUE
+  )
   invisible(dev.off())
-  
+
   grid::grid.newpage()
   print(spaghettiPlot(new.fc,
-                models.fcal,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = FALSE,
-                var.time = "calpro_time",
-                clusters = TRUE))
-  
+    models.fcal,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = FALSE,
+    var.time = "calpro_time",
+    clusters = TRUE
+  ))
 }
 ```
 
 ### Chosen model
 
 ```{R}
-new.fc <- data.frame(ids = numeric(),
-                       calpro_result = numeric(),
-                       calpro_time = numeric(),
-                       class = numeric())
-  
+new.fc <- data.frame(
+  ids = numeric(),
+  calpro_result = numeric(),
+  calpro_time = numeric(),
+  class = numeric()
+)
+
 for (clust in 1:8) {
   ids.clust <- subset(models.fcal[[8]]$pprob, class == clust)$ids
   n.clust <- length(ids.clust)
   rand <- sample(n.clust, n.clust) # Randomise the order of the ids
-  iters <- floor(n.clust / 6) # How many groups of six are there? 
-  
+  iters <- floor(n.clust / 6) # How many groups of six are there?
+
   # Matrix to hold the smoothed data
   fcal.ma <- matrix(NA, nrow = iters, ncol = 7)
   fcal.time <- matrix(NA, nrow = iters, ncol = 7)
-  
-  
+
+
   for (i in 0:(iters - 1)) {
     # Find ids for group of five
     ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
@@ -928,27 +956,29 @@ for (clust in 1:8) {
       }
     }
   }
-  
+
   rownames(fcal.ma) <- 1:iters
-  fcal.ma <- reshape2::melt(t(fcal.ma ),
-                            id.vars = row.names(fcal.ma),
-                            na.rm = TRUE)
+  fcal.ma <- reshape2::melt(t(fcal.ma),
+    id.vars = row.names(fcal.ma),
+    na.rm = TRUE
+  )
   colnames(fcal.ma) <- c("calpro_time", "ids", "calpro_result")
-  fcal.ma  <- fcal.ma[, c(2, 3, 1)] # Make ids first column
-  
-  
+  fcal.ma <- fcal.ma[, c(2, 3, 1)] # Make ids first column
+
+
   rownames(fcal.time) <- 1:iters
-  fcal.time <- reshape2::melt(t(fcal.time ),
-                            id.vars = row.names(fcal.time),
-                            na.rm = TRUE)
+  fcal.time <- reshape2::melt(t(fcal.time),
+    id.vars = row.names(fcal.time),
+    na.rm = TRUE
+  )
   colnames(fcal.time) <- c("calpro_time", "ids", "pred_time")
-  fcal.time  <- fcal.time[, c(2, 3, 1)] # Make ids first column
-  
+  fcal.time <- fcal.time[, c(2, 3, 1)] # Make ids first column
+
   fcal.ma <- merge(fcal.ma, fcal.time, by = c("ids", "calpro_time"))
   fcal.ma <- fcal.ma %>%
     mutate(calpro_time = pred_time) %>%
     select(-pred_time)
-  
+
   fcal.ma$class <- clust # Identify cluster assignment
   new.fc <- rbind(new.fc, fcal.ma)
 }
@@ -984,10 +1014,11 @@ rank.full %>%
 
 ```{R}
 png(paste0("plots/spaghetti/fcal-ncs-reordered.png"),
-    width = 10,
-    height = 16,
-    units = "in",
-    res = 300)
+  width = 10,
+  height = 16,
+  units = "in",
+  res = 300
+)
 grid::grid.newpage()
 spaghettiPlot(new.fc,
   models.fcal,
@@ -998,13 +1029,14 @@ spaghettiPlot(new.fc,
   knots = FALSE,
   var.time = "calpro_time",
   clusters = TRUE,
-  mapping =  rank.full$Original
+  mapping = rank.full$Original
 )
 invisible(dev.off())
 
 cairo_pdf(paste0("plots/spaghetti/fcal-ncs-reordered.pdf"),
-          width = 10,
-          height = 16)
+  width = 10,
+  height = 16
+)
 grid::grid.newpage()
 spaghettiPlot(new.fc,
   models.fcal,
@@ -1015,7 +1047,7 @@ spaghettiPlot(new.fc,
   knots = FALSE,
   var.time = "calpro_time",
   clusters = TRUE,
-  mapping =  rank.full$Original
+  mapping = rank.full$Original
 )
 invisible(dev.off())
 
@@ -1028,113 +1060,118 @@ spaghettiPlot(new.fc,
   knots = FALSE,
   var.time = "calpro_time",
   clusters = TRUE,
-  mapping =  rank.full$Original
+  mapping = rank.full$Original
 )
 ```
 
 ```{R}
 for (G in (9:10)) {
-  
-  new.fc <- data.frame(ids = numeric(),
-                       calpro_result = numeric(),
-                       calpro_time = numeric(),
-                       class = numeric())
-  
-for (clust in 1:G) {
-  ids.clust <- subset(models.fcal[[G]]$pprob, class == clust)$ids
-  n.clust <- length(ids.clust)
-  rand <- sample(n.clust, n.clust) # Randomise the order of the ids
-  iters <- floor(n.clust / 6) # How many groups of six are there? 
-  
-  # Matrix to hold the smoothed data
-  fcal.ma <- matrix(NA, nrow = iters, ncol = 7)
-  fcal.time <- matrix(NA, nrow = iters, ncol = 7)
-  
-  
-  for (i in 0:(iters - 1)) {
-    # Find ids for group of five
-    ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
-    fcal.subset <- subset(fcal, ids %in% ids.select)
-    # Median process as per CRP preprocessing
-    for (j in seq(0, 6)) {
-      if (j == 6) {
-        sub.obs <- subset(
-          fcal.subset,
-          calpro_time >= j - 0.5 & calpro_time <= j + 1
-        )
-      } else {
-        sub.obs <- subset(
-          fcal.subset,
-          calpro_time >= j - 0.5 & calpro_time < j + 0.5
-        )
-      }
-      if (nrow(sub.obs) > 0) {
-        fcal.ma[i + 1, j + 1] <- median(sub.obs$calpro_result)
-        fcal.time[i + 1, j + 1] <- median(sub.obs$calpro_time)
+  new.fc <- data.frame(
+    ids = numeric(),
+    calpro_result = numeric(),
+    calpro_time = numeric(),
+    class = numeric()
+  )
+
+  for (clust in 1:G) {
+    ids.clust <- subset(models.fcal[[G]]$pprob, class == clust)$ids
+    n.clust <- length(ids.clust)
+    rand <- sample(n.clust, n.clust) # Randomise the order of the ids
+    iters <- floor(n.clust / 6) # How many groups of six are there?
+
+    # Matrix to hold the smoothed data
+    fcal.ma <- matrix(NA, nrow = iters, ncol = 7)
+    fcal.time <- matrix(NA, nrow = iters, ncol = 7)
+
+
+    for (i in 0:(iters - 1)) {
+      # Find ids for group of five
+      ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
+      fcal.subset <- subset(fcal, ids %in% ids.select)
+      # Median process as per CRP preprocessing
+      for (j in seq(0, 6)) {
+        if (j == 6) {
+          sub.obs <- subset(
+            fcal.subset,
+            calpro_time >= j - 0.5 & calpro_time <= j + 1
+          )
+        } else {
+          sub.obs <- subset(
+            fcal.subset,
+            calpro_time >= j - 0.5 & calpro_time < j + 0.5
+          )
+        }
+        if (nrow(sub.obs) > 0) {
+          fcal.ma[i + 1, j + 1] <- median(sub.obs$calpro_result)
+          fcal.time[i + 1, j + 1] <- median(sub.obs$calpro_time)
+        }
       }
     }
+
+    rownames(fcal.ma) <- 1:iters
+    fcal.ma <- reshape2::melt(t(fcal.ma),
+      id.vars = row.names(fcal.ma),
+      na.rm = TRUE
+    )
+    colnames(fcal.ma) <- c("calpro_time", "ids", "calpro_result")
+    fcal.ma <- fcal.ma[, c(2, 3, 1)] # Make ids first column
+
+
+    rownames(fcal.time) <- 1:iters
+    fcal.time <- reshape2::melt(t(fcal.time),
+      id.vars = row.names(fcal.time),
+      na.rm = TRUE
+    )
+    colnames(fcal.time) <- c("calpro_time", "ids", "pred_time")
+    fcal.time <- fcal.time[, c(2, 3, 1)] # Make ids first column
+
+    fcal.ma <- merge(fcal.ma, fcal.time, by = c("ids", "calpro_time"))
+    fcal.ma <- fcal.ma %>%
+      mutate(calpro_time = pred_time) %>%
+      select(-pred_time)
+
+    fcal.ma$class <- clust # Identify cluster assignment
+    new.fc <- rbind(new.fc, fcal.ma)
   }
-  
-  rownames(fcal.ma) <- 1:iters
-  fcal.ma <- reshape2::melt(t(fcal.ma ),
-                            id.vars = row.names(fcal.ma),
-                            na.rm = TRUE)
-  colnames(fcal.ma) <- c("calpro_time", "ids", "calpro_result")
-  fcal.ma  <- fcal.ma[, c(2, 3, 1)] # Make ids first column
-  
-  
-  rownames(fcal.time) <- 1:iters
-  fcal.time <- reshape2::melt(t(fcal.time ),
-                            id.vars = row.names(fcal.time),
-                            na.rm = TRUE)
-  colnames(fcal.time) <- c("calpro_time", "ids", "pred_time")
-  fcal.time  <- fcal.time[, c(2, 3, 1)] # Make ids first column
-  
-  fcal.ma <- merge(fcal.ma, fcal.time, by = c("ids", "calpro_time"))
-  fcal.ma <- fcal.ma %>%
-    mutate(calpro_time = pred_time) %>%
-    select(-pred_time)
-  
-  fcal.ma$class <- clust # Identify cluster assignment
-  new.fc <- rbind(new.fc, fcal.ma)
-}
-  
-  
+
+
   rank.full <- rankCumulative(models.fcal[[G]], tmax = 7)
   png(paste0("plots/spaghetti/fcal-ncs-reordered-", G, ".png"),
-      width = 10,
-      height = 16,
-      units = "in",
-      res = 300)
+    width = 10,
+    height = 16,
+    units = "in",
+    res = 300
+  )
   grid::grid.newpage()
   spaghettiPlot(new.fc,
-                models.fcal,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = FALSE,
-                var.time = "calpro_time",
-                clusters = TRUE,
-                mapping =  rank.full$Original
-                )
+    models.fcal,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = FALSE,
+    var.time = "calpro_time",
+    clusters = TRUE,
+    mapping = rank.full$Original
+  )
   invisible(dev.off())
-  
+
   cairo_pdf(paste0("plots/spaghetti/fcal-ncs-reordered-", G, ".pdf"),
-            width = 10,
-            height = 16)
+    width = 10,
+    height = 16
+  )
   grid::grid.newpage()
   spaghettiPlot(new.fc,
-                models.fcal,
-                G = G,
-                log = TRUE,
-                tmax = 7,
-                sizes = TRUE,
-                knots = FALSE,
-                var.time = "calpro_time",
-                clusters = TRUE,
-                mapping =  rank.full$Original
-                )
+    models.fcal,
+    G = G,
+    log = TRUE,
+    tmax = 7,
+    sizes = TRUE,
+    knots = FALSE,
+    var.time = "calpro_time",
+    clusters = TRUE,
+    mapping = rank.full$Original
+  )
   invisible(dev.off())
 }
 ```
@@ -1464,7 +1501,8 @@ knitr::kable(knots.df,
     "BIC"
   )
 )
-rm(knots.grbf.2.list,
+rm(
+  knots.grbf.2.list,
   knots.grbf.3.list
 )
 ```
@@ -1498,30 +1536,37 @@ rm(output)
 ```{R PProb distributions GRBF}
 #| fig-width: 8
 #| fig-height: 4.5
-pprobs.2 <- c(); groups.2 <- models.grbf[[2]]
-pprobs.3 <- c(); groups.3 <- models.grbf[[3]]
-pprobs.4 <- c(); groups.4 <- models.grbf[[4]]
-pprobs.5 <- c(); groups.5 <- models.grbf[[5]]
-pprobs.6 <- c(); groups.6 <- models.grbf[[6]]
-pprobs.7 <- c(); groups.7 <- models.grbf[[7]]
-pprobs.8 <- c(); groups.8 <- models.grbf[[8]]
+pprobs.2 <- c()
+groups.2 <- models.grbf[[2]]
+pprobs.3 <- c()
+groups.3 <- models.grbf[[3]]
+pprobs.4 <- c()
+groups.4 <- models.grbf[[4]]
+pprobs.5 <- c()
+groups.5 <- models.grbf[[5]]
+pprobs.6 <- c()
+groups.6 <- models.grbf[[6]]
+pprobs.7 <- c()
+groups.7 <- models.grbf[[7]]
+pprobs.8 <- c()
+groups.8 <- models.grbf[[8]]
 
 
-for (i in 1:nrow(models.grbf[[2]]$pprob)){
+for (i in 1:nrow(models.grbf[[2]]$pprob)) {
   class.2 <- groups.2$pprob[i, 2]
-  pprobs.2 <- c(pprobs.2, groups.2$pprob[i, class.2 + 2 ])
+  pprobs.2 <- c(pprobs.2, groups.2$pprob[i, class.2 + 2])
   class.3 <- groups.3$pprob[i, 2]
-  pprobs.3 <- c(pprobs.3, groups.3$pprob[i, class.3 + 2 ])
+  pprobs.3 <- c(pprobs.3, groups.3$pprob[i, class.3 + 2])
   class.4 <- groups.4$pprob[i, 2]
-  pprobs.4 <- c(pprobs.4, groups.4$pprob[i, class.4 + 2 ])
+  pprobs.4 <- c(pprobs.4, groups.4$pprob[i, class.4 + 2])
   class.5 <- groups.5$pprob[i, 2]
-  pprobs.5 <- c(pprobs.5, groups.5$pprob[i, class.5 + 2 ])
+  pprobs.5 <- c(pprobs.5, groups.5$pprob[i, class.5 + 2])
   class.6 <- groups.6$pprob[i, 2]
-  pprobs.6 <- c(pprobs.6, groups.6$pprob[i, class.6 + 2 ])
+  pprobs.6 <- c(pprobs.6, groups.6$pprob[i, class.6 + 2])
   class.7 <- groups.7$pprob[i, 2]
-  pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2 ])
+  pprobs.7 <- c(pprobs.7, groups.7$pprob[i, class.7 + 2])
   class.8 <- groups.8$pprob[i, 2]
-  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2 ])
+  pprobs.8 <- c(pprobs.8, groups.8$pprob[i, class.8 + 2])
 }
 pprobs.2 <- tibble(prob = pprobs.2)
 pprobs.3 <- tibble(prob = pprobs.3)
@@ -1538,37 +1583,45 @@ pprobs.5$Model <- as.factor(rep("Five clusters", nrow(pprobs.5)))
 pprobs.6$Model <- as.factor(rep("Six clusters", nrow(pprobs.6)))
 pprobs.7$Model <- as.factor(rep("Seven clusters", nrow(pprobs.7)))
 pprobs.8$Model <- as.factor(rep("Eight clusters", nrow(pprobs.8)))
-pprobs <- rbind(pprobs.2,
-                pprobs.3,
-                pprobs.4,
-                pprobs.5,
-                pprobs.6,
-                pprobs.7,
-                pprobs.8)
+pprobs <- rbind(
+  pprobs.2,
+  pprobs.3,
+  pprobs.4,
+  pprobs.5,
+  pprobs.6,
+  pprobs.7,
+  pprobs.8
+)
 
 p <- pprobs %>%
   ggplot(aes(x = prob, y = Model)) +
-  #geom_histogram(bins = 40, fill = NA, position="identity")
-  stat_slab(fill = "#5D5179",color = "gray",
-                    size = 0.8,
-                    alpha = 0.7) +
+  # geom_histogram(bins = 40, fill = NA, position="identity")
+  stat_slab(
+    fill = "#5D5179", color = "gray",
+    size = 0.8,
+    alpha = 0.7
+  ) +
   geom_dots(color = "#4F759B", dotsize = 1) +
   xlab("Posterior probability for cluster membership") +
-  ylab("") + 
-  ggtitle("Distribution of Posterior Probabilities Across Models",
-          "Subject-specific posterior probabilities for assigned cluster") +
-  theme_minimal() + 
+  ylab("") +
+  ggtitle(
+    "Distribution of Posterior Probabilities Across Models",
+    "Subject-specific posterior probabilities for assigned cluster"
+  ) +
+  theme_minimal() +
   scale_y_discrete(limits = rev)
 ggsave("plots/pprob-distribution-grbf.png",
-       p,
-       width = 8.5,
-       height = 7.5,
-       units = "in")
+  p,
+  width = 8.5,
+  height = 7.5,
+  units = "in"
+)
 ggsave("plots/pprob-distribution-grbf.pdf",
-       p,
-       width = 8.5,
-       height = 7.5,
-       units = "in")
+  p,
+  width = 8.5,
+  height = 7.5,
+  units = "in"
+)
 print(p)
 ```
 
@@ -1669,7 +1722,7 @@ summaryplot(models.grbf[[2]],
   models.grbf[[5]],
   models.grbf[[6]],
   models.grbf[[7]],
-#  models.grbf[[8]],
+  #  models.grbf[[8]],
   which = c("loglik", "AIC", "BIC", "entropy", "ICL"),
   mfrow = c(2, 3),
   axis = "Class"
