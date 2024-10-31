@@ -652,24 +652,41 @@ title.mapping <- c(7, 6, 4, 8, 1, 5, 2, 3)
 
 #### Summary statistics of AT use
 
-Overall, we observe significant differences in AT across clusters. In particular,
-after adjusting for age and sex, AT was significantly lower in FC2. 
+Here, we focus on AT therapy within the observation period (i.e. seven years
+since diagnosis). Overall, we observe significant differences in AT across 
+clusters. In particular, after adjusting for age and sex, AT was significantly 
+lower in FC2. 
 
 ```{r}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
+myDF.fc <- myDF.fc %>% 
+  mutate(AT_7Y = ifelse(AT == 1 & AT_line_1 <= 7, 1, 0))
+
 p_AT <- myDF.fc %>% 
-  mutate(AT = factor(AT, levels = c(0, 1), labels = c("No", "Yes"))) %>%
-   plotCat("AT", class = "class_order")
+  mutate(AT_7Y = factor(AT_7Y)) %>%
+  plotCat("AT_7Y", class = "class_order")
 
 p_AT_mlr <- myDF.fc %>%
-  mutate(AT = factor(AT, levels = c(0, 1), labels = c("No", "Yes"))) %>%
+  mutate(AT_7Y = factor(AT_7Y)) %>%
   mutate(class_order = relevel(class_order, ref = "FC4")) %>%
-  mlrPlot(var = c("age", "sex", "AT"),
+  mlrPlot(var = c("age", "sex", "AT_7Y"),
           class = "class_order")
 
 wrap_elements(p_AT) + p_AT_mlr$plot_both$AT 
+```
+
+Some statistics to be used in the text:
+
+```{r}
+table(myDF.fc$AT_7Y)
+
+myDF.fc %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC2"), class_order, "Other")) %>%
+  group_by(class_aux, AT_7Y) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count) * 100)) 
 ```
 
 However, as seen below, AT use varies across different IBD types (highest
@@ -677,8 +694,8 @@ among CD patients, lowest among IBDU) patients.
 
 ```{r}
 myDF.fc %>% 
-  mutate(AT = factor(AT, levels = c(0, 1), labels = c("No", "Yes"))) %>%
-  plotCat("AT", class = "diagnosis") 
+  mutate(AT_7Y = factor(AT_7Y)) %>%
+  plotCat("AT_7Y", class = "diagnosis") 
 ```
 
 As such, we also stratify cluster-specific AT usage according to IBD type.
@@ -690,18 +707,51 @@ For this purpose, we exclude IBDU due to its small size.
 #| fig-height: 12
 p_AT_cd <- myDF.fc %>% 
   subset(diagnosis == "Crohn's Disease") %>%
-  mutate(AT = factor(AT, levels = c(0, 1), labels = c("No", "Yes"))) %>%
-  plotCat("AT", class = "class_order")
+  mutate(AT_7Y = factor(AT_7Y)) %>%
+  plotCat("AT_7Y", class = "class_order")
   
 p_AT_uc <- myDF.fc %>% 
   subset(diagnosis == "Ulcerative Colitis") %>%
-  mutate(AT = factor(AT, levels = c(0, 1), labels = c("No", "Yes"))) %>%
-  plotCat("AT", class = "class_order")
+  mutate(AT_7Y = factor(AT_7Y)) %>%
+  plotCat("AT_7Y", class = "class_order")
   
 
 wrap_elements(p_AT) + ggtitle("CD + UC + IBDU") + 
   wrap_elements(p_AT_cd) + ggtitle("CD only") +
   wrap_elements(p_AT_uc) + ggtitle("UC only")
+```
+
+#### AT use within the first year
+
+```{r}
+myDF.fc <- myDF.fc %>% 
+  mutate(AT_1Y = ifelse(AT == 1 & AT_line_1 <= 1, 1, 0))
+
+table(myDF.fc$AT_1Y)
+
+myDF.fc %>%
+  count(AT_1Y, group_by = diagnosis)
+
+p_AT_1Y <- myDF.fc %>% 
+  mutate(AT_1Y = factor(AT_1Y)) %>%
+  plotCat("AT_1Y", class = "class_order")
+
+p_AT_1Y_cd <- myDF.fc %>% 
+  subset(diagnosis == "Crohn's Disease") %>%
+  plotCat("AT_1Y", class = "class_order")
+
+p_AT_1Y_cd <- myDF.fc %>% 
+  subset(diagnosis == "Ulcerative Colitis") %>%
+  plotCat("AT_1Y", class = "class_order")
+```
+
+We also generate a censored version for `AT_1Y` where lack of AT is treated as
+a right censored observation at seven years.
+
+```{r}
+myDF.fc <- myDF.fc %>%
+  mutate(AT_line_1_cens = if_else(AT_7Y == 0, 7, as.numeric(AT_line_1))) %>%
+  mutate(AT_line_1_cens = if_else(AT_line_1_cens < 0, 0, AT_line_1_cens))
 ```
 
 #### Cumulative AT usage
@@ -719,12 +769,10 @@ dens.cd.big <- data.frame(x = numeric(),
                           CumulativeY = numeric(),
                           class = character())
 
-
 dens.uc.big <- data.frame(x = numeric(),
                           y = numeric(),
                           CumulativeY = numeric(),
                           class = character())
-
 
 km.df <- data.frame(time = numeric(),
                     cumhaz = numeric(),
@@ -732,46 +780,33 @@ km.df <- data.frame(time = numeric(),
                     diag = character())
 
 for (g in 1:8) {
+  
+  # Calculate cumulative patterns
   temp.cd <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) %>%
     filter(diagnosis == "Crohn's Disease")
   
-  
-  temp.cd  <- temp.cd  %>%
-    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
-    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
-    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
-    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
-  
-  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.cd)
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("FC", g),
                             diag = "CD"))
   
-  
   temp.uc <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) %>%
     filter(diagnosis == "Ulcerative Colitis")
   
-
-  temp.uc  <- temp.uc  %>%
-    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
-    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
-    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
-    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
-  
-  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.uc, stype = 2)
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc) 
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("FC", g),
                             diag = "UC"))
   
+  # Calculate densities
   temp.cd <- temp.cd %>%
-    filter(AT == 1)
-  
+    filter(AT_7Y == 1)
   dens.cd <- density(temp.cd$AT_line_1, kernel = "gaussian", from = 0, to = 7, na.rm = TRUE)
   dens.cd <- data.frame(x = dens.cd$x, y = dens.cd$y)
   dens.cd$CumulativeY <- cumsum(dens.cd$y)
@@ -826,51 +861,50 @@ for (g in 1:8) {
   traj$class <- paste0("FC", g)
   traj.df <- rbind(traj.df, traj)
   
+  temp.all <- myDF.fc %>%
+    filter(class_order == paste0("FC", g))
+  
+   # Calculate cumulative patterns
   temp.cd <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) %>%
     filter(diagnosis == "Crohn's Disease")
-
-  temp.cd  <- temp.cd  %>%
-    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
-    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
-    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
-    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
   
-  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.cd)
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("FC", g),
                             diag = "CD"))
   
-  
   temp.uc <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) %>%
     filter(diagnosis == "Ulcerative Colitis")
   
-
-  temp.uc  <- temp.uc  %>%
-    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
-    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
-    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
-    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
-  
-  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.uc)
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc) 
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("FC", g),
                             diag = "UC"))
-  temp.cd <- temp.cd %>%
-    filter(AT == 1)
+  
+  temp.all <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) 
+  
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.all) 
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "All"))
 }
 
 traj.df$class <- plyr::mapvalues(traj.df$class, 
                                  from = paste0("FC", seq(1, 8)),
                                  to = paste0("FC", c(7, 6, 4, 8, 1, 5, 2, 3)))
 
-p1 <- ggplot(km.df, aes(x = time, y = cumhaz)) +
-  geom_line(aes(color = diag), lty = 2) +
+p1 <- km.df %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1) +
   geom_line(aes(x = time, y = prediction/log(2500) ), data = traj.df, color = "black") +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() + 
@@ -879,6 +913,28 @@ p1 <- ggplot(km.df, aes(x = time, y = cumhaz)) +
       sec.axis = sec_axis(transform = ~.*log(2500),
                           name = "Log (FC (\u03BCg/g))"))
 p1
+
+p2 <- km.df %>%
+  subset(diag != "All") %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1) +
+  geom_line(aes(x = time, y = prediction/log(2500) ), data = traj.df, color = "black") +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() + 
+  scale_y_continuous(name = "Cumulative",
+                     
+      sec.axis = sec_axis(transform = ~.*log(2500),
+                          name = "Log (FC (\u03BCg/g))"))
+p2
+
+p3 <- km.df %>%
+  subset(diag != "All") %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() + 
+  scale_y_continuous(name = "Cumulative")
+p3
 ```
 
 ## C-reactive protein analysis
