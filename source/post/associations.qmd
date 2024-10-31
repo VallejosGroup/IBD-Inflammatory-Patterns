@@ -797,7 +797,7 @@ for (g in 1:8) {
     filter(class_order == paste0("FC", g)) %>%
     filter(diagnosis == "Ulcerative Colitis")
   
-  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc, stype = 2)
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc) 
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
@@ -864,51 +864,47 @@ for (g in 1:8) {
   temp.all <- myDF.fc %>%
     filter(class_order == paste0("FC", g))
   
+   # Calculate cumulative patterns
   temp.cd <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) %>%
     filter(diagnosis == "Crohn's Disease")
-
-  temp.cd  <- temp.cd  %>%
-    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
-    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
-    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
-    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
   
-  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.cd)
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("FC", g),
                             diag = "CD"))
   
-  
   temp.uc <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) %>%
     filter(diagnosis == "Ulcerative Colitis")
   
-
-  temp.uc  <- temp.uc  %>%
-    mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
-    mutate(AT = if_else(AT_line_1 >= 7, 0, AT)) %>%
-    mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
-    mutate(AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1))
-  
-  km <- survfit(Surv(AT_line_1, AT) ~ 1, data = temp.uc)
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc) 
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("FC", g),
                             diag = "UC"))
-  temp.cd <- temp.cd %>%
-    filter(AT == 1)
+  
+  temp.all <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) 
+  
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.all) 
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "All"))
 }
 
 traj.df$class <- plyr::mapvalues(traj.df$class, 
                                  from = paste0("FC", seq(1, 8)),
                                  to = paste0("FC", c(7, 6, 4, 8, 1, 5, 2, 3)))
 
-p1 <- ggplot(km.df, aes(x = time, y = cumhaz)) +
-  geom_line(aes(color = diag), lty = 2) +
+p1 <- km.df %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1) +
   geom_line(aes(x = time, y = prediction/log(2500) ), data = traj.df, color = "black") +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() + 
@@ -917,6 +913,28 @@ p1 <- ggplot(km.df, aes(x = time, y = cumhaz)) +
       sec.axis = sec_axis(transform = ~.*log(2500),
                           name = "Log (FC (\u03BCg/g))"))
 p1
+
+p2 <- km.df %>%
+  subset(diag != "All") %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1) +
+  geom_line(aes(x = time, y = prediction/log(2500) ), data = traj.df, color = "black") +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() + 
+  scale_y_continuous(name = "Cumulative",
+                     
+      sec.axis = sec_axis(transform = ~.*log(2500),
+                          name = "Log (FC (\u03BCg/g))"))
+p2
+
+p3 <- km.df %>%
+  subset(diag != "All") %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() + 
+  scale_y_continuous(name = "Cumulative")
+p3
 ```
 
 ## C-reactive protein analysis
