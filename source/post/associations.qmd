@@ -481,6 +481,18 @@ wrap_elements(p_perianal_cd) + p_mlr_cd$plot_both$PerianalYes +
   plot_annotation(title = "CD patients only")
 ```
 
+Some statistics to be used in the text:
+
+```{r}
+myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  filter(missingN_cd == 0) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC2"), class_order, "Other")) %>%
+  group_by(class_aux, L4) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count) * 100))
+```
+
 #### Ulcerative Colitis only
 
 The additional phenotyping information available for UC patients consists of: 
@@ -563,6 +575,26 @@ wrap_elements(p_extent_uc) +
   (p_mlr_uc$plot_both$ExtentE2 + p_mlr_uc$plot_both$ExtentE3 +
      plot_layout(guides = "collect")) +
   plot_annotation(title = "UC patients only")
+```
+
+Some statistics to be used in the text:
+
+```{r}
+myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  filter(missingN_uc == 0) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC8"), class_order, "Other")) %>%
+  group_by(class_aux, sex) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count) * 100))
+
+myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  filter(missingN_uc == 0) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC3"), class_order, "Other")) %>%
+  group_by(class_aux, Extent) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count) * 100))
 ```
 
 ### Advanced therapy use
@@ -820,508 +852,131 @@ p1 <- ggplot(km.df, aes(x = time, y = cumhaz)) +
 p1
 ```
 
-## CRP
+## C-reactive protein analysis
 
-```{R}
-model.crp$pprob$class <- plyr::mapvalues(
-  model.crp$pprob$class,
-  from = c(8, 9),
-  to = c(7, 8)
-)
+### Merge subject-level metadata with model-derived quantities
+
+Here, we create a `data.frame` that combines individual-level information
+(e.g. age at diagnosis, sex) with model-derived quantities, such as the
+posterior probabilities of class assignment. To facilitate visualisation, 
+we also create discretised versions for some variables. 
+
+```{r}
+myDF.crp <- crp %>% # may change for crp.median
+  group_by(ids) %>%
+  summarise(n.total = n(),
+            followup = max(crp_time),) %>%
+  mutate(followup_cut = cut(followup, breaks = c(0, 2, 4, 6, 7)),
+         n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
+  
+myDF.crp <- merge(myDF.crp, model.crp$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
+myDF.crp <- myDF.crp %>% 
+  mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
+                        prob5, prob6, prob7, prob8)) 
+myDF.crp<- merge(myDF.crp, dict, by = "ids", all.x = TRUE, all.y = FALSE)
+
+### CAV: Nathan to update this!
+myDF.crp <- myDF.crp %>%
+  mutate(class_order = plyr::mapvalues(
+    class, from = seq_len(8), to = c(7, 6, 4, 8, 1, 5, 2, 3))) %>%
+  mutate(class_order = factor(
+    class_order, levels = 1:8, labels = paste0("CRP", 1:8))) %>%
+  mutate(prob_order1 = prob5, prob_order2 = prob7,
+         prob_order3 = prob8, prob_order4 = prob3,
+         prob_order5 = prob6, prob_order6 = prob2,
+         prob_order7 = prob1, prob_order8 = prob4)
 ```
 
-As Cluster CRP2 and CRP4 are characterised by very similar longitudinal
-profiles, we have elected to merge these clusters. All subjects in cluster
-4 have been migrated to cluster 2 with clusters 5-9 renumbered accordingly.
+### Uncertainty cluster assignment probabilities 
 
-Similar to FC, we will explore associations only for subjects with a
-sufficiently high posterior probability of being in their assigned cluster. As 
-cluster assignment is exclusive, we are able to add the posterior probabilities
-for the merged clusters together to determine the posterior probability for
-CRP2 after the merge. 
+First, we calculate the proportion of individuals assigned to each cluster
+with probability above 0.5.
 
-### Sex
+```{r}
+p1 <- myDF.crp %>% 
+  group_by(class_order) %>%
+  summarise(prop50 = 100*mean(probmax > 0.5),
+            prop75 = 100*mean(probmax > 0.75)) %>%
+  ggplot(aes(x = class_order, y = prop50)) +
+  ylim(c(0,100)) +
+  xlab("Assigned cluster") +
+  ylab("% assigned with prob > 0.5") +
+  geom_bar(stat = "identity") +
+  theme_minimal()
 
-```{R}
-dict.crp <- subset(dict, ids %in% model.crp$pprob$ids)
-dict.crp <- merge(dict.crp, model.crp$pprob[, c("ids", "class")])
-
-
-crp.median <-
-  crp.median %>%
-  select(-sex) %>%
-  merge(dict.crp[, c("ids", "class", "sex")],
-    all.x = TRUE,
-    all.y = FALSE
-  )
-
-chisq.test(dict.crp$class, dict.crp$sex) %>%
-  pander()
+p1 
 ```
 
-### Age
+Next, we calculate average posterior probabilities of cluster assignment. 
 
-Age has been calculated by subtracting year of diagnosis from year of birth. 
-
-```{R}
-dict.crp$ageCat <- cut(dict.crp$age,
-  breaks = c(0, 18, 30, 50, 70, Inf),
-  labels = c("<18", "18-29", "30-49", "50-69", "\u226570"),
-  include.lowest = TRUE,
-  right = FALSE
-)
-
-crp.median <- merge(crp.median,
-  dict.crp[, c("ids", "ageCat")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-)
-
-aov(class ~ age, data = dict.crp) %>%
-  summary() %>%
-  pander()
+```{r}
+myDF.crp_means <- myDF.crp %>% 
+  group_by(class_order, followup_cut) %>%
+  summarise(across(starts_with("prob_order"), function(x) mean(x, na.rm = TRUE)),
+            .groups = "drop") %>%
+  pivot_longer(cols = starts_with("prob_order"), names_to = "prob_order")
 ```
 
+<!--- CAV: update text to be CRP based ---> 
+@fig-fc-prob-fup shows how cluster assignment probabilities change as follow-up
+for subjects increases. As one would expect, probabilities typically increase as
+as follow-up increases. This relationship appears to depend upon when the mean
+trajectory for the assigned cluster substantially differs from the other
+clusters. FC8 shows high posterior probabilities with even short follow-up as
+this is the only cluster with low FC at diagnosis. However, longer follow-ups 
+are required to distinguish other clusters. For example, individuals
+assigned to FC6 that have a short follow-up (< 4 years from diagnosis) have, on 
+average, a high probability of being assigned to FC3 instead 
+(`r round(myDF.fc_means$value[myDF.fc_means$class_order == "FC6" & myDF.fc_means$followup_cut == "(0,4]" & myDF.fc_means$prob_order == "prob_order6"], 3)`
+versus
+`r round(myDF.fc_means$value[myDF.fc_means$class_order == "FC6" & myDF.fc_means$followup_cut == "(0,4]" & myDF.fc_means$prob_order == "prob_order3"], 3)`).
+This is not unexpected, as FC3 and FC6 share similar patterns within the first
+2 years.  
+
 
 ```{R}
-#| label: fig-crp-age-dist
-#| fig-cap: "Distribution of age at diagnosis by CRP cluster assignment."
-#| fig-height: 4
-#| fig-width: 9.142857
-#| warning: false
-p2 <- dict.crp %>%
-  mutate(class = factor(class, labels = paste("CRP", seq(1, 8)))) %>%
-  ggplot(aes(x = class, y = age)) +
-  geom_violin(fill = "#D4CDF4", color = "#7A6F9B") +
+#| label: fig-crp-prob-fup
+#| fig-cap: "Demonstration of how mean posterior probabilities of cluster assignment for subjects changes based upon follow-up and assigned cluster."
+#| column: body-outset
+#| fig-width: 11
+#| fig-height: 8
+
+
+# Assign level order otherwise alphanumerical order used 
+# and add sample sizes to labels
+myDF.crp_means <- myDF.crp_means %>%
+  mutate(prob_order = factor(prob_order,
+                             levels = c(paste0("prob_order", 1:8)),
+                             labels = c(paste0("CRP", 1:8))),
+         class_order = factor(class_order,
+                              levels = paste0("CRP", 1:8),
+                              labels = paste0("Assigned to CRP", 1:8, "\n n = ",
+                                              as.vector(table(myDF.crp$class_order)))))
+
+p2 <- myDF.crp_means %>%
+  ggplot(aes(fill = prob_order, y = value, x = followup_cut)) +
+  geom_bar(position = "fill", stat = "identity") +
+  facet_wrap(.~class_order, ncol = 4) + 
   theme_minimal() +
-  xlab("Cluster") +
-  ylab("Age at diagnosis")
+  theme(legend.title = element_text(hjust = 0.5),
+        strip.background = element_rect(color = "lightgray",
+                                         linewidth = 1.5,
+                                         linetype="solid")) +
+  labs(x = "Follow-up cutoff (years)",
+       y = "",
+       fill = "Mean posterior\nprobability of\ncluster assignment") +
+  scale_fill_viridis_d(option = "D") 
 
-p <- p1 / p2 + plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = 16, face = "bold"))
+p2
+# p + scale_fill_viridis_d(option = "D") 
+# p + scale_fill_brewer(palette = "Blues")
 
-ggsave("plots/age-dist.png", p, width = 16 * 4 / 7, height = 8)
-ggsave("plots/age-dist.pdf", p, width = 16 * 4 / 7, height = 8)
-print(p2)
-```
-
-
-### IBD type
-
-As with the FC  model, IBD type has been included in the cluster assignment sub
-model as a covariate. Crohn's disease is the reference IBD type with cluster
-CRP 8 being the reference cluster. 
-
-
-```{R}
-#| label: fig-crp-ibd
-#| fig-cap: "Forest plot of IBD type for the chosen CRP model."
-n.clust <- 8
-id <- 1:length(model.crp$best)
-
-indice <- rep(id * (id + 1) / 2)
-
-se <- sqrt(model.crp$V[indice])
-coefficient <- coef(model.crp)
-var.names <- names(coefficient)
-
-df <- data.frame(coefficient = coefficient, se = se)
-df <- df[1:(3 * (n.clust - 1)), ]
-
-df$lower <- df$coefficient - (qnorm(0.975) * df$se)
-df$upper <- df$coefficient + (qnorm(0.975) * df$se)
-df$labels <- names(coefficient)[1:(3 * (n.clust - 1))]
-
-df$labels <- factor(df$labels, levels = rev(df$labels))
-
-df$sig <- FALSE
-
-df[df$upper < 0, "sig"] <- TRUE
-df[df$lower > 0, "sig"] <- TRUE
-
-df <- df[n.clust:(3 * (n.clust - 1)), ] # Remove intercept
-
-df %>%
-  ggplot(aes(
-    x = labels,
-    y = coefficient,
-    ymin = lower,
-    ymax = upper,
-    color = sig
-  )) +
-  geom_errorbar() +
-  geom_point(size = 3.5) +
-  geom_hline(yintercept = 0, lty = 2) +
-  coord_flip() + # flip coordinates (puts labels on y axis)
-  xlab("") +
-  ylab("Estimate (95% CI)") +
-  theme_bw() +
-  ylim(-4, 4) +
-  scale_color_manual(values = c("black", "#FF007F")) +
-  theme(legend.position = "none")
-```
-
-```{R}
-#| label: tbl-crp-ibd
-#| fig-cap: "Table of β estimates and associated p-values obtained via univariate Wald tests."
-wald <- c()
-p.vals <- c()
-
-for (index in seq(n.clust, 3 * (n.clust - 1))) {
-  temp <- WaldMult(model.crp, pos = index)
-  wald <- c(wald, temp[, 1])
-  p.vals <- c(p.vals, temp[, 2])
-}
-
-df$wald <- wald
-df$p.vals <- p.vals
-
-rownames(df) <- df$labels
-
-df %>%
-  select(coefficient, se, wald, p.vals) %>%
-  knitr::kable(digits = 3, col.names = c("Estimate", "SE", "Wald", "p-value"))
-```
-
-```{R}
-dict.crp$diagnosis <- factor(dict.crp$diagnosis,
-  levels = c(
-    "Crohn's Disease",
-    "Ulcerative Colitis",
-    "IBDU"
-  )
-)
-
-dict.crp$class <- factor(dict.crp$class,
-  levels = seq(1, 8),
-  labels = paste0("CRP ", seq(1, 8))
-)
-
-p2 <- dict.crp %>%
-  ggplot() +
-  geom_mosaic(aes(x = product(class), fill = diagnosis), show.legend = FALSE) +
-  scale_fill_manual(values = c("#F8766D", "#619CFF", "#00BA38")) +
-  theme_minimal() +
-  labs(
-    x = "Cluster",
-    y = "IBD type"
-  ) +
-  ggtitle(
-    "IBD type",
-    "CRP clustering"
-  )
-
-ggsave("plots/mosaic/crp-by-diag.png",
-  p2,
-  width = 7.5,
-  height = 5,
-  units = "in",
-  dpi = 300,
-  create.dir = TRUE
-)
-ggsave("plots/mosaic/crp-by-diag.pdf", p2, width = 7.5, height = 5)
-
-p6 <- dict.crp %>%
-  ggplot(aes(x = class, fill = diagnosis, color = diagnosis)) +
-  geom_bar(position = "fill") +
-  scale_fill_manual(values = c("#F8766D", "#619CFF", "#00BA38")) +
-  scale_color_manual(values = c("#CF544B", "#417BD2", "#01932A")) +
-  theme_minimal() +
-  theme(legend.position = "top") +
-  scale_y_continuous(labels = scales::percent) +
-  labs(
-    x = "Cluster",
-    y = "",
-    fill = "IBD type",
-    color = "IBD type"
-  )
-p6
-```
-
-```{R}
-#| label: fig-crp-ibd-facet
-#| fig-cap: "Percentage of (A) Crohn's disease, (B) ulcerative colitis, and (C) IBDU within each CRP cluster. Dotted lines indicate the overall percentage of each IBD type."
-perc.table <- data.frame(
-  diagnosis = character(),
-  cluster = character(),
-  perc = numeric()
-)
-for (g in 1:8) {
-  temp.1 <- subset(dict.crp, class == paste0("CRP ", g))
-  for (diag in c("Crohn's Disease", "Ulcerative Colitis", "IBDU")) {
-    perc <- nrow(subset(temp.1, diagnosis == diag)) / nrow(temp.1)
-    perc.table <- rbind(
-      perc.table,
-      data.frame(
-        diagnosis = diag,
-        cluster = paste0("CRP ", g),
-        perc = perc
-      )
-    )
-  }
-}
-
-totalCdPerc <- nrow(subset(dict.crp, diagnosis == "Crohn's Disease")) /
-  nrow(dict.crp)
-
-p1 <- perc.table %>%
-  filter(diagnosis == "Crohn's Disease") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#F8766D", color = "#CF544B") +
-  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-totalCdPerc <- nrow(subset(dict.crp, diagnosis == "Ulcerative Colitis")) /
-  nrow(dict.crp)
-
-p2 <- perc.table %>%
-  filter(diagnosis == "Ulcerative Colitis") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#619CFF", color = "#417BD2") +
-  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-
-totalCdPerc <- nrow(subset(dict.crp, diagnosis == "IBDU")) /
-  nrow(dict.crp)
-
-p3 <- perc.table %>%
-  filter(diagnosis == "IBDU") %>%
-  ggplot(aes(x = cluster, y = perc)) +
-  geom_bar(stat = "identity", fill = "#00BA38", color = "#01932A") +
-  geom_hline(yintercept = totalCdPerc, linetype = "dashed", color = "#4D4730") +
-  theme_minimal() +
-  labs(x = "Cluster", y = "Percentage")
-
-p <- p1 / p2 / p3 + patchwork::plot_annotation(tag_levels = "A")  &
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) 
-ggsave("plots/ibd-type-crp.png", p, width = 7.5, height = 7.5)
-ggsave("plots/ibd-type-crp.pdf", p, width = 7.5, height = 7.5)
-print(p)
-```
-
-### Advanced therapy in CD
-
-```{R}
-dict.crp.cd <- readRDS(paste0(prefix, "processed/dict-crp-cd.RDS"))
-
-dict.crp.cd <- merge(dict.crp.cd,
-  dict.crp[, c("ids", "class")],
-  by = "ids",
-  all.x = TRUE,
-  all.y = FALSE
-)
-```
-
-
-
-```{R}
-pred.crp.df <- data.frame(
-  crp_time = c(seq(0, 6.25, 0.01), seq(0, 6.25, 0.01)),
-  diagnosis = c(
-    rep("Crohn's Disease", 626),
-    rep("Ulcerative Colitis", 626)
-  )
-)
-pred.crp.df.update <- predictY(model.crp, pred.crp.df,
-  var.time = "crp_time",
-  draws = TRUE
-)$pred
-
-temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
-
-for (g in 1:8) {
-  temp <- rbind(
-    temp,
-    data.frame(
-      Time = seq(0, 6.25, 0.01),
-      Cluster = g,
-      Value = pred.crp.df.update[, g]
-    )
-  )
-}
-
-
-dict.crp.cd$timeToTherapy <- with(dict.crp.cd, startDate - date.of.diag) / 365.25
-
-for (g in 1:8) {
-  p1 <- temp %>%
-    filter(Cluster == g) %>%
-    ggplot(aes(x = Time, y = Value)) +
-    geom_line(color = "#558C8C") +
-    theme_minimal() +
-    ylim(0, 6) +
-    xlab("") +
-    ylab("Log (CRP (\u03BCg/mL))")
-  p2 <- dict.crp.cd %>%
-    filter(class == paste0("CRP ", g)) %>%
-    filter(timeToTherapy > 0) %>%
-    ggplot(aes(x = timeToTherapy)) +
-    geom_density(color = "#5D002F", fill = "#82204A") +
-    theme_minimal() +
-    xlim(0, 7) +
-    ylim(0, NA) +
-    xlab("Time") +
-    ylab("Density of time to first advanced therapy")
-  p <- p1 / p2 + plot_annotation(
-    title = paste("CRP ", g),
-    subtitle = "Crohn's disease",
-    tag_levels = "A"
-  )
-  ggsave(paste0("plots/at-density-crp/g=", g, ".png"),
-    p,
-    width = 7,
-    height = 7,
-    units = "in",
-    create.dir = TRUE
-  )
-  print(p)
-}
-```
-
-```{R}
-temp <- dict.crp.cd %>%
-  mutate(timeToTherapy = if_else(advancedT == 1, 7, as.numeric(timeToTherapy))) %>%
-  mutate(advancedT = if_else(advancedT == 1, 0, 1)) %>%
-  mutate(advancedT = if_else(timeToTherapy > 7, 0, 1)) %>%
-  mutate(timeToTherapy = if_else(timeToTherapy > 7, 7, timeToTherapy))
-survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
-  ggsurvplot(pval = TRUE)
-```
-
-```{R}
-#| echo: false
-png("plots/at-survival-crp-ci.png",
-  width = 7,
-  height = 5,
-  units = "in",
-  res = 300
-)
-survfit(Surv(timeToTherapy, advancedT) ~ class, data = temp) %>%
-  ggsurvplot(pval = TRUE, conf.int = TRUE)
-invisible(dev.off())
-```
-
-
-```{R}
-p <- dict.crp.cd %>%
-  ggplot() +
-  geom_mosaic(aes(x = product(class), fill = firstY), show.legend = FALSE) +
-  theme_minimal() +
-  labs(
-    x = "Cluster",
-    y = "Advanced therapy within first year of diagnosis"
-  ) +
-  ggtitle(
-    "Crohn's disease subjects",
-    "CRP clustering"
-  )
-ggsave("plots/mosaic/crp-cd.png",
-  p,
-  width = 7.5,
-  height = 5,
-  units = "in",
-  dpi = 300,
-  create.dir = TRUE
-)
-ggsave("plots/mosaic/crp-cd.pdf", p, width = 7.5, height = 5)
+ggsave("plots/fc-prob-fup.png", p2, width = 11, height = 8, units = "in")
+ggsave("plots/fc-prob-fup.pdf", p2, width = 11, height = 8, units = "in")
 p
 ```
 
-```{R}
-pred.crp.df <- data.frame(
-  crp_time = c(seq(0, 7, 0.01), seq(0, 7, 0.01)),
-  diagnosis = c(
-    rep("Crohn's Disease", 701),
-    rep("Ulcerative Colitis", 701)
-  )
-)
-pred.crp.df.update <- predictY(model.crp, pred.crp.df,
-  var.time = "crp_time",
-  draws = TRUE
-)$pred
 
-temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
-
-for (g in 1:8) {
-  temp <- rbind(
-    temp,
-    data.frame(
-      Time = seq(0, 7, 0.01),
-      Cluster = g,
-      Value = pred.crp.df.update[, g]
-    )
-  )
-}
-
-traj.crp.outlines <- list()
-
-for (g in 1:8) {
-  traj.crp.outlines[[g]] <- temp %>%
-    filter(Cluster == g) %>%
-    ggplot(aes(x = Time, y = Value)) +
-    geom_line(color = "#757575") +
-    theme_classic() +
-    theme(
-      text = element_blank(),
-      axis.ticks = element_blank(),
-      axis.line = element_line(color = "#dfdfdf")
-    ) +
-    ylim(0, 6)
-}
-
-
-p1 <- dict.crp.cd %>%
-  ggplot(aes(x = class, fill = firstY, color = firstY)) +
-  geom_bar(position = "fill") +
-  scale_fill_manual(values = c("#F8766D", "#619CFF")) +
-  scale_color_manual(values = c("#CF544B", "#417BD2")) +
-  theme_minimal() +
-  theme(legend.position = "top") +
-  scale_y_continuous(labels = scales::percent) +
-  labs(
-    x = "Cluster",
-    y = "",
-    fill = desc,
-    color = desc
-  )
-
-
-p <- (p1) /
-  (traj.crp.outlines[[1]] +
-    traj.crp.outlines[[2]] +
-    traj.crp.outlines[[3]] +
-    traj.crp.outlines[[4]] +
-    traj.crp.outlines[[5]] +
-    traj.crp.outlines[[6]] +
-    traj.crp.outlines[[7]] +
-    traj.crp.outlines[[8]] +
-    plot_layout(ncol = 8, guides = "collect", widths = unit(2.8, "cm"))) +
-  plot_layout(heights = c(4, 1), nrow = 2)
-
-ggsave("plots/mosaic/crp-by-AT-with-traj.pdf",
-  p,
-  width = 7 * 1.65,
-  height = 5 * 1.65
-)
-ggsave("plots/mosaic/crp-by-AT-with-traj.png",
-  p,
-  width = 7 * 1.65,
-  height = 5 * 1.65
-)
-```
-
-### Mutlivariate modelling
-
-```{R}
-mlr <- multinom(class ~ age + sex + diagnosis, data = dict.crp, trace = FALSE)
-z <- summary(mlr)$coefficients / summary(mlr)$standard.errors
-p <- (1 - pnorm(abs(z), 0, 1)) * 2
-knitr::kable(p)
-```
 
 ### Demographics table
 
