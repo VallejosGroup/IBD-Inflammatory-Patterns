@@ -1235,3 +1235,300 @@ z <- summary(mlr)$coefficients / summary(mlr)$standard.errors
 p <- (1 - pnorm(abs(z), 0, 1)) * 2
 knitr::kable(p)
 ```
+
+#### Overall cluster-specific trajectories
+
+Here, we extract overall cluster-specific trajectories as these will be used
+for visualisation purposes in order to better understand patterns of AT use.
+Note that model outputs do not match the reordered clusters (based on cumulative
+                                                             inflammation) used throughout this report. As such, we use `title.mapping` to
+re-order the trajectories when these are plotted.
+
+```{r cluster specific trajectories}
+time.pred <- seq(0, 7, by = 0.01)
+
+pred.fc.df <- data.frame(
+  calpro_time = c(time.pred, time.pred),
+  diagnosis = c(
+    rep("Crohn's Disease", length(time.pred)),
+    rep("Ulcerative Colitis", length(time.pred))
+  )
+)
+pred.fc.df.update <- lcmm::predictY(model.fc,
+                                    pred.fc.df,
+                                    var.time = "calpro_time",
+                                    draws = TRUE
+)$pred
+
+pred <- predictY(model.fc, pred.fc.df, var.time = "calpro_time", draws = TRUE)$pred
+
+pred <- as.data.frame(pred[1:length(time.pred), ])
+pred$time <- time.pred
+
+ylimit <- log(2500)
+title.mapping <- c(7, 6, 4, 8, 1, 5, 2, 3)
+```
+
+This is based on the first AT prescription for each patient.
+
+W/ Density
+
+```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
+dens.cd.big <- data.frame(x = numeric(),
+                          y = numeric(),
+                          CumulativeY = numeric(),
+                          class = character())
+
+dens.uc.big <- data.frame(x = numeric(),
+                          y = numeric(),
+                          CumulativeY = numeric(),
+                          class = character())
+
+km.df <- data.frame(time = numeric(),
+                    cumhaz = numeric(),
+                    class = character(),
+                    diag = character())
+
+for (g in 1:8) {
+
+  # Calculate cumulative patterns
+  temp.cd <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Crohn's Disease")
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "CD"))
+
+  temp.uc <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Ulcerative Colitis")
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "UC"))
+
+  # Calculate densities
+  temp.cd <- temp.cd %>%
+    filter(AT_7Y == 1)
+  dens.cd <- density(temp.cd$AT_line_1, kernel = "gaussian", from = 0, to = 7, na.rm = TRUE)
+  dens.cd <- data.frame(x = dens.cd$x, y = dens.cd$y)
+  dens.cd$CumulativeY <- cumsum(dens.cd$y)
+  dens.cd$class <- paste0("FC", g)
+  dens.cd.big <- rbind(dens.cd.big,
+                       dens.cd)
+
+  temp.uc <- temp.uc %>%
+    filter(AT_7Y == 1)
+  dens.uc <- density(temp.uc$AT_line_1, kernel = "gaussian", from = 0, to = 7, na.rm = TRUE)
+  dens.uc <- data.frame(x = dens.uc$x, y = dens.uc$y)
+  #  dens.uc$y <- dens.uc$y/nrow(temp.uc)
+  dens.uc$CumulativeY <- cumsum(dens.uc$y)
+  dens.uc$class <- paste0("FC", g)
+  dens.uc.big <- rbind(dens.uc.big,
+                       dens.uc)
+}
+
+dens.cd.big$diag <- "CD"
+dens.uc.big$diag <- "UC"
+
+dens <- rbind(dens.cd.big, dens.uc.big)
+
+
+p1 <- ggplot(dens, aes(x = x, y = y, color = diag, fill = diag)) +
+  geom_area(alpha = .5, position = 'identity') +
+  geom_line(aes(y = cumhaz, x = time), data = km.df, lty = 2) +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal()
+p1
+```
+
+This is based on the first AT prescription for each patient.
+
+W/ Density
+
+```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
+dens.cd.big <- data.frame(x = numeric(),
+                          y = numeric(),
+                          CumulativeY = numeric(),
+                          class = character())
+
+dens.uc.big <- data.frame(x = numeric(),
+                          y = numeric(),
+                          CumulativeY = numeric(),
+                          class = character())
+
+km.df <- data.frame(time = numeric(),
+                    cumhaz = numeric(),
+                    class = character(),
+                    diag = character())
+
+for (g in 1:8) {
+
+  # Calculate cumulative patterns
+  temp.cd <- myDF.crp %>%
+    filter(class_order == paste0("CRP", g)) %>%
+    filter(diagnosis == "Crohn's Disease")
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("CRP", g),
+                            diag = "CD"))
+
+  temp.uc <- myDF.crp %>%
+    filter(class_order == paste0("CRP", g)) %>%
+    filter(diagnosis == "Ulcerative Colitis")
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("CRP", g),
+                            diag = "UC"))
+
+  # Calculate densities
+  temp.cd <- temp.cd %>%
+    filter(AT_7Y == 1)
+  dens.cd <- density(temp.cd$AT_line_1, kernel = "gaussian", from = 0, to = 7, na.rm = TRUE)
+  dens.cd <- data.frame(x = dens.cd$x, y = dens.cd$y)
+  dens.cd$CumulativeY <- cumsum(dens.cd$y)
+  dens.cd$class <- paste0("CRP", g)
+  dens.cd.big <- rbind(dens.cd.big,
+                       dens.cd)
+
+  temp.uc <- temp.uc %>%
+    filter(AT_7Y == 1)
+  dens.uc <- density(temp.uc$AT_line_1, kernel = "gaussian", from = 0, to = 7, na.rm = TRUE)
+  dens.uc <- data.frame(x = dens.uc$x, y = dens.uc$y)
+  #  dens.uc$y <- dens.uc$y/nrow(temp.uc)
+  dens.uc$CumulativeY <- cumsum(dens.uc$y)
+  dens.uc$class <- paste0("CRP", g)
+  dens.uc.big <- rbind(dens.uc.big,
+                       dens.uc)
+}
+
+dens.cd.big$diag <- "CD"
+dens.uc.big$diag <- "UC"
+
+dens <- rbind(dens.cd.big, dens.uc.big)
+
+
+p1 <- ggplot(dens, aes(x = x, y = y, color = diag, fill = diag)) +
+  geom_area(alpha = .5, position = 'identity') +
+  geom_line(aes(y = cumhaz, x = time), data = km.df, lty = 2) +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal()
+p1
+```
+
+w/ trajectories
+
+```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
+km.df <- data.frame(time = numeric(),
+                    cumhaz = numeric(),
+                    class = character(),
+                    diag = character())
+
+traj.df <- data.frame(prediction = numeric(),
+                      time = numeric(),
+                      class = character())
+
+
+for (g in 1:8) {
+  traj <- pred[, c(g, ncol(pred)), ]
+  names(traj) <- c("prediction", "time")
+  traj$class <- paste0("FC", g)
+  traj.df <- rbind(traj.df, traj)
+
+  temp.all <- myDF.fc %>%
+    filter(class_order == paste0("FC", g))
+
+  # Calculate cumulative patterns
+  temp.cd <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Crohn's Disease")
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "CD"))
+
+  temp.uc <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Ulcerative Colitis")
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "UC"))
+
+  temp.all <- myDF.fc %>%
+    filter(class_order == paste0("FC", g))
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.all)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC", g),
+                            diag = "All"))
+}
+
+traj.df$class <- plyr::mapvalues(traj.df$class,
+                                 from = paste0("FC", seq(1, 8)),
+                                 to = paste0("FC", c(7, 6, 4, 8, 1, 5, 2, 3)))
+
+p1 <- km.df %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1) +
+  geom_line(aes(x = time, y = prediction/log(2500) ), data = traj.df, color = "black") +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() +
+  scale_y_continuous(name = "Cumulative",
+
+                     sec.axis = sec_axis(transform = ~.*log(2500),
+                                         name = "Log (FC (\u03BCg/g))"))
+p1
+
+p2 <- km.df %>%
+  subset(diag != "All") %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1) +
+  geom_line(aes(x = time, y = prediction/log(2500) ), data = traj.df, color = "black") +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() +
+  scale_y_continuous(name = "Cumulative",
+
+                     sec.axis = sec_axis(transform = ~.*log(2500),
+                                         name = "Log (FC (\u03BCg/g))"))
+p2
+
+p3 <- km.df %>%
+  subset(diag != "All") %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() +
+  scale_y_continuous(name = "Cumulative")
+p3
+```
