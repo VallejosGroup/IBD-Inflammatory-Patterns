@@ -1779,7 +1779,7 @@ traj.df$class <- plyr::mapvalues(traj.df$class,
 dens <- rbind(dens.cd.big, dens.uc.big)
 
 p1 <- ggplot(km.df, aes(x = time, y = cumhaz)) +
-  geom_line(aes(color = diag, fill = diag), lty = 2) +
+  geom_line(aes(color = diag), lty = 2) +
   geom_line(aes(x = time, y = prediction/log(2500) ), data = traj.df, color = "black") +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() + 
