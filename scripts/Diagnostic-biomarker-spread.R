@@ -15,7 +15,10 @@ model.fcal <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
 
 fc.dist <- subset(fc.dist, ids %in% model.fcal$pprob$ids)
 fc.dist <- merge(fc.dist, model.fcal$pprob[, c("ids", "class")], by = "ids")
-fc.dist$class <- paste("FC", fc.dist$class)
+fc.dist$class <- paste0("FC", fc.dist$class)
+fc.dist$class <- plyr::mapvalues(fc.dist$class,
+                                 from = paste0("FC", seq(1, 8)),
+                                 to = paste0("FC", c(7, 6, 4, 8, 1, 5, 2, 3)))
 
 p <- fc.dist %>%
   ggplot(aes(x = diagnostic * 365.25)) +
