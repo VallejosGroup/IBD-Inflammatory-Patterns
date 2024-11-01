@@ -978,6 +978,13 @@ p1 + p2 + p3 + plot_annotation(tag_levels = "A")
 
 <!--- CAV: do we need this here? may remove and keep in an EDA file --->
 
+```{R}
+fcal %>%
+  select(ids) %>%
+  table() %>%
+  quantile()
+```
+
 ### Revisiting month of diagnosis
 
 After filtering by subjects who have a diagnostic FC available, January
@@ -1432,6 +1439,11 @@ The following is used to select individuals with at least 3 CRP measurements
 and non-zero variance.
 
 ```{R CRP frequency}
+
+crp.ma.0 <- crp.ma %>%
+  subset(ids %in% countsDF$ids[countsDF$n.total >= 3 & countsDF$crp.var == 0])
+saveRDS(crp.ma.0, paste0(prefix, "processed/crp-ma-0.RDS"))
+
 crp.ma <- crp.ma %>%
   subset(ids %in% countsDF$ids[countsDF$n.total >= 3 & countsDF$crp.var != 0])
 
@@ -1700,6 +1712,24 @@ saveRDS(dict, paste0(prefix, "processed/dict-initial.RDS"))
 saveRDS(fcal, paste0(prefix, "processed/fcal.RDS"))
 saveRDS(crp, paste0(prefix, "processed/crp.RDS"))
 saveRDS(crp.ma, paste0(prefix, "processed/median-crp.RDS"))
+```
+
+
+```{R}
+fcal %>%
+  filter(ids %in% crp.ma$ids) %>%
+  select(ids) %>%
+  table() %>%
+  quantile()
+```
+
+
+```{R}
+crp.ma %>%
+  filter(ids %in% fcal$ids) %>%
+  select(ids) %>%
+  table() %>%
+  quantile()
 ```
 
 ## Acknowledgments {.appendix}
