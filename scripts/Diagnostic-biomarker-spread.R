@@ -46,6 +46,9 @@ model.crp <- readRDS(paste0(prefix, "/cache/crp-ma/crp-8.RDS"))
 crp.dist <- subset(crp.dist, ids %in% model.crp$pprob$ids)
 crp.dist <- merge(crp.dist, model.crp$pprob[, c("ids", "class")], by = "ids")
 crp.dist$class <- paste("CRP", crp.dist$class)
+crp.dist$class <- plyr::mapvalues(crp.dist$class,
+                                 from = paste0("CRP ", seq(1, 8)),
+                                 to = paste0("CRP", c(2, 3, 1, 4, 5, 7, 6, 8)))
 
 
 p <- crp.dist %>%

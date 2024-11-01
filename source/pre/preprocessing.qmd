@@ -1207,6 +1207,22 @@ crp <- subset(crp, ids %in% diagnostic$ids)
 
 After this exclusion, `r length(unique(crp$ids))` remain in the data. 
 
+```{R}
+diag.time <- c()
+crp.ids <-  unique(crp$ids)
+
+for (id in crp.ids) {
+  temp <- subset(crp, ids == id)
+  temp <- temp[order(temp$crp_time), ]
+  diag.time <- c(diag.time, temp[1, "crp_time"])
+}
+
+
+crp.dist <- data.frame(ids = crp.ids, diagnostic = diag.time)
+
+saveRDS(crp.dist, paste0(prefix, "processed/crp-diag-dist.RDS"))
+```
+
 ### Retiming - part 2
 
 Here, we show the distribution of the diagnostic CRP measurements with
