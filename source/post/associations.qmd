@@ -744,7 +744,7 @@ for (g in 1:8) {
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("FC", g),
-                            diag = "CD"))
+                            diag = "Crohn's disease"))
   
   temp.uc <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) %>%
@@ -754,7 +754,7 @@ for (g in 1:8) {
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("FC", g),
-                            diag = "UC"))
+                            diag = "Ulcerative colitis"))
   
   temp.all <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) 
@@ -772,8 +772,14 @@ p1 <- km.df %>%
   geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() + 
-  scale_y_continuous(name = "Cumulative")
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "Time (years)",
+       y = "% of subjects receiving an advanced therapy",
+       color = "IBD type") 
 p1
+
+ggsave("paper/Figure-3.pdf", p1, width = 10, height = 10, units = "in")
+ggsave("paper/Figure-3.png", p1, width = 10, height = 10, units = "in")
 ```
 
 ## C-reactive protein analysis
@@ -1465,7 +1471,7 @@ for (g in 1:8) {
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("CRP", g),
-                            diag = "CD"))
+                            diag = "Crohn's disease"))
   
   temp.uc <- myDF.crp %>%
     filter(class_order == paste0("CRP", g)) %>%
@@ -1475,7 +1481,7 @@ for (g in 1:8) {
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
                             class = paste0("CRP", g),
-                            diag = "UC"))
+                            diag = "Ulcerative colitis"))
   
   temp.all <- myDF.crp %>%
     filter(class_order == paste0("CRP", g)) 
@@ -1493,8 +1499,14 @@ p1 <- km.df %>%
   geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() + 
-  scale_y_continuous(name = "Cumulative")
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "Time (years)",
+       y = "% of subjects receiving an advanced therapy",
+       color = "IBD type") 
 p1
+
+ggsave("paper/CRP-AT.pdf", p1, width = 10, height = 10, units = "in")
+ggsave("paper/CRP-AT.png", p1, width = 10, height = 10, units = "in")
 ```
 
 ### Demographics table
