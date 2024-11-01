@@ -42,7 +42,7 @@ library(nnet) # Multinomial logistic regression
 ## Survival analysis
 library(survival)
 library(survminer)
-library(cmprsk)
+#library(cmprsk)
 ## Presentation ##
 library(patchwork)
 library(ggdist)
