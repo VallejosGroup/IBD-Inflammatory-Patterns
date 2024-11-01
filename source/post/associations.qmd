@@ -721,6 +721,18 @@ myDF.fc <- myDF.fc %>%
   mutate(AT_line_1_cens = if_else(AT_line_1_cens < 0, 0, AT_line_1_cens))
 ```
 
+```{R}
+temp <- subset(myDF.fc, diagnosis == "Crohn's Disease")
+
+sum(temp$AT_1Y) / nrow(temp)
+sum(temp$AT_7Y) / nrow(temp)
+
+temp <- subset(myDF.fc, diagnosis == "Ulcerative Colitis")
+
+sum(temp$AT_1Y) / nrow(temp)
+sum(temp$AT_7Y) / nrow(temp)
+```
+
 #### Cumulative AT usage
 
 ```{R}
@@ -731,7 +743,6 @@ km.df <- data.frame(time = numeric(),
                     cumhaz = numeric(),
                     class = character(),
                     diag = character())
-
 
 for (g in 1:8) {
 
@@ -907,8 +918,16 @@ p <- fc_fup / crp_fup + plot_annotation(tag_levels = "A") &
         legend.title = element_text(size = 14), 
         legend.text = element_text(size = 12))
 
-ggsave("plots/prob-fup.pdf", p, width = 11, height = 16, units = "in")
-ggsave("plots/prob-fup.png", p, width = 11, height = 16, units = "in")
+ggsave("plots/prob-fup.pdf",
+       p,
+       width = 11 * 3/4,
+       height = 16 * 3/4,
+       units = "in")
+ggsave("plots/prob-fup.png",
+       p,
+       width = 11 * 3/4,
+       height = 16 * 3/4,
+       units = "in")
 ```
 
 ### Associations with respect to cluster assignments
@@ -1448,6 +1467,20 @@ myDF.crp <- myDF.crp %>%
   mutate(AT_line_1_cens = if_else(AT_7Y == 0, 7, as.numeric(AT_line_1))) %>%
   mutate(AT_line_1_cens = if_else(AT_line_1_cens < 0, 0, AT_line_1_cens))
 ```
+
+
+```{R}
+temp <- subset(myDF.crp, diagnosis == "Crohn's Disease")
+
+sum(temp$AT_1Y) / nrow(temp)
+sum(temp$AT_7Y) / nrow(temp)
+
+temp <- subset(myDF.crp, diagnosis == "Ulcerative Colitis")
+
+sum(temp$AT_1Y) / nrow(temp)
+sum(temp$AT_7Y) / nrow(temp)
+```
+
 
 #### Cumulative AT usage
 

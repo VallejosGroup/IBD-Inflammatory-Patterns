@@ -84,14 +84,8 @@ crp.remapping <- function(x) {
 
 
 col.vec <- c(
-  "1" = "#77AADD",
-  "2" = "#EE8866",
-  "3" = "#EEDD88",
-  "4" = "#FFAABB",
-  "5" = "#99DDFF",
-  "6" = "#44BB99",
-  "7" = "#BBCC33",
-  "8" = "#344966"
+  viridis::viridis(8),
+  viridis::inferno(8)
 )
 
 fcal.pprob <- models.fcal[[8]]$pprob
@@ -110,15 +104,23 @@ crp.pprob <- subset(crp.pprob, ids %in% ids.comb)
 
 fc.classes <- data.frame(fcal.pprob[, c(1, 2)], type = "FC")
 fc.classes$class <- fc.remapping(fc.classes$class)
+fc.classes$class <- paste0("FC", fc.classes$class)
 
 crp.classes <- data.frame(crp.pprob[, c(1, 2)], type = "CRP")
 crp.classes$class <- crp.remapping(crp.classes$class)
+crp.classes$class <- paste0("CRP", crp.classes$class)
 
 classes <- rbind(fc.classes, crp.classes)
 
 classes$class <- as.factor(classes$class)
 classes$type <- as.factor(classes$type)
 classes$type <- relevel(classes$type, "FC")
+
+
+classes <- merge(classes,
+                 dict[, c("ids", "diagnosis")],
+                 by = "ids", all.x = TRUE,
+                 all.y = FALSE)
 
 p1 <- classes %>%
   ggplot(aes(
@@ -129,7 +131,24 @@ p1 <- classes %>%
   label = class
 )) +
   geom_flow() +
-  geom_stratum() +
+  geom_stratum(alpha = 1) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(axis.line = element_line(colour = "gray")) +
+  xlab("Biomarker") +
+  scale_fill_manual(values = col.vec)
+
+p2 <- classes %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  ggplot(aes(
+  x = type,
+  stratum = class,
+  alluvium = ids,
+  fill = class,
+  label = class
+)) +
+  geom_flow() +
+  geom_stratum(alpha = 1) +
   geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
   theme(axis.line = element_line(colour = "gray")) +
@@ -137,95 +156,37 @@ p1 <- classes %>%
   scale_fill_manual(values = col.vec)
 
 
-calpro_time <- seq(0, 7, by = 0.1)
-
-new.data <- cbind(
-  calpro_time,
-  ns(calpro_time, df = 4, Boundary.knots = c(0, 7))
-)
-new.data <- rbind(
-  data.frame(new.data, diagnosis = "Crohn's"),
-  data.frame(new.data, diagnosis = "UC")
-)
-
-
-preds.fcal <- predictY(models.fcal[[8]], newdata = new.data, draws = TRUE)
-plot.fcal <- data.frame(time = calpro_time,
-                        pred = preds.fcal$pred[, "Ypred_class1"],
-                        class = "1")
-for (class in as.character(2:8)) {
-  plot.fcal <- rbind(
-    plot.fcal,
-    data.frame(
-      time = calpro_time,
-      pred = preds.fcal$pred[, paste0("Ypred_class", class)],
-      class = class
-    )
-  )
-}
-
-plot.fcal$class <- fc.remapping(plot.fcal$class)
-
-
-p2 <- plot.fcal %>%
-  ggplot(aes(x = time, y = pred, color = class)) +
-  geom_line(size = 0.7) +
+p3 <- classes %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  ggplot(aes(
+  x = type,
+  stratum = class,
+  alluvium = ids,
+  fill = class,
+  label = class
+)) +
+  geom_flow() +
+  geom_stratum(alpha = 1) +
+  geom_text(stat = "stratum", size = 3) +
   theme_minimal() +
-  xlab("Time (years)") +
-  ylab("Log(FC (µg/g))") +
-  ylim(0, 7) +
-  xlim(0, 7) +
   theme(axis.line = element_line(colour = "gray")) +
-  scale_color_manual(values = col.vec)
+  xlab("Biomarker") +
+  scale_fill_manual(values = col.vec)
 
-crp_time <- seq(0, 7, by = 0.1)
 
-new.data <- cbind(crp_time, ns(crp_time, df = 4, Boundary.knots = c(0, 7)))
-new.data <- rbind(
-  data.frame(new.data, diagnosis = "Crohn's"),
-  data.frame(new.data, diagnosis = "UC")
-)
-
-preds.crp <- predictY(models.crp[[8]], newdata = new.data, draws = TRUE)
-plot.crp <- data.frame(
-  time = crp_time,
-  pred = preds.crp$pred[, "Ypred_class1"], class = "1"
-)
-for (class in as.character(2:8)) {
-  plot.crp <- rbind(
-    plot.crp,
-    data.frame(
-      time = crp_time,
-      pred = preds.crp$pred[, paste0("Ypred_class", class)],
-      class = class
-    )
-  )
-}
-
-plot.crp$class <- crp.remapping(plot.crp$class)
-
-p3 <- plot.crp %>%
-  ggplot(aes(x = time, y = pred, color = class)) +
-  geom_line(size = 0.7) +
-  theme_minimal() +
-  xlab("Time (years)") +
-  ylab("Log(CRP (mg/L))") +
-  ylim(0, 7) +
-  xlim(0, 7) +
-  theme(axis.line = element_line(colour = "gray")) +
-  scale_color_manual(values = col.vec)
 
 
 p <- p1 + (p2 / p3) +
   plot_annotation(tag_levels = "A") +
   plot_layout(guides = "collect") &
-  theme(legend.position = "bottom") &
+  theme(legend.position = "none",
+        plot.tag = element_text(size = 20, face = "bold")) &
   guides(fill = guide_legend(nrow = 1))
 
 p
 
-ggsave("paper/big-comp.png", p, width = 10, height = 6.75)
-ggsave("paper/big-comp.pdf", p, width = 10, height = 6.75)
+ggsave("paper/big-comp.png", p, width = 12, height = 11)
+ggsave("paper/big-comp.pdf", p, width = 12, height = 11)
 ```
 
 ```{R}
