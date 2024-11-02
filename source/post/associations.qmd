@@ -54,7 +54,6 @@ library(viridis)
 
 library(ggmosaic)
 
-
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
 model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
