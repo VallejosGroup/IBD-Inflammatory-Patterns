@@ -750,21 +750,25 @@ for (g in 1:8) {
   temp.cd <- myDF.fc %>%
     filter(class_order == paste0("FC", g)) %>%
     filter(diagnosis == "Crohn's Disease")
+  
+   temp.uc <- myDF.fc %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(diagnosis == "Ulcerative Colitis")
+  
+  
   km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("FC", g),
+                            class = paste0("FC", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
                             diag = "Crohn's disease"))
   
-  temp.uc <- myDF.fc %>%
-    filter(class_order == paste0("FC", g)) %>%
-    filter(diagnosis == "Ulcerative Colitis")
+ 
   km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc) 
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("FC", g),
+                            class = paste0("FC", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
                             diag = "Ulcerative colitis"))
   
   temp.all <- myDF.fc %>%
@@ -773,7 +777,7 @@ for (g in 1:8) {
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("FC", g),
+                            class = paste0("FC", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
                             diag = "All"))
 }
 
@@ -783,14 +787,15 @@ p1 <- km.df %>%
   geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() + 
-  scale_y_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 0.7)) +
   labs(x = "Time (years)",
        y = "% of subjects receiving an advanced therapy",
-       color = "IBD type") 
+       color = "IBD type") +
+  theme(legend.position = "bottom")
 p1
 
-ggsave("paper/Figure-3.pdf", p1, width = 10, height = 10, units = "in")
-ggsave("paper/Figure-3.png", p1, width = 10, height = 10, units = "in")
+ggsave("paper/Figure-3.pdf", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+ggsave("paper/Figure-3.png", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
 ```
 
 ## C-reactive protein analysis
@@ -1499,21 +1504,25 @@ for (g in 1:8) {
   temp.cd <- myDF.crp %>%
     filter(class_order == paste0("CRP", g)) %>%
     filter(diagnosis == "Crohn's Disease")
-  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
-  km.df <- rbind(km.df,
-                 data.frame(time = km$time,
-                            cumhaz =  1 - km$surv,
-                            class = paste0("CRP", g),
-                            diag = "Crohn's disease"))
   
   temp.uc <- myDF.crp %>%
     filter(class_order == paste0("CRP", g)) %>%
     filter(diagnosis == "Ulcerative Colitis")
+  
+  
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("CRP", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
+                            diag = "Crohn's disease"))
+  
+  
   km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc) 
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("CRP", g),
+                            class = paste0("CRP", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
                             diag = "Ulcerative colitis"))
   
   temp.all <- myDF.crp %>%
@@ -1522,7 +1531,7 @@ for (g in 1:8) {
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("CRP", g),
+                            class = paste0("CRP", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
                             diag = "All"))
 }
 
@@ -1532,14 +1541,15 @@ p1 <- km.df %>%
   geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() + 
-  scale_y_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 0.7)) +
   labs(x = "Time (years)",
        y = "% of subjects receiving an advanced therapy",
-       color = "IBD type") 
+       color = "IBD type") +
+  theme(legend.position = "bottom")
 p1
 
-ggsave("paper/CRP-AT.pdf", p1, width = 10, height = 10, units = "in")
-ggsave("paper/CRP-AT.png", p1, width = 10, height = 10, units = "in")
+ggsave("paper/CRP-AT.pdf", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+ggsave("paper/CRP-AT.png", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
 ```
 
 ### Demographics table
