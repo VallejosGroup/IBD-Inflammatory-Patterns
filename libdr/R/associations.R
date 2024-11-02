@@ -209,7 +209,7 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     tab_both$model <- as.factor(tab_both$model)
     p_both <- list()
     for (variable in unique(tab_uni$Var2)) {
-      p_both[[variable]] <- .plotCI(tab = tab_both, variablei)
+      p_both[[variable]] <- .plotCI(tab = tab_both, variable)
     }
 
     ### Excluding those with prob < minprob
@@ -217,7 +217,7 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     tab_uni_minprob <- NULL
     for (variable in var) {
       mlr_uni_minprob <- nnet::multinom(formula = reformulate(variable, class),
-                                data = dat_minprob, trace = FALSE)
+                                data = dat.minprob, trace = FALSE)
       tab_uni_minprob <- rbind(tab_uni_minprob, .getCI(mlr_uni_minprob))
     }
     ## Plot
@@ -233,7 +233,7 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     tab_both_minprob$model <- as.factor(tab_both_minprob$model)
     p_both_minprob <- list()
     for (variable in unique(tab_uni$Var2)) {
-      p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variablei)
+      p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variable)
     }
     ## Combined plot
     p_both_minprob <- list()
