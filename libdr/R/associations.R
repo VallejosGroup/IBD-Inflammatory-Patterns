@@ -106,9 +106,9 @@ plotCat <- function(dat, var, class = "class_combined") {
   return(m_coeff)
 }
 
-.plotCI <- function(tab, variable, tab2 = NULL) {
+.plotCI <- function(tab, variable) {
 
-  if(is.null(tab2)) {
+  if(is.null(tab$model)) {
     p <- tab %>%
       filter(Var2 == variable) %>%
       ggplot(aes(
@@ -128,17 +128,8 @@ plotCat <- function(dat, var, class = "class_combined") {
       theme(legend.position = "none") +
       ggtitle(variable)
   } else {
-
-    # Add a model identifier to each dataset
-    tab$model <- "Univariate"
-    tab2$model <- "Multivariate"
-
-    # Combine the two tables
-    combined_tab <- bind_rows(tab, tab2)
-    combined_tab$model <- as.factor(combined_tab$model)
-
     # Filter for the specified variable and plot
-    p <- combined_tab %>%
+    p <- tab %>%
       filter(Var2 == variable) %>%
       ggplot(aes(
         x = Var1,
@@ -167,7 +158,7 @@ plotCat <- function(dat, var, class = "class_combined") {
 #' @param class Character. The name of the class assignment variable. Assumed
 #'   to be \code{"class_combined"} if not manually specified.
 #' @export
-mlrPlot <- function(dat, var, class = "class_combined") {
+mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minprob = 0.5) {
 
   # Multivariate analysis
   ## Fit the model
@@ -180,9 +171,23 @@ mlrPlot <- function(dat, var, class = "class_combined") {
     p_multi[[variable]] <- .plotCI(tab_multi, variable)
   }
 
-  # Univariate analysis
+  # Multivariate analysis - excluding those with prob < minprob
+  ## Fit the model
+  dat.minprob <- dat %>% filter(!!sym(prob) >= minprob)
+  mlr_multi_minprob <- nnet::multinom(formula = reformulate(var, class),
+                                      data = dat.minprob, trace = FALSE)
+  ## Extract coeffs and CIs
+  tab_multi_minprob <- .getCI(mlr_multi_minprob)
+  ## Plot
+  p_multi_minprob <- list()
+  for (variable in unique(tab_multi_minprob$Var2)) {
+    p_multi_minprob[[variable]] <- .plotCI(tab_multi_minprob, variable)
+  }
+
+   # Univariate analysis
   if(length(var) > 1) {
 
+    ### Everyone
     ## Fit the model + Extract coeffs and CIs
     tab_uni <- NULL
     for (variable in var) {
@@ -197,10 +202,54 @@ mlrPlot <- function(dat, var, class = "class_combined") {
     }
 
     ## Combined plot
+    # Add a model identifier to each dataset and combine the two tables
+    tab_uni$model <- "Univariate"
+    tab_multi$model <- "Multivariate"
+    tab_both <- bind_rows(tab_uni, tab_multi)
+    tab_both$model <- as.factor(tab_both$model)
     p_both <- list()
     for (variable in unique(tab_uni$Var2)) {
-      p_both[[variable]] <- .plotCI(tab = tab_uni, variable, tab2 = tab_multi)
+      p_both[[variable]] <- .plotCI(tab = tab_both, variablei)
     }
+
+    ### Excluding those with prob < minprob
+    ## Fit the model + Extract coeffs and CIs
+    tab_uni_minprob <- NULL
+    for (variable in var) {
+      mlr_uni_minprob <- nnet::multinom(formula = reformulate(variable, class),
+                                data = dat_minprob, trace = FALSE)
+      tab_uni_minprob <- rbind(tab_uni_minprob, .getCI(mlr_uni_minprob))
+    }
+    ## Plot
+    p_uni_minprob <- list()
+    for (variable in unique(tab_uni$Var2)) {
+      p_uni_minprob[[variable]] <- .plotCI(tab_uni_minprob, variable)
+    }
+    ## Combined plot
+    # Add a model identifier to each dataset and combine the two tables
+    tab_uni_minprob$model <- paste0("Univariate (prob >=", minprob,")")
+    tab_multi_minprob$model <- paste0("Multivariate (prob >=", minprob,")")
+    tab_both_minprob <- bind_rows(tab_uni_minprob, tab_multi_minprob)
+    tab_both_minprob$model <- as.factor(tab_both_minprob$model)
+    p_both_minprob <- list()
+    for (variable in unique(tab_uni$Var2)) {
+      p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variablei)
+    }
+    ## Combined plot
+    p_both_minprob <- list()
+    for (variable in unique(tab_uni$Var2)) {
+      p_both_minprob[[variable]] <- .plotCI(tab =tab_both_minprob, variable)
+    }
+
+    ## Full-combined plot
+    tab_everything <- bind_rows(tab_uni, tab_multi,
+                                tab_uni_minprob, tab_multi_minprob)
+    tab_everything$model <- as.factor(tab_everything$model)
+    p_everything <- list()
+    for (variable in unique(tab_uni$Var2)) {
+      p_everything[[variable]] <- .plotCI(tab = tab_everything, variable)
+    }
+
   }
 
   # Output
@@ -212,7 +261,9 @@ mlrPlot <- function(dat, var, class = "class_combined") {
                 plot_multi = p_multi,
                 tab_uni = tab_uni,
                 plot_uni = p_uni,
-                plot_both = p_both)
+                plot_both = p_both,
+                tab_everything = tab_everything,
+                plot_everything = p_everything)
   }
   return(out)
 }
