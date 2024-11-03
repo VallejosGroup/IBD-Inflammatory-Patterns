@@ -759,7 +759,12 @@ for (g in 1:8) {
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("FC", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
+                            class = paste0("FC",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
                             diag = "Crohn's disease"))
   
  
@@ -767,7 +772,12 @@ for (g in 1:8) {
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("FC", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
+                            class = paste0("FC",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
                             diag = "Ulcerative colitis"))
   
   temp.all <- myDF.fc %>%
@@ -776,7 +786,12 @@ for (g in 1:8) {
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("FC", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
+                            class = paste0("FC",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
                             diag = "All"))
 }
 
@@ -793,8 +808,26 @@ p1 <- km.df %>%
   theme(legend.position = "bottom")
 p1
 
-ggsave("paper/Figure-3.pdf", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
-ggsave("paper/Figure-3.png", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+ggsave("paper/Figure-3.pdf",
+       p1,
+       width = 8 * 3/4,
+       height = 12 * 3/4,
+       units = "in")
+ggsave("paper/Figure-3.png",
+       p1,
+       width = 8 * 3/4,
+       height = 12 * 3/4,
+       units = "in")
+```
+
+```{R}
+km.df %>%
+  filter(diag != "All") %>%
+  group_by(class, diag) %>%
+  summarise(last_value = 100 * last(cumhaz)) %>%
+  mutate(class = gsub(",.*", "", class)) %>%
+  knitr::kable(col.names = c("Cluster", "Diagnosis", "Total percentage"),
+               digits = 1)
 ```
 
 ## C-reactive protein analysis
@@ -814,7 +847,11 @@ myDF.crp <- crp %>% # may change for crp.median
   mutate(followup_cut = cut(followup, breaks = c(0, 2, 4, 6, 7)),
          n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
   
-myDF.crp <- merge(myDF.crp, model.crp$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
+myDF.crp <- merge(myDF.crp,
+                  model.crp$pprob,
+                  by = "ids",
+                  all.x = FALSE,
+                  all.y = TRUE)
 myDF.crp <- myDF.crp %>% 
   mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
                         prob5, prob6, prob7, prob8)) 
@@ -1372,7 +1409,10 @@ pred.crp.df.update <- lcmm::predictY(model.crp,
                                     draws = TRUE
                                     )$pred
 
-pred <- predictY(model.crp, pred.crp.df, var.time = "crp_time", draws = TRUE)$pred
+pred <- predictY(model.crp,
+                 pred.crp.df,
+                 var.time = "crp_time",
+                 draws = TRUE)$pred
 
 pred <- as.data.frame(pred[1:length(time.pred), ])
 pred$time <- time.pred
@@ -1513,7 +1553,12 @@ for (g in 1:8) {
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("CRP", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
+                            class = paste0("CRP",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
                             diag = "Crohn's disease"))
   
   
@@ -1521,7 +1566,12 @@ for (g in 1:8) {
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("CRP", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
+                            class = paste0("CRP",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
                             diag = "Ulcerative colitis"))
   
   temp.all <- myDF.crp %>%
@@ -1530,7 +1580,12 @@ for (g in 1:8) {
   km.df <- rbind(km.df,
                  data.frame(time = km$time,
                             cumhaz =  1 - km$surv,
-                            class = paste0("CRP", g, ", CD=", nrow(temp.cd), "; UC=", nrow(temp.uc)),
+                            class = paste0("CRP",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
                             diag = "All"))
 }
 
@@ -1549,6 +1604,17 @@ p1
 
 ggsave("paper/CRP-AT.pdf", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
 ggsave("paper/CRP-AT.png", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+```
+
+
+```{R}
+km.df %>%
+  filter(diag != "All") %>%
+  group_by(class, diag) %>%
+  summarise(last_value = 100 * last(cumhaz)) %>%
+  mutate(class = gsub(",.*", "", class)) %>%
+  knitr::kable(col.names = c("Cluster", "Diagnosis", "Total percentage"),
+               digits = 1)
 ```
 
 ### Demographics table
