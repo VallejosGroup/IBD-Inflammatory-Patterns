@@ -125,7 +125,7 @@ plotCat <- function(dat, var, class = "class_combined") {
       coord_flip() + # flip coordinates (puts labels on y axis)
       xlab("") +
       ylab("Estimate (95% CI)") +
-      theme_bw() +
+      theme_minimal() +
       scale_color_manual(values = c("black", "#FF007F")) +
       theme(legend.position = "none") +
       ggtitle(variable)
@@ -146,7 +146,7 @@ plotCat <- function(dat, var, class = "class_combined") {
       coord_flip() + # Flip coordinates (puts labels on y axis)
       xlab("") +
       ylab("Estimate (95% CI)") +
-      theme_bw() +
+      theme_minimal() +
       ggtitle(variable)
   }
 
