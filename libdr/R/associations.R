@@ -140,8 +140,8 @@ plotCat <- function(dat, var, class = "class_combined") {
         ymax = Upper,
         color = Model
       )) + # Use model as color
-      geom_errorbar(position = position_dodge(width = 0.5)) + # Dodge for separation
-      geom_point(position = position_dodge(width = 0.5), size = 3.5) +
+      geom_errorbar(position = position_dodge(width = 0.7)) + # Dodge for separation
+      geom_point(position = position_dodge(width = 0.7), size = 2.5) +
       geom_hline(yintercept = 0, lty = 2) +
       coord_flip() + # Flip coordinates (puts labels on y axis)
       xlab("") +
@@ -168,6 +168,8 @@ plotCat <- function(dat, var, class = "class_combined") {
 #'   to be 0.5 if not manually specified
 #' @export
 mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minprob = 0.5) {
+
+  #print("Multivariate analysis")
   # Multivariate analysis
   ## Fit the model
   mlr_multi <- nnet::multinom(formula = reformulate(var, class), data = dat, trace = FALSE)
@@ -179,6 +181,7 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     p_multi[[variable]] <- .plotCI(tab_multi, variable)
   }
 
+  #print("Multivariate analysis - excluding those with prob < minprob")
   # Multivariate analysis - excluding those with prob < minprob
   ## Fit the model
   dat.minprob <- dat %>% filter(!!sym(prob) >= minprob)
@@ -190,12 +193,14 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
   tab_multi_minprob <- .getCI(mlr_multi_minprob)
   ## Plot
   p_multi_minprob <- list()
-  for (variable in unique(tab_multi_minprob$Var2)) {
+  for (variable in unique(tab_multi$Var2)) {
     p_multi_minprob[[variable]] <- .plotCI(tab_multi_minprob, variable)
   }
 
+  #print("Univariate analysis")
   # Univariate analysis
   if (length(var) > 1) {
+    #print("Everyone")
     ### Everyone
     ## Fit the model + Extract coeffs and CIs
     tab_uni <- NULL
@@ -208,7 +213,7 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     }
     ## Plot
     p_uni <- list()
-    for (variable in unique(tab_uni$Var2)) {
+    for (variable in unique(tab_multi$Var2)) {
       p_uni[[variable]] <- .plotCI(tab_uni, variable)
     }
 
@@ -219,10 +224,11 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     tab_both <- bind_rows(tab_uni, tab_multi)
     tab_both$Model <- as.factor(tab_both$Model)
     p_both <- list()
-    for (variable in unique(tab_uni$Var2)) {
+    for (variable in unique(tab_multi$Var2)) {
       p_both[[variable]] <- .plotCI(tab = tab_both, variable)
     }
 
+    #print("Excluding those with prob < minprob")
     ### Excluding those with prob < minprob
     ## Fit the model + Extract coeffs and CIs
     tab_uni_minprob <- NULL
@@ -235,7 +241,7 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     }
     ## Plot
     p_uni_minprob <- list()
-    for (variable in unique(tab_uni$Var2)) {
+    for (variable in unique(tab_multi$Var2)) {
       p_uni_minprob[[variable]] <- .plotCI(tab_uni_minprob, variable)
     }
     ## Combined plot
@@ -248,11 +254,6 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     for (variable in unique(tab_uni$Var2)) {
       p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variable)
     }
-    ## Combined plot
-    p_both_minprob <- list()
-    for (variable in unique(tab_uni$Var2)) {
-      p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variable)
-    }
 
     ## Full-combined plot
     tab_everything <- bind_rows(
@@ -261,7 +262,7 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     )
     tab_everything$Model <- as.factor(tab_everything$Model)
     p_everything <- list()
-    for (variable in unique(tab_uni$Var2)) {
+    for (variable in unique(tab_multi$Var2)) {
       p_everything[[variable]] <- .plotCI(tab = tab_everything, variable)
     }
   }
@@ -270,7 +271,9 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
   if (length(var) == 1) {
     out <- list(
       tab_multi = tab_multi,
-      plot_multi = p_multi
+      plot_multi = p_multi,
+      tab_multi_minprob = tab_multi_minprob,
+      plot_multi_minprob = p_multi_minprob
     )
   } else {
     out <- list(

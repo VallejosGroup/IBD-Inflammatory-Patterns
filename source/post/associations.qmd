@@ -315,6 +315,17 @@ wrap_elements(p_diagnosis_all) +
 (wrap_elements(p_age_all) + p_mlr_all$plot_both$age) /
   (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale) +
     plot_annotation(tag_levels = "A", title = "All subjects")
+
+
+wrap_elements(p_diagnosis_all) +
+  wrap_elements(p_mlr_all$plot_everything$`diagnosisUlcerative Colitis` + 
+                  p_mlr_all$plot_everything$`diagnosisIBDU` + plot_layout(guides = "collect")) +
+  plot_annotation(tag_levels = "A", title = "All subjects")
+
+(wrap_elements(p_age_all) + p_mlr_all$plot_everything$age) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_everything$sexMale) +
+    plot_annotation(tag_levels = "A", title = "All subjects")
+
 ```
 
 Some statistics to be used in the text:
@@ -569,6 +580,28 @@ wrap_elements(p_behaviour_cd) + p_mlr_cd$plot_both$`Behaviour_mergedB2 or B3` +
 ```{R}
 wrap_elements(p_perianal_cd) + p_mlr_cd$plot_both$PerianalYes + 
   plot_annotation(title = "CD patients only")
+
+
+(wrap_elements(p_age_cd) + p_mlr_cd$plot_everything$age) /
+  (wrap_elements(p_sex_cd) + p_mlr_cd$plot_everything$sexMale) +
+    plot_annotation(tag_levels = "A", title = "CD patients only")
+
+wrap_elements(p_smoke_cd) + p_mlr_cd$plot_everything$SmokeYes + 
+  plot_annotation(title = "CD patients only")
+
+wrap_elements(p_location_cd) + 
+  (p_mlr_cd$plot_everything$LocationL2 + p_mlr_cd$plot_everything$LocationL3 + 
+     plot_layout(guides = "collect")) + 
+  plot_annotation(title = "CD patients only")
+
+wrap_elements(p_L4_cd) + p_mlr_cd$plot_everything$L4Yes +
+  plot_annotation(title = "CD patients only")
+
+wrap_elements(p_behaviour_cd) + p_mlr_cd$plot_everything$`Behaviour_mergedB2 or B3` +
+  plot_annotation(title = "CD patients only")
+
+wrap_elements(p_perianal_cd) + p_mlr_cd$plot_everything$PerianalYes + 
+  plot_annotation(title = "CD patients only")
 ```
 
 Some statistics to be used in the text:
@@ -669,7 +702,21 @@ wrap_elements(p_extent_uc) +
   (p_mlr_uc$plot_both$ExtentE2 + p_mlr_uc$plot_both$ExtentE3 +
      plot_layout(guides = "collect")) +
   plot_annotation(title = "UC patients only")
+
+(wrap_elements(p_age_uc) + p_mlr_uc$plot_everything$age) /
+  (wrap_elements(p_sex_uc) + p_mlr_uc$plot_everything$sexMale) +
+    plot_annotation(tag_levels = "A", title = "UC patients only")
+
+wrap_elements(p_smoke_uc) + p_mlr_uc$plot_everything$SmokeYes + 
+  plot_annotation(title = "UC patients only")
+
+wrap_elements(p_extent_uc) + 
+  (p_mlr_uc$plot_everything$ExtentE2 + ylim(c(-5,5)) + p_mlr_uc$plot_everything$ExtentE3 + ylim(c(-5,5)) +
+     plot_layout(guides = "collect")) +
+  plot_annotation(title = "UC patients only")
 ```
+
+Note that, due to small counts of extent E1 in cluster FC3, the model fitted after excluding those with low probability of cluster assignment was subject to numerical issues (complete separation). As such, the associated estimates are excluded from the plot. 
 
 Some statistics to be used in the text:
 
