@@ -1709,6 +1709,30 @@ ggsave("plots/Sup-Figure-1.pdf",
 )
 ```
 
+```{R}
+# Number of CRP observations (unprocessed) per subject
+crp %>%
+  filter(ids %in% unique(crp.ma$ids)) %>%
+  select(ids) %>%
+  table() %>%
+  quantile(probs = c(0.25, 0.5, 0.75))
+```
+
+```{R}
+crp %>%
+  filter(ids %in% unique(crp.ma$ids)) %>%
+  select(ids) %>%
+  nrow()
+```
+
+```{R}
+# Number of CRP observations (unprocessed) per subject for the overlap cohort
+crp %>%
+  filter(ids %in% unique(crp.ma$ids) & ids %in% unique(fcal$ids)  ) %>%
+  select(ids) %>%
+  table() %>%
+  quantile(probs = c(0.25, 0.5, 0.75))
+```
 
 ## Data saving
 
