@@ -41,14 +41,14 @@ plotCat <- function(dat, var, class = "class_combined") {
 
   # Set order of clusters in percentage data frame
   perc.table$cluster <- factor(perc.table$cluster,
-                               levels = levels(dat[, class]))
+    levels = levels(dat[, class])
+  )
   # Per sub plot
-  for (i in 1:length(labels)){
+  for (i in 1:length(labels)) {
     totalPerc <- nrow(subset(dat, eval(parse(text = var)) == labels[i])) /
       nrow(dat)
 
     if (i == 1) {
-
       p <- perc.table %>%
         filter(label == labels[i]) %>%
         ggplot(aes(x = cluster, y = perc)) +
@@ -66,57 +66,59 @@ plotCat <- function(dat, var, class = "class_combined") {
         geom_hline(yintercept = totalPerc, linetype = "dashed", color = "#4D4730") +
         theme_minimal() +
         labs(x = "Cluster", y = "Percentage") +
-        ggtitle(labels[i]) #+
-        #theme(axis.title.x = element_blank(),
-        #      axis.text.x = element_blank(),
-        #      axis.ticks.x = element_blank())
+        ggtitle(labels[i])
     }
   }
   p <- p +
     patchwork::plot_layout(nrow = length(labels), ncol = 1, guides = "collect") &
-    #patchwork::plot_annotation(tag_levels = "A") &
+    # patchwork::plot_annotation(tag_levels = "A") &
     scale_y_continuous(labels = scales::percent, limits = c(0, 1))
   return(p)
 }
 
 .getCI <- function(m) {
+  Var1 <- Var2 <- var <- SE <- Estimate <- z <- Upper <- Lower <- NULL
 
   CI_factor <- qnorm(0.975)
 
   # A chatGPT edited version of the original code :-)
   m_summary <- summary(m)
   m_coeff <- as.data.frame(m_summary$coefficients) %>%
-    rownames_to_column("Var1") %>%
-    pivot_longer(-Var1, names_to = "Var2", values_to = "Estimate") %>%
-    mutate(var = paste(Var1, Var2))
-  m_se <- as.data.frame(m_summary$standard.errors)  %>%
-    rownames_to_column("Var1") %>%
-    pivot_longer(-Var1, names_to = "Var2", values_to = "SE") %>%
-    mutate(var = paste(Var1, Var2)) %>%
-    select(c(var, SE))
+    tibble::rownames_to_column("Var1") %>%
+    tidyr::pivot_longer(-Var1, names_to = "Var2", values_to = "Estimate") %>%
+    dplyr::mutate(var = paste(Var1, Var2))
+  m_se <- as.data.frame(m_summary$standard.errors) %>%
+    tibble::rownames_to_column("Var1") %>%
+    tidyr::pivot_longer(-Var1, names_to = "Var2", values_to = "SE") %>%
+    dplyr::mutate(var = paste(Var1, Var2)) %>%
+    dplyr::select(c(var, SE))
   m_coeff <- merge(m_coeff, m_se, by = "var") %>%
-    mutate(z = Estimate/SE,
-           p.val = (1 - pnorm(abs(z), 0, 1)) * 2,
-           Lower = Estimate - CI_factor * SE,
-           Upper = Estimate + CI_factor * SE,
-           Sig = ifelse(Upper < 0 | Lower > 0, TRUE, FALSE)) %>%
-    arrange(Var2, Var1) %>%
+    dplyr::mutate(
+      z = Estimate / SE,
+      p.val = (1 - pnorm(abs(z), 0, 1)) * 2,
+      Lower = Estimate - CI_factor * SE,
+      Upper = Estimate + CI_factor * SE,
+      Sig = ifelse(Upper < 0 | Lower > 0, TRUE, FALSE)
+    ) %>%
+    dplyr::arrange(Var2, Var1) %>%
     subset(Var2 != "(Intercept)")
 
   return(m_coeff)
 }
 
 .plotCI <- function(tab, variable) {
+  Var2 <- Var1 <- Estimate <- Lower <- Upper <- Sig <- Model <- NULL
 
-  if(is.null(tab$model)) {
+  if (is.null(tab$Model)) {
     p <- tab %>%
-      filter(Var2 == variable) %>%
+      dplyr::filter(Var2 == variable) %>%
       ggplot(aes(
         x = Var1,
         y = Estimate,
         ymin = Lower,
         ymax = Upper,
-        color = ifelse(Sig == TRUE, "red", "black"))) +
+        color = ifelse(Sig == TRUE, "red", "black")
+      )) +
       geom_errorbar() +
       geom_point(size = 3.5) +
       geom_hline(yintercept = 0, lty = 2) +
@@ -136,11 +138,12 @@ plotCat <- function(dat, var, class = "class_combined") {
         y = Estimate,
         ymin = Lower,
         ymax = Upper,
-        color = model)) + # Use model as color
-      geom_errorbar(position = position_dodge(width = 0.5)) +  # Dodge for separation
+        color = Model
+      )) + # Use model as color
+      geom_errorbar(position = position_dodge(width = 0.5)) + # Dodge for separation
       geom_point(position = position_dodge(width = 0.5), size = 3.5) +
       geom_hline(yintercept = 0, lty = 2) +
-      coord_flip() +  # Flip coordinates (puts labels on y axis)
+      coord_flip() + # Flip coordinates (puts labels on y axis)
       xlab("") +
       ylab("Estimate (95% CI)") +
       theme_bw() +
@@ -157,9 +160,14 @@ plotCat <- function(dat, var, class = "class_combined") {
 #'   covariates.
 #' @param class Character. The name of the class assignment variable. Assumed
 #'   to be \code{"class_combined"} if not manually specified.
+#' @param prob Character. The name of the variable which gives posterior
+#'   probabilities for cluster membership. Assumed to be \code{"probmax"} if not
+#'   manually specified.
+#' @param minprob Numeric. The minimum posterior probability for cluster
+#'   membership required for a subject to be included in the analysis. Assumed
+#'   to be 0.5 if not manually specified
 #' @export
 mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minprob = 0.5) {
-
   # Multivariate analysis
   ## Fit the model
   mlr_multi <- nnet::multinom(formula = reformulate(var, class), data = dat, trace = FALSE)
@@ -174,8 +182,10 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
   # Multivariate analysis - excluding those with prob < minprob
   ## Fit the model
   dat.minprob <- dat %>% filter(!!sym(prob) >= minprob)
-  mlr_multi_minprob <- nnet::multinom(formula = reformulate(var, class),
-                                      data = dat.minprob, trace = FALSE)
+  mlr_multi_minprob <- nnet::multinom(
+    formula = reformulate(var, class),
+    data = dat.minprob, trace = FALSE
+  )
   ## Extract coeffs and CIs
   tab_multi_minprob <- .getCI(mlr_multi_minprob)
   ## Plot
@@ -184,15 +194,16 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     p_multi_minprob[[variable]] <- .plotCI(tab_multi_minprob, variable)
   }
 
-   # Univariate analysis
-  if(length(var) > 1) {
-
+  # Univariate analysis
+  if (length(var) > 1) {
     ### Everyone
     ## Fit the model + Extract coeffs and CIs
     tab_uni <- NULL
     for (variable in var) {
-      mlr_uni <- nnet::multinom(formula = reformulate(variable, class),
-                                data = dat, trace = FALSE)
+      mlr_uni <- nnet::multinom(
+        formula = reformulate(variable, class),
+        data = dat, trace = FALSE
+      )
       tab_uni <- rbind(tab_uni, .getCI(mlr_uni))
     }
     ## Plot
@@ -203,10 +214,10 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
 
     ## Combined plot
     # Add a model identifier to each dataset and combine the two tables
-    tab_uni$model <- "Univariate"
-    tab_multi$model <- "Multivariate"
+    tab_uni$Model <- "Univariate"
+    tab_multi$Model <- "Multivariate"
     tab_both <- bind_rows(tab_uni, tab_multi)
-    tab_both$model <- as.factor(tab_both$model)
+    tab_both$Model <- as.factor(tab_both$Model)
     p_both <- list()
     for (variable in unique(tab_uni$Var2)) {
       p_both[[variable]] <- .plotCI(tab = tab_both, variable)
@@ -216,8 +227,10 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     ## Fit the model + Extract coeffs and CIs
     tab_uni_minprob <- NULL
     for (variable in var) {
-      mlr_uni_minprob <- nnet::multinom(formula = reformulate(variable, class),
-                                data = dat.minprob, trace = FALSE)
+      mlr_uni_minprob <- nnet::multinom(
+        formula = reformulate(variable, class),
+        data = dat.minprob, trace = FALSE
+      )
       tab_uni_minprob <- rbind(tab_uni_minprob, .getCI(mlr_uni_minprob))
     }
     ## Plot
@@ -227,10 +240,10 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     }
     ## Combined plot
     # Add a model identifier to each dataset and combine the two tables
-    tab_uni_minprob$model <- paste0("Univariate (prob >=", minprob,")")
-    tab_multi_minprob$model <- paste0("Multivariate (prob >=", minprob,")")
+    tab_uni_minprob$Model <- paste0("Univariate (prob >=", minprob, ")")
+    tab_multi_minprob$Model <- paste0("Multivariate (prob >=", minprob, ")")
     tab_both_minprob <- bind_rows(tab_uni_minprob, tab_multi_minprob)
-    tab_both_minprob$model <- as.factor(tab_both_minprob$model)
+    tab_both_minprob$Model <- as.factor(tab_both_minprob$Model)
     p_both_minprob <- list()
     for (variable in unique(tab_uni$Var2)) {
       p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variable)
@@ -238,32 +251,37 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     ## Combined plot
     p_both_minprob <- list()
     for (variable in unique(tab_uni$Var2)) {
-      p_both_minprob[[variable]] <- .plotCI(tab =tab_both_minprob, variable)
+      p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variable)
     }
 
     ## Full-combined plot
-    tab_everything <- bind_rows(tab_uni, tab_multi,
-                                tab_uni_minprob, tab_multi_minprob)
-    tab_everything$model <- as.factor(tab_everything$model)
+    tab_everything <- bind_rows(
+      tab_uni, tab_multi,
+      tab_uni_minprob, tab_multi_minprob
+    )
+    tab_everything$Model <- as.factor(tab_everything$Model)
     p_everything <- list()
     for (variable in unique(tab_uni$Var2)) {
       p_everything[[variable]] <- .plotCI(tab = tab_everything, variable)
     }
-
   }
 
   # Output
-  if(length(var) == 1) {
-    out <- list(tab_multi = tab_multi,
-                plot_multi = p_multi)
+  if (length(var) == 1) {
+    out <- list(
+      tab_multi = tab_multi,
+      plot_multi = p_multi
+    )
   } else {
-    out <- list(tab_multi = tab_multi,
-                plot_multi = p_multi,
-                tab_uni = tab_uni,
-                plot_uni = p_uni,
-                plot_both = p_both,
-                tab_everything = tab_everything,
-                plot_everything = p_everything)
+    out <- list(
+      tab_multi = tab_multi,
+      plot_multi = p_multi,
+      tab_uni = tab_uni,
+      plot_uni = p_uni,
+      plot_both = p_both,
+      tab_everything = tab_everything,
+      plot_everything = p_everything
+    )
   }
   return(out)
 }
