@@ -240,15 +240,43 @@ p_age_all <- myDF.fc %>%
 p_mlr_all <- myDF.fc %>%
   mutate(class_order = relevel(class_order, ref = "FC4")) %>%
   mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") 
+```
 
-wrap_elements(p_diagnosis_all) +
+
+```{R}
+p <- wrap_elements(p_diagnosis_all) +
   wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
-                  p_mlr_all$plot_both$`diagnosisIBDU` + plot_layout(guides = "collect")) +
-  plot_annotation(tag_levels = "A", title = "All subjects")
+                  p_mlr_all$plot_both$`diagnosisIBDU` +
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(widths = c(1.25, 2)) &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
 
-(wrap_elements(p_age_all) + p_mlr_all$plot_both$age) /
-  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale) +
-    plot_annotation(tag_levels = "A", title = "All subjects")
+ggsave("plots/associations/fc-diagnosis.pdf",
+       p,
+       width = 15,
+       height = 12,
+       units = "in",
+       create.dir = TRUE)
+
+print(p)
+```
+
+```{R}
+p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$age & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale +
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave("plots/associations/fc-sex-age.pdf",
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
 ```
 
 Restricted to those with posterior probability > 0.5
@@ -468,26 +496,77 @@ p_mlr_cd <- myDF.fc %>%
   mlrPlot(var = c("age", "sex", 
                   "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
           class = "class_order")
+```
 
-
+```{R}
 (wrap_elements(p_age_cd) + p_mlr_cd$plot_both$age) /
   (wrap_elements(p_sex_cd) + p_mlr_cd$plot_both$sexMale) +
     plot_annotation(tag_levels = "A", title = "CD patients only")
+```
 
-wrap_elements(p_smoke_cd) + p_mlr_cd$plot_both$SmokeYes + 
-  plot_annotation(title = "CD patients only")
 
-wrap_elements(p_location_cd) + 
-  (p_mlr_cd$plot_both$LocationL2 + p_mlr_cd$plot_both$LocationL3 + 
-     plot_layout(guides = "collect")) + 
-  plot_annotation(title = "CD patients only")
+```{R}
+p <- wrap_elements(p_smoke_cd) +
+  (p_mlr_cd$plot_both$SmokeYes & theme(legend.position = "bottom")) + 
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
 
+
+ggsave("plots/associations/fc-cd-smoking.pdf",
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+```
+
+```{R}
+p <- wrap_elements(p_location_cd) + 
+  wrap_elements(p_mlr_cd$plot_both$LocationL2 + p_mlr_cd$plot_both$LocationL3 + 
+     plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) + 
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(widths = c(1.25, 2)) &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
+
+ggsave("plots/associations/fc-location.pdf",
+       p,
+       width = 15,
+       height = 12,
+       units = "in")
+```
+
+
+p <- wrap_elements(p_diagnosis_all) +
+  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
+                  p_mlr_all$plot_both$`diagnosisIBDU` +
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(widths = c(1.25, 2)) &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
+
+ggsave("plots/associations/fc-diagnosis.pdf",
+       p,
+       width = 15,
+       height = 12,
+       units = "in",
+       create.dir = TRUE)
+
+print(p)
+
+
+
+```{R}
 wrap_elements(p_L4_cd) + p_mlr_cd$plot_both$L4Yes +
   plot_annotation(title = "CD patients only")
+```
 
+```{R}
 wrap_elements(p_behaviour_cd) + p_mlr_cd$plot_both$`Behaviour_mergedB2 or B3` +
   plot_annotation(title = "CD patients only")
+```
 
+```{R}
 wrap_elements(p_perianal_cd) + p_mlr_cd$plot_both$PerianalYes + 
   plot_annotation(title = "CD patients only")
 ```
