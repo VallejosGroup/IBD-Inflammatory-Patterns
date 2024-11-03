@@ -1,12 +1,17 @@
 Package: libdr
 Type: Package
 Title: Support Functions used by the LIBDR LCMM Analysis
-Version: 0.1.0
+Version: 0.9.0
 Authors@R: c(
     person("Nathan", "Constantine-Cooke", , "nathan.constantine-cooke@ed.ac.uk", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0002-4437-8713")))
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+           comment = c(ORCID = "0000-0002-4437-8713")),
+    person("Catalina", "Vallejos", , "catalina.vallejos@ed.ac.uk", role = "aut",
+           comment = c(ORCID = "0000-0003-3638-1960")))
+Description: This package provides support functions frequently used by
+    Constantine et al. for their paper, "Large-scale clustering of longitudinal
+    faecal calprotectin and C-reactive protein profiles in inflammatory bowel
+    disease". These functions are primarily used to manipulate data and
+    visualise findings.
 License: GPL (>= 3)
 Depends: 
     R (>= 4.1.0),
