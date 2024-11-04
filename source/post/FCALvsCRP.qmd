@@ -30,6 +30,7 @@ library(lcmm)
 library(patchwork)
 library(gameR)
 library(pander)
+library(libdr)
 set.seed(123)
 prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
 
@@ -98,17 +99,42 @@ crp.ids <- crp.pprob$ids
 ids.comb <- fcal.ids[fcal.ids %in% crp.ids]
 ids.comb <- ids.comb[order(ids.comb)]
 
-fcal.pprob <- subset(fcal.pprob, ids %in% ids.comb)
-crp.pprob <- subset(crp.pprob, ids %in% ids.comb)
 
 
 fc.classes <- data.frame(fcal.pprob[, c(1, 2)], type = "FC")
 fc.classes$class <- fc.remapping(fc.classes$class)
-fc.classes$class <- paste0("FC", fc.classes$class)
+fc.classes$class <- as.factor(paste0("FC", fc.classes$class))
+
 
 crp.classes <- data.frame(crp.pprob[, c(1, 2)], type = "CRP")
 crp.classes$class <- crp.remapping(crp.classes$class)
-crp.classes$class <- paste0("CRP", crp.classes$class)
+crp.classes$class <- as.factor(paste0("CRP", crp.classes$class))
+
+fc.classes$overlap <- ifelse(fc.classes$ids %in% ids.comb, TRUE, FALSE)
+crp.classes$overlap <- ifelse(crp.classes$ids %in% ids.comb, TRUE, FALSE)
+
+
+p_overlap_fc <- fc.classes %>%
+  mutate(overlap = factor(
+    overlap, levels = c(TRUE, FALSE),
+    labels = c("In the overlap cohort", "Not in the overlap cohort"))) %>%
+  plotCat("overlap", class = "class")
+
+p_overlap_crp <- crp.classes %>%
+  mutate(overlap = factor(
+    overlap, levels = c(TRUE, FALSE),
+    labels = c("In the overlap cohort", "Not in the overlap cohort"))) %>%
+  plotCat("overlap", class = "class")
+
+wrap_elements(p_overlap_fc) + 
+  wrap_elements(p_overlap_crp) + 
+  plot_annotation(tag_levels = "A")
+
+aux <- table(crp.classes$class, crp.classes$overlap)
+
+# Numbers for the text
+aux[8,2] / (aux[8,1] + aux[8,2])
+sum(aux[1:7,2]) / sum(aux[1:7,1] + aux[1:7,2])
 
 classes <- rbind(fc.classes, crp.classes)
 
@@ -123,6 +149,7 @@ classes <- merge(classes,
                  all.y = FALSE)
 
 p1 <- classes %>%
+  subset(overlap == TRUE) %>%
   ggplot(aes(
   x = type,
   stratum = class,
@@ -139,6 +166,7 @@ p1 <- classes %>%
   scale_fill_manual(values = col.vec)
 
 p2 <- classes %>%
+  subset(overlap == TRUE) %>%
   filter(diagnosis == "Crohn's Disease") %>%
   ggplot(aes(
   x = type,
@@ -157,6 +185,7 @@ p2 <- classes %>%
 
 
 p3 <- classes %>%
+  subset(overlap == TRUE) %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   ggplot(aes(
   x = type,
@@ -174,8 +203,6 @@ p3 <- classes %>%
   scale_fill_manual(values = col.vec)
 
 
-
-
 p <- p1 + (p2 / p3) +
   plot_annotation(tag_levels = "A") +
   plot_layout(guides = "collect") &
@@ -187,6 +214,35 @@ p
 
 ggsave("paper/big-comp.png", p, width = 12, height = 11)
 ggsave("paper/big-comp.pdf", p, width = 12, height = 11)
+```
+
+Calculate some numbers in the overlap
+
+```{r}
+classes.wide <- classes %>%
+  subset(overlap == TRUE) %>%
+  pivot_wider(names_from = type, values_from = class)
+
+classes.wide %>%
+  subset(FC == "FC1") %>%
+  count(CRP) %>%
+  mutate(percentage = (n/ sum(n) * 100)) 
+
+classes.wide %>%
+  subset(CRP %in% c("CRP1", "CRP2")) %>%
+  count(FC) %>%
+  mutate(percentage = (n/ sum(n) * 100)) 
+
+classes.wide %>%
+  subset(CRP %in% c("CRP8")) %>%
+  count(FC) %>%
+  mutate(percentage = (n/ sum(n) * 100)) 
+
+classes.wide %>%
+  subset(diagnosis == "Ulcerative Colitis") %>%
+  subset(FC %in% c("FC7")) %>%
+  count(CRP) %>%
+  mutate(percentage = (n/ sum(n) * 100)) 
 ```
 
 ```{R}
