@@ -131,7 +131,7 @@ p <- wrap_elements(p_overlap_fc) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = 20, face = "bold"))
 ggsave("plots/overlap.pdf", p, width = 14, height = 10)
-ggsave("plots/overlap.ng", p, width = 14, height = 10)
+ggsave("plots/overlap.png", p, width = 14, height = 10)
 ```
 
 ```{R}
