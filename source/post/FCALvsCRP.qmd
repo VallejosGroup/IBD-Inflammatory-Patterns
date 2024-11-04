@@ -126,10 +126,15 @@ p_overlap_crp <- crp.classes %>%
     labels = c("In the overlap cohort", "Not in the overlap cohort"))) %>%
   plotCat("overlap", class = "class")
 
-wrap_elements(p_overlap_fc) + 
+p <- wrap_elements(p_overlap_fc) + 
   wrap_elements(p_overlap_crp) + 
-  plot_annotation(tag_levels = "A")
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(size = 20, face = "bold"))
+ggsave("plots/overlap.pdf", p, width = 14, height = 10)
+ggsave("plots/overlap.ng", p, width = 14, height = 10)
+```
 
+```{R}
 aux <- table(crp.classes$class, crp.classes$overlap)
 
 # Numbers for the text
