@@ -581,8 +581,18 @@ print(p)
 ```
 
 ```{R}
-wrap_elements(p_perianal_cd) + p_mlr_cd$plot_both$PerianalYes + 
-  plot_annotation(title = "CD patients only")
+p <- wrap_elements(p_perianal_cd) +
+  (p_mlr_cd$plot_both$PerianalYes & theme(legend.position = "bottom")) + 
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
+
+ggsave("plots/associations/fc-perianal.pdf",
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+
+print(p)
 ```
 
 ```{R}
@@ -1436,8 +1446,7 @@ p_mlr_cd <- myDF.crp %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
   mutate(class_order = relevel(class_order, ref = "CRP8")) %>%
-  mlrPlot(var = c("age", "sex", 
-                  "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
+  mlrPlot(var = c("age", "sex", "Smoke", "Location", "L4", "Behaviour_merged"), 
           class = "class_order")
 ```
 
@@ -1509,11 +1518,6 @@ ggsave("plots/associations/crp-behaviour.pdf",
        units = "in")
 
 print(p)
-```
-
-```{R}
-wrap_elements(p_perianal_cd) + p_mlr_cd$plot_both$PerianalYes + 
-  plot_annotation(title = "CD patients only")
 ```
 
 Some statistics to be used in the text:
