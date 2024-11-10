@@ -35,7 +35,7 @@ format:
       source: true
       toggle: true
     html-math-method: katex
-    embed-resources: true
+    embed-resources: false
     mainfont: "Mulish"
     monofont: "Noto Sans Mono"
 

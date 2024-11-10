@@ -236,7 +236,9 @@ p_age_all <- myDF.fc %>%
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
+```
 
+```{R}
 p_mlr_all <- myDF.fc %>%
   mutate(class_order = relevel(class_order, ref = "FC4")) %>%
   mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") 
@@ -244,6 +246,9 @@ p_mlr_all <- myDF.fc %>%
 
 
 ```{R}
+#| column: page
+#| fig-width: 15
+#| fig-height: 12
 p <- wrap_elements(p_diagnosis_all) +
   wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
                   p_mlr_all$plot_both$`diagnosisIBDU` +
@@ -264,6 +269,9 @@ print(p)
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$age & theme(legend.position = "none")) /
   (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale +
                   plot_layout(guides = "collect") &
@@ -308,36 +316,36 @@ p_mlr <- myDF.fc %>%
   mutate(class_order = relevel(class_order, ref = "FC4")) %>%
   mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") # , "baseline_fc"
 
-wrap_elements(p_diagnosis_all) +
-  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
-                  p_mlr_all$plot_both$`diagnosisIBDU` + plot_layout(guides = "collect")) +
-  plot_annotation(tag_levels = "A", title = "All subjects")
+#wrap_elements(p_diagnosis_all) +
+#  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
+#                  p_mlr_all$plot_both$`diagnosisIBDU` + plot_layout(guides = "collect")) +
+#  plot_annotation(tag_levels = "A", title = "All subjects")
 
-(wrap_elements(p_age_all) + p_mlr_all$plot_both$age) /
-  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale) +
-    plot_annotation(tag_levels = "A", title = "All subjects")
+#(wrap_elements(p_age_all) + p_mlr_all$plot_both$age) /
+#  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale) +
+#    plot_annotation(tag_levels = "A", title = "All subjects")
 
 
-wrap_elements(p_diagnosis_all) +
-  wrap_elements(p_mlr_all$plot_everything$`diagnosisUlcerative Colitis` + 
-                  p_mlr_all$plot_everything$`diagnosisIBDU` + plot_layout(guides = "collect")) +
-  plot_annotation(tag_levels = "A", title = "All subjects")
+#wrap_elements(p_diagnosis_all) +
+#  wrap_elements(p_mlr_all$plot_everything$`diagnosisUlcerative Colitis` + 
+#                  p_mlr_all$plot_everything$`diagnosisIBDU` + plot_layout(guides = "collect")) +
+#  plot_annotation(tag_levels = "A", title = "All subjects")
 
-(wrap_elements(p_age_all) + p_mlr_all$plot_everything$age) /
-  (wrap_elements(p_sex_all) + p_mlr_all$plot_everything$sexMale) +
-    plot_annotation(tag_levels = "A", title = "All subjects")
+#(wrap_elements(p_age_all) + p_mlr_all$plot_everything$age) /
+#  (wrap_elements(p_sex_all) + p_mlr_all$plot_everything$sexMale) +
+#    plot_annotation(tag_levels = "A", title = "All subjects")
 
 ```
 
 Some statistics to be used in the text:
 
 ```{r}
-myDF.fc %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC6"), class_order, "Other")) %>%
-  group_by(class_aux, diagnosis) %>%
-  summarise(count = n()) %>%
-  mutate(percentage = (count / sum(count) * 100)) %>%
-  knitr::kable()
+#myDF.fc %>%
+#  mutate(class_aux = ifelse(class_order %in% c("FC6"), class_order, "Other")) %>%
+#  group_by(class_aux, diagnosis) %>%
+#  summarise(count = n()) %>%
+#  mutate(percentage = (count / sum(count) * 100)) %>%
+#  knitr::kable()
 
 myDF.fc %>%
   mutate(class_aux = ifelse(class_order %in% c("FC1", "FC8"), class_order, "Other")) %>%
@@ -511,6 +519,9 @@ p_mlr_cd <- myDF.fc %>%
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 (wrap_elements(p_age_cd) + p_mlr_cd$plot_both$age) /
   (wrap_elements(p_sex_cd) + p_mlr_cd$plot_both$sexMale) +
     plot_annotation(tag_levels = "A", title = "CD patients only")
@@ -518,6 +529,9 @@ p_mlr_cd <- myDF.fc %>%
 
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- wrap_elements(p_smoke_cd) +
   (p_mlr_cd$plot_both$SmokeYes & theme(legend.position = "bottom")) + 
   plot_annotation(tag_levels = "A") &
@@ -532,6 +546,9 @@ ggsave("plots/associations/fc-cd-smoking.pdf",
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 15
+#| fig-height: 12
 p <- wrap_elements(p_location_cd) + 
   wrap_elements(p_mlr_cd$plot_both$LocationL2 + p_mlr_cd$plot_both$LocationL3 + 
      plot_layout(guides = "collect") &
@@ -550,6 +567,9 @@ print(p)
 
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- wrap_elements(p_L4_cd) +
   (p_mlr_cd$plot_both$L4Yes & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
@@ -567,6 +587,9 @@ print(p)
 
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- wrap_elements(p_behaviour_cd) +
   (p_mlr_cd$plot_both$`Behaviour_mergedB2 or B3` & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
@@ -576,11 +599,13 @@ ggsave("plots/associations/fc-behaviour.pdf",
        width = 12,
        height = 12,
        units = "in")
-
 print(p)
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- wrap_elements(p_perianal_cd) +
   (p_mlr_cd$plot_both$PerianalYes & theme(legend.position = "bottom")) + 
   plot_annotation(tag_levels = "A") &
@@ -596,17 +621,26 @@ print(p)
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 (wrap_elements(p_age_cd) + p_mlr_cd$plot_everything$age) /
   (wrap_elements(p_sex_cd) + p_mlr_cd$plot_everything$sexMale) +
     plot_annotation(tag_levels = "A", title = "CD patients only")
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 wrap_elements(p_smoke_cd) + p_mlr_cd$plot_everything$SmokeYes + 
   plot_annotation(title = "CD patients only")
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 wrap_elements(p_location_cd) + 
   (p_mlr_cd$plot_everything$LocationL2 + p_mlr_cd$plot_everything$LocationL3 + 
      plot_layout(guides = "collect")) + 
@@ -615,16 +649,25 @@ wrap_elements(p_location_cd) +
 
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 wrap_elements(p_L4_cd) + p_mlr_cd$plot_everything$L4Yes +
   plot_annotation(title = "CD patients only")
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 wrap_elements(p_behaviour_cd) + p_mlr_cd$plot_everything$`Behaviour_mergedB2 or B3` +
   plot_annotation(title = "CD patients only")
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 wrap_elements(p_perianal_cd) + p_mlr_cd$plot_everything$PerianalYes + 
   plot_annotation(title = "CD patients only")
 ```
@@ -632,14 +675,14 @@ wrap_elements(p_perianal_cd) + p_mlr_cd$plot_everything$PerianalYes +
 Some statistics to be used in the text:
 
 ```{r}
-myDF.fc %>%
-  filter(diagnosis == "Crohn's Disease") %>%
-  filter(missingN_cd == 0) %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC2"), class_order, "Other")) %>%
-  group_by(class_aux, L4) %>%
-  summarise(count = n()) %>%
-  mutate(percentage = (count / sum(count) * 100)) %>%
-  knitr::kable()
+#myDF.fc %>%
+#  filter(diagnosis == "Crohn's Disease") %>%
+#  filter(missingN_cd == 0) %>%
+#  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC2"), class_order, "Other")) %>%
+#  group_by(class_aux, L4) %>%
+#  summarise(count = n()) %>%
+#  mutate(percentage = (count / sum(count) * 100)) %>%
+#  knitr::kable()
 ```
 
 #### Ulcerative Colitis only
@@ -670,7 +713,6 @@ will facilitate the application of such filter.
 ```{r}
 myDF.fc <- myDF.fc %>%
   mutate(missingN_uc = is.na(Smoke) + is.na(Extent))
-
 with(myDF.fc[myDF.fc$diagnosis == "Ulcerative Colitis",], table(missingN_uc > 0))
 ```
 
@@ -718,12 +760,18 @@ p_mlr_uc <- myDF.fc %>%
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 (wrap_elements(p_age_uc) + p_mlr_uc$plot_both$age) /
   (wrap_elements(p_sex_uc) + p_mlr_uc$plot_both$sexMale) +
     plot_annotation(tag_levels = "A", title = "UC patients only")
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- wrap_elements(p_smoke_uc) + 
   (p_mlr_uc$plot_both$SmokeYes & theme(legend.position = "bottom")) + 
   plot_annotation(tag_levels = "A") &
@@ -739,6 +787,9 @@ print(p)
   
        
 ```{R}
+#| column: page
+#| fig-width: 15
+#| fig-height: 12
 p <- wrap_elements(p_extent_uc) + 
   wrap_elements(p_mlr_uc$plot_both$ExtentE2 + p_mlr_uc$plot_both$ExtentE3 +
      plot_layout(guides = "collect") &
@@ -756,17 +807,26 @@ print(p)
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 (wrap_elements(p_age_uc) + p_mlr_uc$plot_everything$age) /
   (wrap_elements(p_sex_uc) + p_mlr_uc$plot_everything$sexMale) +
     plot_annotation(tag_levels = "A", title = "UC patients only")
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 wrap_elements(p_smoke_uc) + p_mlr_uc$plot_everything$SmokeYes + 
   plot_annotation(title = "UC patients only")
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 wrap_elements(p_extent_uc) + 
   (p_mlr_uc$plot_everything$ExtentE2 + ylim(c(-5,5)) + p_mlr_uc$plot_everything$ExtentE3 + ylim(c(-5,5)) +
      plot_layout(guides = "collect")) +
@@ -778,6 +838,7 @@ Note that, due to small counts of extent E1 in cluster FC3, the model fitted aft
 Some statistics to be used in the text:
 
 ```{r}
+
 myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
@@ -842,6 +903,9 @@ However, as seen below, AT use varies across different IBD types (highest
 among CD patients, lowest among IBDU) patients. 
 
 ```{r}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 myDF.fc %>% 
   mutate(AT_7Y = factor(AT_7Y)) %>%
   plotCat("AT_7Y", class = "diagnosis") 
@@ -917,6 +981,11 @@ sum(temp$AT_7Y) / nrow(temp)
 
 #### Cumulative AT usage
 
+At present, we cannot show cumulative advanced therapy usage in this document as
+there are fewer than five subjects within at least one cluster-IBD type stratum.
+In the meantime, it is possible to view these plots in our manuscript which
+has digitally removed any strata with fewer than five subjects.
+
 ```{R}
 #| column: page
 #| fig-width: 12
@@ -989,7 +1058,7 @@ p1 <- km.df %>%
        y = "% of subjects receiving an advanced therapy",
        color = "IBD type") +
   theme(legend.position = "bottom")
-p1
+#p1
 
 ggsave("paper/Figure-3.pdf",
        p1,
@@ -1057,6 +1126,7 @@ First, we calculate the proportion of individuals assigned to each cluster
 with probability above 0.5.
 
 ```{r}
+
 p1 <- myDF.crp %>% 
   group_by(class_order) %>%
   summarise(prop50 = 100*mean(probmax > 0.5),
@@ -1196,6 +1266,9 @@ p_mlr_all <- myDF.crp %>%
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 15
+#| fig-height: 12
 p <- wrap_elements(p_diagnosis_all) +
   wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
                   p_mlr_all$plot_both$`diagnosisIBDU` +
@@ -1217,6 +1290,9 @@ print(p)
 
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$age & theme(legend.position = "none")) /
   (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale +
                   plot_layout(guides = "collect") &
@@ -1256,44 +1332,44 @@ p_age <- myDF.crp %>%
   xlab("Cluster") +
   ylab("Age at diagnosis")
 
-p_mlr <- myDF.crp %>%
-  filter(probmax > 0.5) %>%
-  mutate(class_order = relevel(class_order, ref = "CRP8")) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") # , "baseline_fc"
+#p_mlr <- myDF.crp %>%
+#  filter(probmax > 0.5) %>%
+#  mutate(class_order = relevel(class_order, ref = "CRP8")) %>%
+#  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") # , "baseline_fc"
 
-wrap_elements(p_diagnosis_all) +
-  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
-                  p_mlr_all$plot_both$`diagnosisIBDU` + plot_layout(guides = "collect")) +
-  plot_annotation(tag_levels = "A", title = "All subjects")
+#wrap_elements(p_diagnosis_all) +
+#  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
+#                  p_mlr_all$plot_both$`diagnosisIBDU` + plot_layout(guides = "collect")) +
+#  plot_annotation(tag_levels = "A", title = "All subjects")
 
-(wrap_elements(p_age_all) + p_mlr_all$plot_both$age) /
-  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale) +
-    plot_annotation(tag_levels = "A", title = "All subjects")
+#(wrap_elements(p_age_all) + p_mlr_all$plot_both$age) /
+#  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale) +
+#    plot_annotation(tag_levels = "A", title = "All subjects")
 ```
 
 Some statistics to be used in the text:
 
 ```{r}
-myDF.crp %>%
-  mutate(class_aux = ifelse(class_order %in% c("CRR6"), class_order, "Other")) %>%
-  group_by(class_aux, diagnosis) %>%
-  summarise(count = n()) %>%
-  mutate(percentage = (count / sum(count) * 100)) %>%
-  knitr::kable()
+#myDF.crp %>%
+#  mutate(class_aux = ifelse(class_order %in% c("CRP1", "CRP3", "CRP4", "CRP7"), class_order, "Other")) %>%
+#  group_by(class_aux, diagnosis) %>%
+#  summarise(count = n()) %>%
+#  mutate(percentage = (count / sum(count) * 100)) %>%
+#  knitr::kable()
 
-myDF.crp %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC8"), class_order, "Other")) %>%
-  group_by(class_aux, diagnosis) %>%
-  summarise(count = n()) %>%
-  mutate(percentage = (count / sum(count) * 100)) %>%
-  knitr::kable()
+#myDF.crp %>%
+#  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC8"), class_order, "Other")) %>%
+#  group_by(class_aux, diagnosis) %>%
+#  summarise(count = n()) %>%
+#  mutate(percentage = (count / sum(count) * 100)) %>%
+#  knitr::kable()
 
-myDF.crp %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC7"), class_order, "Other")) %>%
-  group_by(class_aux, diagnosis) %>%
-  summarise(count = n()) %>%
-  mutate(percentage = (count / sum(count) * 100)) %>%
-  knitr::kable()
+#myDF.crp %>%
+#  mutate(class_aux = ifelse(class_order %in% c("FC7"), class_order, "Other")) %>%
+#  group_by(class_aux, diagnosis) %>%
+#  summarise(count = n()) %>%
+#  mutate(percentage = (count / sum(count) * 100)) %>%
+#  knitr::kable()
 ```
 
 #### Crohn's disease only
@@ -1451,6 +1527,9 @@ p_mlr_cd <- myDF.crp %>%
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 (wrap_elements(p_age_cd) + p_mlr_cd$plot_both$age) /
   (wrap_elements(p_sex_cd) + p_mlr_cd$plot_both$sexMale) +
     plot_annotation(tag_levels = "A", title = "CD patients only")
@@ -1458,6 +1537,9 @@ p_mlr_cd <- myDF.crp %>%
 
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- wrap_elements(p_smoke_cd) +
   (p_mlr_cd$plot_both$SmokeYes & theme(legend.position = "bottom")) + 
   plot_annotation(tag_levels = "A") &
@@ -1472,6 +1554,9 @@ ggsave("plots/associations/crp-cd-smoking.pdf",
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 15
+#| fig-height: 12
 p <- wrap_elements(p_location_cd) + 
   wrap_elements(p_mlr_cd$plot_both$LocationL2 + p_mlr_cd$plot_both$LocationL3 + 
      plot_layout(guides = "collect") &
@@ -1490,6 +1575,9 @@ print(p)
 
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- wrap_elements(p_L4_cd) +
   (p_mlr_cd$plot_both$L4Yes & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
@@ -1507,6 +1595,9 @@ print(p)
 
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
 p <- wrap_elements(p_behaviour_cd) +
   (p_mlr_cd$plot_both$`Behaviour_mergedB2 or B3` & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
@@ -1528,6 +1619,16 @@ myDF.crp %>%
   filter(missingN_cd == 0) %>%
   mutate(class_aux = ifelse(class_order %in% c("FC1", "FC2"), class_order, "Other")) %>%
   group_by(class_aux, L4) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count) * 100)) %>%
+  knitr::kable()
+
+
+myDF.crp %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  filter(missingN_cd == 0) %>%
+  mutate(class_aux = ifelse(class_order %in% c("CRP1", "CRP8"), class_order, "Other")) %>%
+  group_by(class_aux, Smoke) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
   knitr::kable()
@@ -1746,8 +1847,8 @@ myDF.crp <- myDF.crp %>%
 
 table(myDF.crp$AT_1Y)
 
-myDF.crp %>%
-  count(AT_1Y, group_by = diagnosis)
+#myDF.crp %>%
+#  count(AT_1Y, group_by = diagnosis)
 
 p_AT_1Y <- myDF.crp %>% 
   mutate(AT_1Y = factor(AT_1Y)) %>%
@@ -1786,6 +1887,11 @@ sum(temp$AT_7Y) / nrow(temp)
 
 
 #### Cumulative AT usage
+
+At present, we cannot show cumulative advanced therapy usage in this document as
+there are fewer than five subjects within at least one cluster-IBD type stratum.
+In the meantime, it is possible to view these plots in our manuscript which
+has digitally removed any strata with fewer than five subjects.
 
 ```{R}
 #| column: page
@@ -1859,7 +1965,7 @@ p1 <- km.df %>%
        y = "% of subjects receiving an advanced therapy",
        color = "IBD type") +
   theme(legend.position = "bottom")
-p1
+#p1
 
 ggsave("paper/CRP-AT.pdf", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
 ggsave("paper/CRP-AT.png", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
@@ -1867,13 +1973,13 @@ ggsave("paper/CRP-AT.png", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
 
 
 ```{R}
-km.df %>%
-  filter(diag != "All") %>%
-  group_by(class, diag) %>%
-  summarise(last_value = 100 * last(cumhaz)) %>%
-  mutate(class = gsub(",.*", "", class)) %>%
-  knitr::kable(col.names = c("Cluster", "Diagnosis", "Total percentage"),
-               digits = 1)
+#km.df %>%
+#  filter(diag != "All") %>%
+#  group_by(class, diag) %>%
+#  summarise(last_value = 100 * last(cumhaz)) %>%
+#  mutate(class = gsub(",.*", "", class)) %>%
+#  knitr::kable(col.names = c("Cluster", "Diagnosis", "Total percentage"),
+#               digits = 1)
 ```
 
 ### Demographics table

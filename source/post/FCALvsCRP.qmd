@@ -70,6 +70,9 @@ rm(G.cand, G.cands)
 
 
 ```{R}
+#| column: page
+#| fig-width: 14
+#| fig-height: 10
 
 fc.remapping <- function(x) {
   plyr::mapvalues(x,
@@ -132,9 +135,13 @@ p <- wrap_elements(p_overlap_fc) +
   theme(plot.tag = element_text(size = 20, face = "bold"))
 ggsave("plots/overlap.pdf", p, width = 14, height = 10)
 ggsave("plots/overlap.png", p, width = 14, height = 10)
+p
 ```
 
 ```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 11
 aux <- table(crp.classes$class, crp.classes$overlap)
 
 # Numbers for the text
@@ -224,26 +231,26 @@ ggsave("paper/big-comp.pdf", p, width = 12, height = 11)
 Calculate some numbers in the overlap
 
 ```{r}
-classes.wide <- classes %>%
+tab1 <- classes.wide <- classes %>%
   subset(overlap == TRUE) %>%
   pivot_wider(names_from = type, values_from = class)
 
-classes.wide %>%
+tab2 <- classes.wide %>%
   subset(FC == "FC1") %>%
   count(CRP) %>%
   mutate(percentage = (n/ sum(n) * 100)) 
 
-classes.wide %>%
+tab3 <- classes.wide %>%
   subset(CRP %in% c("CRP1", "CRP2")) %>%
   count(FC) %>%
   mutate(percentage = (n/ sum(n) * 100)) 
 
-classes.wide %>%
+tab4 <- classes.wide %>%
   subset(CRP %in% c("CRP8")) %>%
   count(FC) %>%
   mutate(percentage = (n/ sum(n) * 100)) 
 
-classes.wide %>%
+tab5 <- classes.wide %>%
   subset(diagnosis == "Ulcerative Colitis") %>%
   subset(FC %in% c("FC7")) %>%
   count(CRP) %>%
@@ -288,7 +295,7 @@ doublePaired / paired
 ```
 
 
-Of out subjects paired in CRP, how many are also paired in FC?
+Out of subjects paired in CRP, how many are also paired in FC?
 
 ```{R}
 paired <- 0
