@@ -1,5 +1,5 @@
 ---
-title: "Analysis for Large-scale clustering of longitudinal faecal calprotectin and CRP profiles in inflammatory bowel disease: Findings from the Lothian IBD Registry"
+title: "Analysis for Large-scale clustering of longitudinal faecal calprotectin and C-reactive protein profiles in inflammatory bowel disease"
 format:
   html:
     code-tools: false
@@ -27,7 +27,7 @@ author:
 
 ```{R}
 #| echo: false
-x <- 1 # If there's no code block then inline R code below won't work. 
+x <- 1 # If there's no code block, the inline R code below won't work. 
 ```
 
 ## About
@@ -37,16 +37,15 @@ This website presents the analyses carried out for
 by Constantine-Cooke et al. In this work, we expand upon our previous research
 which clustered faecal calprotectin (FC) profiles for a subset of Crohn's
 disease patients [@constantine-cooke2023] by clustering FC and C-reactive
-protein (CRP) profiles across Crohn's disease, ulcerative colitis, and
-inflammatory bowel disease unclassified patients treated by the
-[NHS Lothian health board](https://www.nhslothian.scot/). 
+protein (CRP) profiles. Moreover, we extend our modelling to include subjects
+with Crohn's disease, ulcerative colitis, and inflammatory bowel disease
+unclassified identified via the Lothian IBD Registry.  
 
 The analysis pipeline for this project can be categorised into three stages:
 
-1. _Before model fitting_, where data obtained from clinicians are
-   reformatted and any data quality issues are dealt with. Additionally, 
-   baseline data (i.e data available at diagnosis) were explored via descriptive
-   analyses.
+1. _Before model fitting_, where data obtained from the NHS are reformatted and
+   any data quality issues are dealt with. Baseline data (i.e data available at
+   diagnosis) were also explored in descriptive analyses as part of this stage.
 2. _Model fitting_, where latent class mixed models are fitted with differing
    numbers of assumed clusters and the most appropriate models are chosen for
    FC and CRP. 
