@@ -540,7 +540,7 @@ for (clust in 1:8) {
         crp.ma[i + 1, j + 1] <- median(sub.obs$crp_result)
       }
     }
-  }
+  } 
 
   rownames(crp.ma) <- 1:iters
   crp.ma <- reshape2::melt(t(crp.ma),
@@ -644,7 +644,8 @@ With Danish predictions
 
 ```{R}
 dk.crp <- dk.crp %>%
-  mutate(cluster = str_replace_all(cluster, "Ypred_class", ""))
+  mutate(cluster = str_replace_all(cluster, "Ypred_class", "")) %>%
+  filter(time <= 4.25)
 ```
 
 ```{R}
