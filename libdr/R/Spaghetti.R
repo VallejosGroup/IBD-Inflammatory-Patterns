@@ -517,7 +517,6 @@ spaghetti_plot_sub <- function(data,
     )
 
     p[[g]] <- p[[g]] + theme(legend.position = "none")
-
     printLcmm(g = g, p = p, matchidx = matchidx, multi = multi, save = save)
   }
 }
