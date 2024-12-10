@@ -15,6 +15,7 @@ project:
     - "source/selection/fcal.qmd"
     - "source/selection/crp.qmd"
     - "source/post/associations.qmd"
+    - "source/post/associations-merged.qmd"
     - "source/post/FCALvsCRP.qmd"
     - "source/post/Diagnosis.qmd"
     - "not-found.qmd"
