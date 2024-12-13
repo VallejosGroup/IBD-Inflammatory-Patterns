@@ -240,7 +240,7 @@ p_age_all <- myDF.fc %>%
 
 ```{R}
 p_mlr_all <- myDF.fc %>%
-  mutate(class_order = relevel(class_order, ref = "FC4")) %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
   mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") 
 ```
 
@@ -313,7 +313,7 @@ p_age <- myDF.fc %>%
 
 p_mlr <- myDF.fc %>%
   filter(probmax > 0.5) %>%
-  mutate(class_order = relevel(class_order, ref = "FC4")) %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
   mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") # , "baseline_fc"
 
 #wrap_elements(p_diagnosis_all) +
@@ -512,7 +512,7 @@ p_perianal_cd <- myDF.fc %>%
 p_mlr_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
-  mutate(class_order = relevel(class_order, ref = "FC4")) %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
   mlrPlot(var = c("age", "sex", 
                   "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
           class = "class_order")
@@ -754,7 +754,7 @@ p_extent_uc <- myDF.fc %>%
 p_mlr_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
-  mutate(class_order = relevel(class_order, ref = "FC4")) %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
   mlrPlot(var = c("age", "sex", "Smoke", "Extent"),
           class = "class_order")
 ```
@@ -880,7 +880,7 @@ p_AT <- myDF.fc %>%
 
 p_AT_mlr <- myDF.fc %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
-  mutate(class_order = relevel(class_order, ref = "FC4")) %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
   mlrPlot(var = c("age", "sex", "AT_7Y"),
           class = "class_order")
 
