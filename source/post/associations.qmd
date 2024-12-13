@@ -60,6 +60,27 @@ model.fc <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
 crp <- readRDS(paste0(prefix, "processed/crp.RDS"))
 crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
+
+
+dk <- read.csv(paste0(prefix,
+                      "Denmark/2024-12-13/Fcal_association_tests_merge4_6.csv"),
+               sep = ";")
+dk <- dk %>% mutate(Var1 = plyr::mapvalues(Var1,
+                                     from = paste0("FC", seq(1, 6)),
+                                     to = c("FC1",
+                                            "FC2",
+                                            "FC3",
+                                            "FC4-6",
+                                            "FC7",
+                                            "FC8")),
+              Var2 = plyr::mapvalues(Var2,
+                                     from = c("diag_age",
+                                              "final_diagUC",
+                                              "sexM"),
+                                     to =  c("age",
+                                             "diagnosisUlcerative Colitis",
+                                             "sexMale")))
+              
 ```
 
 This page explores potential associations between information available at
@@ -287,12 +308,21 @@ p_mlr_all <- myDF.fc %>%
 
 
 ```{R}
+p_mlr_all <- myDF.fc %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
+  mlrPlot(var = c("diagnosis", "age", "sex"),
+          class = "class_order",
+          extern = dk) 
+```
+
+
+```{R}
 #| column: page
 #| fig-width: 15
 #| fig-height: 12
 p <- wrap_elements(p_diagnosis_all) +
-  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
-                  p_mlr_all$plot_both$`diagnosisIBDU` +
+  wrap_elements(p_mlr_all$plot_everything$`diagnosisUlcerative Colitis` + 
+                  p_mlr_all$plot_everything$`diagnosisIBDU` +
                   plot_layout(guides = "collect") &
                   theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") + 
