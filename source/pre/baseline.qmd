@@ -1160,14 +1160,17 @@ survfit(Surv(AT_line_1, AT) ~ 1, data = dict.crp.cd) %>%
 ### Ulcerative colitis only data
 
 ```{R}
-uc.pheno <- read_xlsx(paste0(prefix, "2024-10-23/UC-pheno.xlsx"),
+uc.pheno.1 <- read_xlsx(paste0(prefix, "2024-10-23/UC-pheno.xlsx"),
                       range = cell_cols(1:4))
-temp <- unique(subset(fcal, diagnosis == "Ulcerative Colitis")$ids)
 
-uc.pheno <- subset(uc.pheno, ids %in% temp)
-uc.pheno <- select(uc.pheno, -diagnosis)
-dict <- merge(dict, uc.pheno, by = "ids", all.x = TRUE, all.y = FALSE)
-dict <- dict %>%
+uc.pheno.2 <- read_xlsx(paste0(prefix, "2024-12-11/UC-pheno-crp.xlsx"),
+                        range = cell_cols(1:4))
+uc.pheno <- rbind(uc.pheno.1, uc.pheno.2) %>%
+  distinct(ids, .keep_all = TRUE)
+
+
+uc.pheno <- select(uc.pheno, -diagnosis) 
+dict <- merge(dict, uc.pheno, by = "ids", all.x = TRUE, all.y = FALSE) %>%
   mutate(Smoke = if_else(is.na(Smoke.x), Smoke.y, Smoke.x)) %>%
   select(-Smoke.x, -Smoke.y)
 ```
@@ -1176,18 +1179,24 @@ dict <- dict %>%
 
 ```{R}
 dict <- dict %>%
-  mutate(Extent = if_else(!is.na(Extent), paste0("E", Extent), NA))
+  mutate(Extent = if_else(!is.na(Extent) & !str_detect(Extent, "E"),
+                          paste0("E", Extent),
+                          NA))
 ```
 
+::: {.panel-tabset group="biomarker"}
+
+##### Faecal calprotectin
+
 ```{R}
-dict.fc.uc <- subset(dict,
+dict.uc.fc <- subset(dict,
                      diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)))
 
 
-counts <- data.frame(table(dict.fc.uc$Extent, useNA = "ifany"))
+counts <- data.frame(table(dict.uc.fc$Extent, useNA = "ifany"))
 colnames(counts) <- c("Montreal extent", "Frequency")
 
-dict.fc.uc %>%
+dict.uc.fc %>%
     ggplot(aes(x = Extent)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
@@ -1196,12 +1205,52 @@ dict.fc.uc %>%
   wrap_table(gt(counts), space = "free_y") 
 ```
 
+##### CRP
+
+```{R}
+dict.uc.crp <- subset(dict,
+                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(crp$ids)))
+
+
+counts <- data.frame(table(dict.uc.crp$Extent, useNA = "ifany"))
+colnames(counts) <- c("Montreal extent", "Frequency")
+
+dict.uc.crp %>%
+    ggplot(aes(x = Extent)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Montreal extent") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+##### Overlap
+
+```{R}
+dict.uc.both <- subset(dict,
+                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)) & (ids %in% unique(crp$ids)))
+
+counts <- data.frame(table(dict.uc.both$Extent, useNA = "ifany"))
+colnames(counts) <- c("Montreal extent", "Frequency")
+
+dict.uc.both %>%
+    ggplot(aes(x = Extent)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Montreal location") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+:::
+
 #### Smoking status
 
 ```{R}
 dict$Smoke <- 
   plyr::mapvalues(dict$Smoke,
                   from = c("0",
+                           "0.01",
                            "never",
                            "1",
                            "2",
@@ -1209,20 +1258,25 @@ dict$Smoke <-
                            "former"), 
                   to = c("No",
                          "No",
+                         "No",
                          "Yes",
                          "Yes",
                          "Yes",
                          "Yes"))
 ```
 
+::: {.panel-tabset group="biomarker"}
+
+##### Faecal calprotectin
+
 ```{R}
-dict.fc.uc <- subset(dict,
+dict.uc.fc <- subset(dict,
                      diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)))
 
-counts <- data.frame(table(dict.fc.uc$Smoke, useNA = "ifany"))
+counts <- data.frame(table(dict.uc.fc$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
-dict.fc.uc %>%
+dict.uc.fc %>%
     ggplot(aes(x = Smoke)) +
     geom_bar(fill = "#541388", color = "#2E294E") +
     theme_minimal() +
@@ -1231,6 +1285,43 @@ dict.fc.uc %>%
   wrap_table(gt(counts), space = "free_y") 
 ```
 
+##### CRP
+
+```{R}
+dict.uc.crp <- subset(dict,
+                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(crp$ids)))
+
+counts <- data.frame(table(dict.uc.crp$Smoke, useNA = "ifany"))
+colnames(counts) <- c("Previously smoked", "Frequency")
+
+dict.uc.crp %>%
+    ggplot(aes(x = Smoke)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Previously smoked") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+##### Overlap
+
+```{R}
+dict.uc.both <- subset(dict,
+                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)) & (ids %in% unique(crp$ids)))
+
+counts <- data.frame(table(dict.uc.both$Smoke, useNA = "ifany"))
+colnames(counts) <- c("Previously smoked", "Frequency")
+
+dict.uc.both %>%
+    ggplot(aes(x = Smoke)) +
+    geom_bar(fill = "#541388", color = "#2E294E") +
+    theme_minimal() +
+    xlab("Previously smoked") +
+    ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y") 
+```
+
+:::
 
 ### Advanced therapies in UC
 
