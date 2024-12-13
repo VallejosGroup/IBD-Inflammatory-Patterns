@@ -1707,17 +1707,42 @@ p_mlr_uc <- myDF.crp %>%
   mutate(class_order = relevel(class_order, ref = "CRP8")) %>%
   mlrPlot(var = c("age", "sex", "Smoke", "Extent"),
           class = "class_order")
+```
 
-(wrap_elements(p_age_uc) + p_mlr_uc$plot_both$age) /
-  (wrap_elements(p_sex_uc) + p_mlr_uc$plot_both$sexMale) +
+```{R}
+#| column: page
+#| fig-width: 15
+#| fig-height: 12
+p <- wrap_elements(p_extent_uc) + 
+  wrap_elements(p_mlr_uc$plot_both$ExtentE2 + p_mlr_uc$plot_both$ExtentE3 +
+     plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) + 
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(widths = c(1.25, 2)) &
+  theme(plot.tag = element_text(face = "bold", size = 22))
+
+ggsave("plots/associations/crp-extent.pdf",
+       p,
+       width = 15,
+       height = 12,
+       units = "in")
+print(p)
+```
+
+```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
+(wrap_elements(p_age_uc) + p_mlr_uc$plot_everything$age) /
+  (wrap_elements(p_sex_uc) + p_mlr_uc$plot_everything$sexMale) +
     plot_annotation(tag_levels = "A", title = "UC patients only")
+```
 
-wrap_elements(p_smoke_uc) + p_mlr_uc$plot_both$SmokeYes + 
-  plot_annotation(title = "UC patients only")
-
-wrap_elements(p_extent_uc) + 
-  (p_mlr_uc$plot_both$ExtentE2 + p_mlr_uc$plot_both$ExtentE3 +
-     plot_layout(guides = "collect")) +
+```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
+wrap_elements(p_smoke_uc) + p_mlr_uc$plot_everything$SmokeYes + 
   plot_annotation(title = "UC patients only")
 ```
 
