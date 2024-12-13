@@ -115,12 +115,28 @@ myDF.fc <- myDF.fc %>%
 ```{R}
 myDF.fc <- myDF.fc %>%
   mutate(class_order_original = class_order,
+         prob_order_original_1 = prob_order1,
+         prob_order_original_2 = prob_order2,
+         prob_order_original_3 = prob_order3,
+         prob_order_original_4 = prob_order4,
+         prob_order_original_5 = prob_order5,
+         prob_order_original_6 = prob_order6, 
+         prob_order_original_7 = prob_order7,
+         prob_order_original_8 = prob_order8,
+         probmax_original = pmax(prob_order1,
+                                 prob_order2,
+                                 prob_order3,
+                                 prob_order4,
+                                 prob_order5,
+                                 prob_order6,
+                                 prob_order7,
+                                 prob_order8),
     class_order = plyr::mapvalues(class_order,
                                        from = c("FC5", "FC6", "FC7", "FC8"),
                                        to = c("FC4", "FC4", "FC5", "FC6")),
          prob_order4 = prob_order4 + prob_order5 + prob_order6,
          prob_order5 = prob_order7,
-         prob_order6 = prob_order8) %>%
+         prob_order6 = prob_order8)%>%
   select(-prob_order7, -prob_order8)  %>%
   mutate(probmax = pmax(prob_order1,
                         prob_order2,
@@ -135,8 +151,6 @@ newlabs <- c("FC1", "FC2", "FC3", "FC4-6", "FC7", "FC8")
 myDF.fc$class_order = factor(myDF.fc$class_order,
                              levels = paste0("FC", seq(1,6)),
                              labels = newlabs)
-
-
 ```
 
 ### Uncertainty cluster assignment probabilities 
@@ -146,10 +160,10 @@ with probability above 0.5.
 
 ```{r}
 p1 <- myDF.fc %>% 
-  group_by(class_order) %>%
-  summarise(prop50 = 100*mean(probmax > 0.5),
-            prop75 = 100*mean(probmax > 0.75)) %>%
-  ggplot(aes(x = class_order, y = prop50)) +
+  group_by(class_order_original) %>%
+  summarise(prop50 = 100 * mean(probmax_original > 0.5),
+            prop75 = 100 * mean(probmax_original > 0.75)) %>%
+  ggplot(aes(x = class_order_original, y = prop50)) +
   ylim(c(0,100)) +
   xlab("Assigned cluster") +
   ylab("% assigned with prob > 0.5") +
@@ -164,10 +178,10 @@ Next, we calculate average posterior probabilities of cluster assignment.
 
 ```{r}
 myDF.fc_means <- myDF.fc %>% 
-  group_by(class_order, followup_cut) %>%
-  summarise(across(starts_with("prob_order"), function(x) mean(x, na.rm = TRUE)),
+  group_by(class_order_original, followup_cut) %>%
+  summarise(across(starts_with("prob_order_original"), function(x) mean(x, na.rm = TRUE)),
             .groups = "drop") %>%
-  pivot_longer(cols = starts_with("prob_order"), names_to = "prob_order")
+  pivot_longer(cols = starts_with("prob_order_original"), names_to = "prob_order_original")
 ```
 
 @fig-fc-prob-fup shows how cluster assignment probabilities change as follow-up
@@ -193,18 +207,22 @@ This is not unexpected, as FC3 and FC6 share similar patterns within the first
 #| fig-width: 11
 #| fig-height: 8
 
-
 # Assign level order otherwise alphanumerical order used 
 # and add sample sizes to labels
 myDF.fc_means <- myDF.fc_means %>%
-  mutate(prob_order = factor(prob_order,
-                             levels = c(paste0("prob_order", 1:6)),
-                             labels = newlabs))
+  mutate(prob_order_original = factor(prob_order_original,
+                                      levels = paste0("prob_order_original_",
+                                                      1:8),
+                                      labels = paste0("FC", seq(1, 8))),
+         class_order_original = factor(class_order_original,
+                              levels = paste0("FC", 1:8),
+                              labels = paste0("Assigned to FC", 1:8, "\n n = ",
+                                              as.vector(table(myDF.fc$class_order_original)))))
 
 fc_fup <- myDF.fc_means %>%
-  ggplot(aes(fill = prob_order, y = value, x = followup_cut)) +
+  ggplot(aes(fill = prob_order_original, y = value, x = followup_cut)) +
   geom_bar(position = "fill", stat = "identity") +
-  facet_wrap(.~class_order, ncol = 3) + 
+  facet_wrap(.~class_order_original, ncol = 4) + 
   theme_minimal() +
   theme(legend.title = element_text(hjust = 0.5),
         strip.background = element_rect(color = "lightgray",
