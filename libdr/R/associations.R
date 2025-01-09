@@ -169,10 +169,18 @@ plotCat <- function(dat, var, class = "class_combined") {
 #' @param extern Optional data frame containing multinomial logistic
 #'   regression results obtained from an external dataset. If not given then it
 #'   is assumed that no external data is required.
+#' @param uni Logical. Should only a univariate model be considered? Defaults
+#'   to FALSE (multivariate modelling).
 #' @export
-mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minprob = 0.5, extern = NULL) {
-
-  #print("Multivariate analysis")
+mlrPlot <- function(dat,
+                    var,
+                    class = "class_combined",
+                    prob = "probmax",
+                    minprob = 0.5,
+                    extern = NULL,
+                    uni = FALSE) {
+  Model <- NULL # Global var
+  # print("Multivariate analysis")
   # Multivariate analysis
   ## Fit the model
   mlr_multi <- nnet::multinom(formula = reformulate(var, class), data = dat, trace = FALSE)
@@ -184,7 +192,7 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
     p_multi[[variable]] <- .plotCI(tab_multi, variable)
   }
 
-  #print("Multivariate analysis - excluding those with prob < minprob")
+  # print("Multivariate analysis - excluding those with prob < minprob")
   # Multivariate analysis - excluding those with prob < minprob
   ## Fit the model
   dat.minprob <- dat %>% filter(!!sym(prob) >= minprob)
@@ -201,148 +209,170 @@ mlrPlot <- function(dat, var, class = "class_combined", prob = "probmax", minpro
   }
 
   if (length(var) > 1) {
-    #print("Everyone")
+    # print("Everyone")
     ### Everyone
     ## Fit the model + Extract coeffs and CIs
 
     if (is.null(extern)) {
-    # Univariate analysis
+      if (uni) {
+        # Univariate analysis
+        tab_uni <- NULL
+        for (variable in var) {
+          mlr_uni <- nnet::multinom(
+            formula = reformulate(variable, class),
+            data = dat, trace = FALSE
+          )
+          tab_uni <- rbind(tab_uni, .getCI(mlr_uni))
+        }
+        ## Plot
+        p_uni <- list()
+        for (variable in unique(tab_multi$Var2)) {
+          p_uni[[variable]] <- .plotCI(tab_uni, variable)
+        }
 
-      tab_uni <- NULL
-      for (variable in var) {
-        mlr_uni <- nnet::multinom(
-          formula = reformulate(variable, class),
-          data = dat, trace = FALSE
+
+        tab_uni$Model <- "Univariate"
+        tab_multi$Model <- "Multivariate"
+        tab_both <- bind_rows(tab_uni, tab_multi)
+        tab_both$Model <- as.factor(tab_both$Model)
+        p_both <- list()
+        for (variable in unique(tab_multi$Var2)) {
+          p_both[[variable]] <- .plotCI(tab = tab_both, variable)
+        }
+
+        # print("Excluding those with prob < minprob")
+        ### Excluding those with prob < minprob
+        ## Fit the model + Extract coeffs and CIs
+        tab_uni_minprob <- NULL
+        for (variable in var) {
+          mlr_uni_minprob <- nnet::multinom(
+            formula = reformulate(variable, class),
+            data = dat.minprob, trace = FALSE
+          )
+          tab_uni_minprob <- rbind(tab_uni_minprob, .getCI(mlr_uni_minprob))
+        }
+        ## Plot
+        p_uni_minprob <- list()
+        for (variable in unique(tab_multi$Var2)) {
+          p_uni_minprob[[variable]] <- .plotCI(tab_uni_minprob, variable)
+        }
+        ## Combined plot
+        # Add a model identifier to each dataset and combine the two tables
+        tab_uni_minprob$Model <- paste0("Univariate (prob >=", minprob, ")")
+        tab_multi_minprob$Model <- paste0("Multivariate (prob >=", minprob, ")")
+        tab_both_minprob <- bind_rows(tab_uni_minprob, tab_multi_minprob)
+        tab_both_minprob$Model <- as.factor(tab_both_minprob$Model)
+        p_both_minprob <- list()
+        for (variable in unique(tab_uni$Var2)) {
+          p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variable)
+        }
+
+        ## Full-combined plot
+        tab_everything <- bind_rows(
+          tab_uni, tab_multi,
+          tab_uni_minprob, tab_multi_minprob
         )
-        tab_uni <- rbind(tab_uni, .getCI(mlr_uni))
+        tab_everything$Model <- as.factor(tab_everything$Model)
+        p_everything <- list()
+        for (variable in unique(tab_multi$Var2)) {
+          p_everything[[variable]] <- .plotCI(tab = tab_everything, variable)
+        }
+        # Output
+        if (length(var) == 1) {
+          out <- list(
+            tab_multi = tab_multi,
+            plot_multi = p_multi,
+            tab_multi_minprob = tab_multi_minprob,
+            plot_multi_minprob = p_multi_minprob
+          )
+        } else {
+          out <- list(
+            tab_multi = tab_multi,
+            plot_multi = p_multi,
+            tab_uni = tab_uni,
+            plot_uni = p_uni,
+            plot_both = p_both,
+            tab_everything = tab_everything,
+            plot_everything = p_everything
+          )
+        }
+        return(out)
+      } else {
+        tab_multi$Model <- "LIBDR"
+        tab_multi_minprob$Model <- paste0("LIBDR (prob >=", minprob, ")")
+        tab_both <- bind_rows(tab_multi,tab_multi_minprob)
+        tab_both$Model <- forcats::fct_rev(tab_both$Model)
+        p_both <- list()
+        for (variable in unique(tab_multi$Var2)) {
+          p_both[[variable]] <- .plotCI(tab = tab_both, variable) +
+            guides(color = guide_legend(reverse = TRUE)) +
+            scale_color_manual(values = c("#00488C", "#0071DA"))
+        }
+        # Multivariate
+        out <- list(
+          tab_multi = tab_multi,
+          plot_multi = p_multi,
+          tab_multi_minprob = tab_multi_minprob,
+          plot_multi_minprob = p_multi_minprob,
+          tab_both = tab_both,
+          p_both = p_both
+        )
       }
-      ## Plot
-      p_uni <- list()
-      for (variable in unique(tab_multi$Var2)) {
-        p_uni[[variable]] <- .plotCI(tab_uni, variable)
-      }
-
-
-      tab_uni$Model <- "Univariate"
-      tab_multi$Model <- "Multivariate"
-      tab_both <- bind_rows(tab_uni, tab_multi)
+    } else {
+      tab_multi$Model <- "LIBDR Multivariate"
+      tab_both <- bind_rows(tab_multi, extern)
       tab_both$Model <- as.factor(tab_both$Model)
       p_both <- list()
       for (variable in unique(tab_multi$Var2)) {
         p_both[[variable]] <- .plotCI(tab = tab_both, variable)
       }
 
-      #print("Excluding those with prob < minprob")
-      ### Excluding those with prob < minprob
-      ## Fit the model + Extract coeffs and CIs
-      tab_uni_minprob <- NULL
-      for (variable in var) {
-        mlr_uni_minprob <- nnet::multinom(
-          formula = reformulate(variable, class),
-          data = dat.minprob, trace = FALSE
-        )
-        tab_uni_minprob <- rbind(tab_uni_minprob, .getCI(mlr_uni_minprob))
-      }
-      ## Plot
-      p_uni_minprob <- list()
-      for (variable in unique(tab_multi$Var2)) {
-        p_uni_minprob[[variable]] <- .plotCI(tab_uni_minprob, variable)
-      }
-      ## Combined plot
-      # Add a model identifier to each dataset and combine the two tables
-      tab_uni_minprob$Model <- paste0("Univariate (prob >=", minprob, ")")
-      tab_multi_minprob$Model <- paste0("Multivariate (prob >=", minprob, ")")
-      tab_both_minprob <- bind_rows(tab_uni_minprob, tab_multi_minprob)
-      tab_both_minprob$Model <- as.factor(tab_both_minprob$Model)
-      p_both_minprob <- list()
-      for (variable in unique(tab_uni$Var2)) {
-        p_both_minprob[[variable]] <- .plotCI(tab = tab_both_minprob, variable)
-      }
+      tab_multi_minprob$Model <- paste0("LIBDR Multivariate (prob >=", minprob, ")")
+
+      extern <- subset(extern, Model %in% c("Multivariate", "Multivariate (prob >=0.5)"))
+      extern$Model <- paste("Danish", extern$Model)
+
 
       ## Full-combined plot
       tab_everything <- bind_rows(
-        tab_uni, tab_multi,
-        tab_uni_minprob, tab_multi_minprob
+        tab_multi,
+        tab_multi_minprob,
+        extern
       )
-      tab_everything$Model <- as.factor(tab_everything$Model)
+      tab_everything$Model <- factor(tab_everything$Model,
+        levels = c(
+          "Danish Multivariate (prob >=0.5)",
+          "Danish Multivariate",
+          "LIBDR Multivariate (prob >=0.5)",
+          "LIBDR Multivariate"
+        )
+      )
+
       p_everything <- list()
       for (variable in unique(tab_multi$Var2)) {
-        p_everything[[variable]] <- .plotCI(tab = tab_everything, variable)
+        p_everything[[variable]] <- .plotCI(tab = tab_everything, variable) +
+          guides(color = guide_legend(reverse = TRUE)) +
+          scale_color_manual(values = c("#7D0A1D", "#DC1435", "#00488C", "#0071DA"))
       }
-    # Output
-    if (length(var) == 1) {
-      out <- list(
-        tab_multi = tab_multi,
-        plot_multi = p_multi,
-        tab_multi_minprob = tab_multi_minprob,
-        plot_multi_minprob = p_multi_minprob
-      )
-    } else {
-      out <- list(
-        tab_multi = tab_multi,
-        plot_multi = p_multi,
-        tab_uni = tab_uni,
-        plot_uni = p_uni,
-        plot_both = p_both,
-        tab_everything = tab_everything,
-        plot_everything = p_everything
-      )
+
+      # Output
+      if (length(var) == 1) {
+        out <- list(
+          tab_multi = tab_multi,
+          plot_multi = p_multi,
+          tab_multi_minprob = tab_multi_minprob,
+          plot_multi_minprob = p_multi_minprob
+        )
+      } else {
+        out <- list(
+          tab_multi = tab_multi,
+          plot_multi = p_multi,
+          plot_both = p_both,
+          tab_everything = tab_everything,
+          plot_everything = p_everything
+        )
+      }
+      return(out)
     }
-    return(out)
-  } else {
-
-    tab_multi$Model <- "LIBDR Multivariate"
-    tab_both <- bind_rows(tab_multi, extern)
-    tab_both$Model <- as.factor(tab_both$Model)
-    p_both <- list()
-    for (variable in unique(tab_multi$Var2)) {
-      p_both[[variable]] <- .plotCI(tab = tab_both, variable)
-    }
-
-    tab_multi_minprob$Model <- paste0("LIBDR Multivariate (prob >=", minprob, ")")
-
-    extern <- subset(extern, Model %in% c("Multivariate", "Multivariate (prob >=0.5)"))
-    extern$Model <- paste("Danish", extern$Model)
-
-
-    ## Full-combined plot
-    tab_everything <- bind_rows(
-      tab_multi,
-      tab_multi_minprob,
-      extern
-    )
-    tab_everything$Model <- factor(tab_everything$Model,
-                                   levels = c("Danish Multivariate (prob >=0.5)",
-                                              "Danish Multivariate",
-                                              "LIBDR Multivariate (prob >=0.5)",
-                                              "LIBDR Multivariate"))
-
-    p_everything <- list()
-    for (variable in unique(tab_multi$Var2)) {
-      p_everything[[variable]] <- .plotCI(tab = tab_everything, variable) +
-        guides(color = guide_legend(reverse = TRUE)) +
-        scale_color_manual(values = c("#7D0A1D", "#DC1435", "#00488C", "#0071DA"))
-    }
-
-  # Output
-  if (length(var) == 1) {
-    out <- list(
-      tab_multi = tab_multi,
-      plot_multi = p_multi,
-      tab_multi_minprob = tab_multi_minprob,
-      plot_multi_minprob = p_multi_minprob
-    )
-  } else {
-    out <- list(
-      tab_multi = tab_multi,
-      plot_multi = p_multi,
-      plot_both = p_both,
-      tab_everything = tab_everything,
-      plot_everything = p_everything
-    )
-  }
-  return(out)
-  }
   }
 }
-

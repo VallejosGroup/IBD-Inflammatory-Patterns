@@ -32,27 +32,20 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
 ##########################
 
 library(tidyverse)
-#library(tidyr)
 library(dplyr)
 # Support package (source found in libdr/)
 library(libdr)
 ## Modelling ##
 library(lcmm)
 library(nnet) # Multinomial logistic regression
-## Survival analysis
+## Survival analysis ##
 library(survival)
 library(survminer)
-#library(cmprsk)
+
 ## Presentation ##
 library(patchwork)
-library(ggdist)
-library(ggalluvial)
 library(pander)
-library(qqplotr)
-library(table1)
 library(viridis)
-
-library(ggmosaic)
 
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
@@ -62,25 +55,126 @@ crp.median <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 model.crp <- readRDS(paste0(prefix, "cache/crp-ma/crp-8.RDS"))
 
 
-dk <- read.csv(paste0(prefix,
-                      "Denmark/2024-12-13/Fcal_association_tests_merge4_6.csv"),
-               sep = ";")
-dk <- dk %>% mutate(Var1 = plyr::mapvalues(Var1,
-                                     from = paste0("FC", seq(1, 6)),
-                                     to = c("FC1",
-                                            "FC2",
-                                            "FC3",
-                                            "FC4-6",
-                                            "FC7",
-                                            "FC8")),
-              Var2 = plyr::mapvalues(Var2,
-                                     from = c("diag_age",
-                                              "final_diagUC",
-                                              "sexM"),
-                                     to =  c("age",
-                                             "diagnosisUlcerative Colitis",
-                                             "sexMale")))
-              
+dk <- read.csv(
+  paste0(
+    prefix,
+    "Denmark/2024-12-13/Fcal_association_tests_merge4_6.csv"
+  ),
+  sep = ";"
+)
+dk <- dk %>% mutate(
+  Var1 = plyr::mapvalues(Var1,
+    from = paste0("FC", seq(1, 6)),
+    to = c(
+      "FC1",
+      "FC2",
+      "FC3",
+      "FC4-6",
+      "FC7",
+      "FC8"
+    )
+  ),
+  Var2 = plyr::mapvalues(Var2,
+    from = c(
+      "diag_age",
+      "final_diagUC",
+      "sexM"
+    ),
+    to = c(
+      "age",
+      "diagnosisUlcerative Colitis",
+      "sexMale"
+    )
+  )
+)
+
+dk.fc.cd <- read.csv(
+  paste0(
+    prefix,
+    "Denmark/2024-12-13/Fcal_association_tests_merge4_6_CD.csv"
+  ),
+  sep = ";"
+)
+
+
+dk.fc.cd <- dk.fc.cd %>% mutate(
+  Var1 = plyr::mapvalues(Var1,
+    from = paste0("FC", seq(1, 6)),
+    to = c(
+      "FC1",
+      "FC2",
+      "FC3",
+      "FC4-6",
+      "FC7",
+      "FC8"
+    )
+  ),
+  Var2 = plyr::mapvalues(Var2,
+    from = c(
+      "diag_age",
+      "sexM"
+    ),
+    to = c(
+      "age",
+      "sexMale"
+    )
+  )
+)
+
+
+dk.fc.uc <- read.csv(
+  paste0(
+    prefix,
+    "Denmark/2024-12-13/Fcal_association_tests_merge4_6_UC.csv"
+  ),
+  sep = ";"
+)
+
+
+dk.fc.uc <- dk.fc.uc %>% mutate(
+  Var1 = plyr::mapvalues(Var1,
+    from = paste0("FC", seq(1, 6)),
+    to = c(
+      "FC1",
+      "FC2",
+      "FC3",
+      "FC4-6",
+      "FC7",
+      "FC8"
+    )
+  ),
+  Var2 = plyr::mapvalues(Var2,
+    from = c(
+      "diag_age",
+      "sexM"
+    ),
+    to = c(
+      "age",
+      "sexMale"
+    )
+  )
+)
+
+
+dk.crp <- read.csv(
+  paste0(
+    prefix,
+    "Denmark/2024-12-13/CRP_association_tests.csv"
+  ),
+  sep = ";"
+)
+dk.crp <- dk.crp %>% mutate(Var2 = plyr::mapvalues(Var2,
+  from = c(
+    "diag_age",
+    "final_diagUC",
+    "sexM"
+  ),
+  to = c(
+    "age",
+    "diagnosisUlcerative Colitis",
+    "sexMale"
+  )
+))
 ```
 
 This page explores potential associations between information available at
@@ -103,76 +197,99 @@ independently, this page is split into FC and CRP sections.
 
 ### Merge subject-level metadata with model-derived quantities
 
-Here, we create a `data.frame` that combines individual-level information
-(e.g. age at diagnosis, sex) with model-derived quantities, such as the
-posterior probabilities of class assignment. To facilitate visualisation, 
-we also create discretised versions for some variables. 
-
 ```{r}
 myDF.fc <- fcal %>%
   group_by(ids) %>%
-  summarise(n.total = n(),
-            followup = max(calpro_time),) %>%
-  mutate(followup_cut = cut(followup, breaks = c(0, 2, 4, 6, 7)),
-         n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
-  
-myDF.fc <- merge(myDF.fc, model.fc$pprob, by = "ids", all.x = FALSE, all.y = TRUE)
-myDF.fc <- myDF.fc %>% 
-  mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
-                        prob5, prob6, prob7, prob8)) #, prob9, prob10))
+  summarise(
+    n.total = n(),
+    followup = max(calpro_time),
+  ) %>%
+  mutate(
+    followup_cut = cut(followup, breaks = c(0, 2, 4, 6, 7)),
+    n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total)))
+  )
+
+myDF.fc <- merge(myDF.fc,
+                 model.fc$pprob,
+                 by = "ids",
+                 all.x = FALSE,
+                 all.y = TRUE)
+myDF.fc <- myDF.fc %>%
+  mutate(probmax = pmax(
+    prob1, prob2, prob3, prob4,
+    prob5, prob6, prob7, prob8
+  )) # , prob9, prob10))
 myDF.fc <- merge(myDF.fc, dict, by = "ids", all.x = TRUE, all.y = FALSE)
 
 myDF.fc <- myDF.fc %>%
   mutate(class_order = plyr::mapvalues(
-    class, from = seq_len(8), to = c(7, 6, 4, 8, 1, 5, 2, 3))) %>%
+    class,
+    from = seq_len(8), to = c(7, 6, 4, 8, 1, 5, 2, 3)
+  )) %>%
   mutate(class_order = factor(
-    class_order, levels = 1:8, labels = paste0("FC", 1:8))) %>%
-  mutate(prob_order1 = prob5, prob_order2 = prob7,
-         prob_order3 = prob8, prob_order4 = prob3,
-         prob_order5 = prob6, prob_order6 = prob2,
-         prob_order7 = prob1, prob_order8 = prob4)
-```
+    class_order,
+    levels = 1:8, labels = paste0("FC", 1:8)
+  )) %>%
+  mutate(
+    prob_order1 = prob5, prob_order2 = prob7,
+    prob_order3 = prob8, prob_order4 = prob3,
+    prob_order5 = prob6, prob_order6 = prob2,
+    prob_order7 = prob1, prob_order8 = prob4
+  )
 
-```{R}
 myDF.fc <- myDF.fc %>%
-  mutate(class_order_original = class_order,
-         prob_order_original_1 = prob_order1,
-         prob_order_original_2 = prob_order2,
-         prob_order_original_3 = prob_order3,
-         prob_order_original_4 = prob_order4,
-         prob_order_original_5 = prob_order5,
-         prob_order_original_6 = prob_order6, 
-         prob_order_original_7 = prob_order7,
-         prob_order_original_8 = prob_order8,
-         probmax_original = pmax(prob_order1,
-                                 prob_order2,
-                                 prob_order3,
-                                 prob_order4,
-                                 prob_order5,
-                                 prob_order6,
-                                 prob_order7,
-                                 prob_order8),
+  mutate(
+    class_order_original = class_order,
+    prob_order_original_1 = prob_order1,
+    prob_order_original_2 = prob_order2,
+    prob_order_original_3 = prob_order3,
+    prob_order_original_4 = prob_order4,
+    prob_order_original_5 = prob_order5,
+    prob_order_original_6 = prob_order6,
+    prob_order_original_7 = prob_order7,
+    prob_order_original_8 = prob_order8,
+    probmax_original = pmax(
+      prob_order1,
+      prob_order2,
+      prob_order3,
+      prob_order4,
+      prob_order5,
+      prob_order6,
+      prob_order7,
+      prob_order8
+    ),
     class_order = plyr::mapvalues(class_order,
-                                       from = c("FC5", "FC6", "FC7", "FC8"),
-                                       to = c("FC4", "FC4", "FC5", "FC6")),
-         prob_order4 = prob_order4 + prob_order5 + prob_order6,
-         prob_order5 = prob_order7,
-         prob_order6 = prob_order8)%>%
-  select(-prob_order7, -prob_order8)  %>%
-  mutate(probmax = pmax(prob_order1,
-                        prob_order2,
-                        prob_order3,
-                        prob_order4,
-                        prob_order5,
-                        prob_order6))
+      from = c("FC5", "FC6", "FC7", "FC8"),
+      to = c("FC4", "FC4", "FC5", "FC6")
+    ),
+    prob_order4 = prob_order4 + prob_order5 + prob_order6,
+    prob_order5 = prob_order7,
+    prob_order6 = prob_order8
+  ) %>%
+  select(-prob_order7, -prob_order8) %>%
+  mutate(probmax = pmax(
+    prob_order1,
+    prob_order2,
+    prob_order3,
+    prob_order4,
+    prob_order5,
+    prob_order6
+  ))
 
 
 newlabs <- c("FC1", "FC2", "FC3", "FC4-6", "FC7", "FC8")
 
-myDF.fc$class_order = factor(myDF.fc$class_order,
-                             levels = paste0("FC", seq(1,6)),
-                             labels = newlabs)
+myDF.fc$class_order <- factor(myDF.fc$class_order,
+  levels = paste0("FC", seq(1, 6)),
+  labels = newlabs
+)
 ```
+
+Here, we create a `data frame` that combines individual-level information
+(e.g. age at diagnosis, sex) with model-derived quantities, such as the
+posterior probabilities of class assignment. To facilitate visualisation, 
+we also create discretised versions for some variables. 
+
 
 ### Uncertainty cluster assignment probabilities 
 
@@ -180,29 +297,34 @@ First, we calculate the proportion of individuals assigned to each cluster
 with probability above 0.5.
 
 ```{r}
-p1 <- myDF.fc %>% 
+p1 <- myDF.fc %>%
   group_by(class_order_original) %>%
-  summarise(prop50 = 100 * mean(probmax_original > 0.5),
-            prop75 = 100 * mean(probmax_original > 0.75)) %>%
+  summarise(
+    prop50 = 100 * mean(probmax_original > 0.5),
+    prop75 = 100 * mean(probmax_original > 0.75)
+  ) %>%
   ggplot(aes(x = class_order_original, y = prop50)) +
-  ylim(c(0,100)) +
+  ylim(c(0, 100)) +
   xlab("Assigned cluster") +
   ylab("% assigned with prob > 0.5") +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", fill = "#F9DC5C", color = "#C6AB00") +
   theme_minimal()
 
-p1 
+p1
 ```
 
 
 Next, we calculate average posterior probabilities of cluster assignment. 
 
 ```{r}
-myDF.fc_means <- myDF.fc %>% 
+myDF.fc_means <- myDF.fc %>%
   group_by(class_order_original, followup_cut) %>%
-  summarise(across(starts_with("prob_order_original"), function(x) mean(x, na.rm = TRUE)),
-            .groups = "drop") %>%
-  pivot_longer(cols = starts_with("prob_order_original"), names_to = "prob_order_original")
+  summarise(across(starts_with("prob_order_original"),
+                   function(x) mean(x, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(cols = starts_with("prob_order_original"),
+               names_to = "prob_order_original")
 ```
 
 @fig-fc-prob-fup shows how cluster assignment probabilities change as follow-up
@@ -220,7 +342,6 @@ versus
 This is not unexpected, as FC3 and FC6 share similar patterns within the first
 2 years.  
 
-
 ```{R}
 #| label: fig-fc-prob-fup
 #| fig-cap: "Demonstration of how mean posterior probabilities of cluster assignment for subjects changes based upon follow-up and assigned cluster."
@@ -228,35 +349,47 @@ This is not unexpected, as FC3 and FC6 share similar patterns within the first
 #| fig-width: 11
 #| fig-height: 8
 
-# Assign level order otherwise alphanumerical order used 
+# Assign level order otherwise alphanumerical order used
 # and add sample sizes to labels
 myDF.fc_means <- myDF.fc_means %>%
-  mutate(prob_order_original = factor(prob_order_original,
-                                      levels = paste0("prob_order_original_",
-                                                      1:8),
-                                      labels = paste0("FC", seq(1, 8))),
-         class_order_original = factor(class_order_original,
-                              levels = paste0("FC", 1:8),
-                              labels = paste0("Assigned to FC", 1:8, "\n n = ",
-                                              as.vector(table(myDF.fc$class_order_original)))))
+  mutate(
+    prob_order_original = factor(prob_order_original,
+      levels = paste0(
+        "prob_order_original_",
+        1:8
+      ),
+      labels = paste0("FC", seq(1, 8))
+    ),
+    class_order_original = factor(class_order_original,
+      levels = paste0("FC", 1:8),
+      labels = paste0(
+        "Assigned to FC", 1:8, "\n n = ",
+        as.vector(table(myDF.fc$class_order_original))
+      )
+    )
+  )
 
 fc_fup <- myDF.fc_means %>%
   ggplot(aes(fill = prob_order_original, y = value, x = followup_cut)) +
   geom_bar(position = "fill", stat = "identity") +
-  facet_wrap(.~class_order_original, ncol = 4) + 
+  facet_wrap(. ~ class_order_original, ncol = 4) +
   theme_minimal() +
-  theme(legend.title = element_text(hjust = 0.5),
-        strip.background = element_rect(color = "lightgray",
-                                         linewidth = 1.5,
-                                         linetype="solid")) +
-  labs(x = "Follow-up cutoff (years)",
-       y = "",
-       fill = "Mean posterior\nprobability of\ncluster assignment") +
-  scale_fill_viridis_d(option = "inferno") 
+  theme(
+    legend.title = element_text(hjust = 0.5),
+    strip.background = element_rect(
+      color = "lightgray",
+      linewidth = 1.5,
+      linetype = "solid"
+    )
+  ) +
+  labs(
+    x = "Follow-up cutoff (years)",
+    y = "",
+    fill = "Mean posterior\nprobability of\ncluster assignment"
+  ) +
+  scale_fill_viridis_d(option = "inferno")
 
 fc_fup
-# p + scale_fill_viridis_d(option = "D") 
-# p + scale_fill_brewer(palette = "Blues")
 
 ggsave("plots/fc-prob-fup.png", fc_fup, width = 11, height = 8, units = "in")
 ggsave("plots/fc-prob-fup.pdf", fc_fup, width = 11, height = 8, units = "in")
@@ -278,15 +411,12 @@ prob > 0.5--->
 
 #### For all individuals
 
-Here, we consider associations with respect to information available at 
-diagnosis: age, sex and IBD type. 
-
 ```{r}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
 p_diagnosis_all <- myDF.fc %>%
-  plotCat("diagnosis", class = "class_order") 
+  plotCat("diagnosis", class = "class_order")
 
 p_sex_all <- myDF.fc %>%
   plotCat("sex", class = "class_order")
@@ -294,118 +424,109 @@ p_sex_all <- myDF.fc %>%
 p_age_all <- myDF.fc %>%
   ggplot(aes(x = class_order, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
-  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.2) +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
-```
 
-```{R}
 p_mlr_all <- myDF.fc %>%
   mutate(class_order = relevel(class_order, ref = "FC1")) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") 
+  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order")
+
+temp.1 <- myDF.fc %>% filter(class_order == "FC1")
+temp.2 <- myDF.fc %>% filter(class_order != "FC1")
+perc.fc1 <- round(
+  sum(temp.1$diagnosis == "Crohn's Disease") /
+    nrow(temp.1) * 100,
+  1
+)
+perc.rest <- round(
+  sum(temp.2$diagnosis == "Crohn's Disease") /
+    nrow(temp.2) * 100,
+  1
+)
 ```
 
+Here, we consider associations with respect to information available at 
+diagnosis: age, sex and IBD type. 
 
-```{R}
-p_mlr_all <- myDF.fc %>%
-  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex"),
-          class = "class_order",
-          extern = dk) 
-```
-
+`r perc.fc1`% of subjects in FC1 have Crohn's disease whilst `r perc.rest`% of
+subjects in the other clusters have Crohn's disease.
 
 ```{R}
 #| column: page
 #| fig-width: 15
 #| fig-height: 12
+
 p <- wrap_elements(p_diagnosis_all) +
-  wrap_elements(p_mlr_all$plot_everything$`diagnosisUlcerative Colitis` + 
-                  p_mlr_all$plot_everything$`diagnosisIBDU` +
-                  plot_layout(guides = "collect") &
-                  theme(legend.position = "bottom")) +
-  plot_annotation(tag_levels = "A") + 
+  wrap_elements(p_mlr_all$p_both$`diagnosisUlcerative Colitis` +
+    p_mlr_all$p_both$`diagnosisIBDU` +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
   plot_layout(widths = c(1.25, 2)) &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/fc-diagnosis.pdf",
-       p,
-       width = 15,
-       height = 12,
-       units = "in",
-       create.dir = TRUE)
+  p,
+  width = 15,
+  height = 12,
+  units = "in",
+  create.dir = TRUE
+)
 
 print(p)
+```
+
+
+
+
+```{R}
+#| echo: false
+
+# Used to combine with the Lothian data
+p <- dk %>%
+  filter(Model %in% c("Multivariate", "Multivariate (prob >=0.5)")) %>%
+  mutate(Model = factor(Model, levels = c("Multivariate (prob >=0.5)", "Multivariate"))) %>%
+  libdr:::.plotCI("diagnosisUlcerative Colitis")
+
+ggsave("plots/associations/fc-diagnosis-dk-forest.pdf",
+  p,
+  width = 15,
+  height = 12,
+  units = "in",
+  create.dir = TRUE
+)
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$age & theme(legend.position = "none")) /
-  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale +
-                  plot_layout(guides = "collect") &
-                  theme(legend.position = "bottom")) +
+
+p_mlr_all <- myDF.fc %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
+  mlrPlot(
+    var = c("diagnosis", "age", "sex"),
+    class = "class_order",
+    extern = dk
+  )
+
+p <- (wrap_elements(p_age_all) + p_mlr_all$plot_everything$age & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_everything$sexMale +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") +
   plot_layout(widths = c(1, 1)) &
-  theme(plot.tag = element_text(face = "bold", size  = 22))
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/fc-sex-age.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 print(p)
-```
-
-Restricted to those with posterior probability > 0.5
-
-```{r}
-#| column: page
-#| fig-width: 12
-#| fig-height: 12
-p_diagnosis <- myDF.fc %>%
-  filter(probmax > 0.5) %>%
-  plotCat("diagnosis", class = "class_order") 
-
-p_sex <- myDF.fc %>%
-  filter(probmax > 0.5) %>%
-  plotCat("sex", class = "class_order")
-
-p_age <- myDF.fc %>%
-  filter(probmax > 0.5) %>%
-  ggplot(aes(x = class_order, y = age)) +
-  geom_violin(fill = "#5DB7DE", color = "#434371") +
-  geom_boxplot(width=0.1, color="black", alpha=0.2) +
-  theme_minimal() +
-  xlab("Cluster") +
-  ylab("Age at diagnosis")
-
-p_mlr <- myDF.fc %>%
-  filter(probmax > 0.5) %>%
-  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") # , "baseline_fc"
-
-#wrap_elements(p_diagnosis_all) +
-#  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
-#                  p_mlr_all$plot_both$`diagnosisIBDU` + plot_layout(guides = "collect")) +
-#  plot_annotation(tag_levels = "A", title = "All subjects")
-
-#(wrap_elements(p_age_all) + p_mlr_all$plot_both$age) /
-#  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale) +
-#    plot_annotation(tag_levels = "A", title = "All subjects")
-
-
-#wrap_elements(p_diagnosis_all) +
-#  wrap_elements(p_mlr_all$plot_everything$`diagnosisUlcerative Colitis` + 
-#                  p_mlr_all$plot_everything$`diagnosisIBDU` + plot_layout(guides = "collect")) +
-#  plot_annotation(tag_levels = "A", title = "All subjects")
-
-#(wrap_elements(p_age_all) + p_mlr_all$plot_everything$age) /
-#  (wrap_elements(p_sex_all) + p_mlr_all$plot_everything$sexMale) +
-#    plot_annotation(tag_levels = "A", title = "All subjects")
-
 ```
 
 #### Crohn's disease only
@@ -452,8 +573,9 @@ when analysing Montreal behaviour.
 ```{r}
 myDF.fc <- myDF.fc %>%
   mutate(Behaviour_merged = plyr::mapvalues(Behaviour,
-                                      from = c("B1", "B2", "B3", NA),
-                                      to = c("B1", "B2 or B3", "B2 or B3", NA)))
+    from = c("B1", "B2", "B3", NA),
+    to = c("B1", "B2 or B3", "B2 or B3", NA)
+  ))
 ```
 
 Montreal behaviour was missing for approximately 
@@ -495,13 +617,19 @@ will facilitate the application of such filter.
 
 ```{r}
 myDF.fc <- myDF.fc %>%
-  mutate(missingN_cd = is.na(Smoke) + is.na(Location) + is.na(L4) + 
-           is.na(Behaviour) + is.na(Perianal))
+  mutate(missingN_cd = is.na(Smoke) +
+           is.na(Location) +
+           is.na(L4) +
+           is.na(Behaviour) +
+           is.na(Perianal)
+         )
 
-with(myDF.fc[myDF.fc$diagnosis == "Crohn's Disease",], table(missingN_cd > 0))
+with(myDF.fc[myDF.fc$diagnosis == "Crohn's Disease", ], table(missingN_cd > 0))
 ```
 
-As shown above, `r sum(myDF.fc$missingN_cd[myDF.fc$diagnosis == "Crohn's Disease"] > 0)` will be excluded hereafter. 
+As shown above,
+`r sum(myDF.fc$missingN_cd[myDF.fc$diagnosis == "Crohn's Disease"] > 0)`
+subjects will be excluded hereafter. 
 
 Here is the code to explore the associations:
 
@@ -520,7 +648,7 @@ p_age_cd <- myDF.fc %>%
   filter(missingN_cd == 0) %>%
   ggplot(aes(x = class_order, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
-  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.2) +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
@@ -540,7 +668,9 @@ p_location_cd <- myDF.fc %>%
 p_behaviour_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
-  mutate(Behaviour = ifelse(!is.na(Behaviour_merged), Behaviour_merged, "Missing")) %>%
+  mutate(Behaviour = ifelse(!is.na(Behaviour_merged),
+                            Behaviour_merged,
+                            "Missing")) %>%
   plotCat("Behaviour", class = "class_order")
 
 p_L4_cd <- myDF.fc %>%
@@ -559,55 +689,103 @@ p_mlr_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
   mutate(class_order = relevel(class_order, ref = "FC1")) %>%
-  mlrPlot(var = c("age", "sex", 
-                  "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"), 
-          class = "class_order")
+  mlrPlot(
+    var = c(
+      "age", "sex",
+      "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"
+    ),
+    class = "class_order",
+    extern = dk.fc.cd
+  )
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-(wrap_elements(p_age_cd) + p_mlr_cd$plot_both$age) /
-  (wrap_elements(p_sex_cd) + p_mlr_cd$plot_both$sexMale) +
-    plot_annotation(tag_levels = "A", title = "CD patients only")
+(wrap_elements(p_age_cd) + p_mlr_cd$p_both$age) /
+  (wrap_elements(p_sex_cd) + p_mlr_cd$p_both$sexMale) +
+  plot_annotation(tag_levels = "A", title = "CD patients only")
 ```
 
-
 ```{R}
-#| column: page
-#| fig-width: 12
-#| fig-height: 12
-p <- wrap_elements(p_smoke_cd) +
-  (p_mlr_cd$plot_both$SmokeYes & theme(legend.position = "bottom")) + 
+p <- (p_age_cd + ylim(0, 90) + ggplot()) / (p_mlr_cd$plot_everything$age + ggplot()) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom") &
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
+ggsave("plots/associations/fc-cd-age.pdf",
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
+
+p <- (wrap_elements(p_sex_cd) + ggplot()) /
+  (p_mlr_cd$plot_everything$sexMale + ggplot()) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom") &
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22))
+ggsave("plots/associations/fc-cd-sex.pdf",
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
+```
+
+```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
+
+p_mlr_cd <- myDF.fc %>%
+  filter(diagnosis == "Crohn's Disease") %>%
+  filter(missingN_cd == 0) %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
+  mlrPlot(
+    var = c(
+      "age", "sex",
+      "Smoke", "Location", "L4", "Behaviour_merged", "Perianal"
+    ),
+    class = "class_order"
+  )
+
+p <- wrap_elements(p_smoke_cd) +
+  (p_mlr_cd$p_both$SmokeYes & theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 
 ggsave("plots/associations/fc-cd-smoking.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
+
+p
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 15
 #| fig-height: 12
-p <- wrap_elements(p_location_cd) + 
-  wrap_elements(p_mlr_cd$plot_both$LocationL2 + p_mlr_cd$plot_both$LocationL3 + 
-     plot_layout(guides = "collect") &
-                  theme(legend.position = "bottom")) + 
-  plot_annotation(tag_levels = "A") + 
+p <- wrap_elements(p_location_cd) +
+  wrap_elements(p_mlr_cd$p_both$LocationL2 + p_mlr_cd$p_both$LocationL3 +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
   plot_layout(widths = c(1.25, 2)) &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/fc-location.pdf",
-       p,
-       width = 15,
-       height = 12,
-       units = "in")
+  p,
+  width = 15,
+  height = 12,
+  units = "in"
+)
 print(p)
 ```
 
@@ -617,15 +795,16 @@ print(p)
 #| fig-width: 12
 #| fig-height: 12
 p <- wrap_elements(p_L4_cd) +
-  (p_mlr_cd$plot_both$L4Yes & theme(legend.position = "bottom")) +
+  (p_mlr_cd$p_both$L4Yes & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/fc-L4.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 
 print(p)
 ```
@@ -637,14 +816,15 @@ print(p)
 #| fig-width: 12
 #| fig-height: 12
 p <- wrap_elements(p_behaviour_cd) +
-  (p_mlr_cd$plot_both$`Behaviour_mergedB2 or B3` & theme(legend.position = "bottom")) +
+  (p_mlr_cd$p_both$`Behaviour_mergedB2 or B3` & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 ggsave("plots/associations/fc-behaviour.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 print(p)
 ```
 
@@ -653,15 +833,16 @@ print(p)
 #| fig-width: 12
 #| fig-height: 12
 p <- wrap_elements(p_perianal_cd) +
-  (p_mlr_cd$plot_both$PerianalYes & theme(legend.position = "bottom")) + 
+  (p_mlr_cd$p_both$PerianalYes & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/fc-perianal.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 
 print(p)
 ```
@@ -670,16 +851,16 @@ print(p)
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-(wrap_elements(p_age_cd) + p_mlr_cd$plot_everything$age) /
-  (wrap_elements(p_sex_cd) + p_mlr_cd$plot_everything$sexMale) +
-    plot_annotation(tag_levels = "A", title = "CD patients only")
+(wrap_elements(p_age_cd) + p_mlr_cd$p_both$age) /
+  (wrap_elements(p_sex_cd) + p_mlr_cd$p_both$sexMale) +
+  plot_annotation(tag_levels = "A", title = "CD patients only")
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-wrap_elements(p_smoke_cd) + p_mlr_cd$plot_everything$SmokeYes + 
+wrap_elements(p_smoke_cd) + p_mlr_cd$p_both$SmokeYes +
   plot_annotation(title = "CD patients only")
 ```
 
@@ -687,9 +868,9 @@ wrap_elements(p_smoke_cd) + p_mlr_cd$plot_everything$SmokeYes +
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-wrap_elements(p_location_cd) + 
-  (p_mlr_cd$plot_everything$LocationL2 + p_mlr_cd$plot_everything$LocationL3 + 
-     plot_layout(guides = "collect")) + 
+wrap_elements(p_location_cd) +
+  (p_mlr_cd$p_both$LocationL2 + p_mlr_cd$p_both$LocationL3 +
+    plot_layout(guides = "collect")) +
   plot_annotation(title = "CD patients only")
 ```
 
@@ -698,7 +879,7 @@ wrap_elements(p_location_cd) +
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-wrap_elements(p_L4_cd) + p_mlr_cd$plot_everything$L4Yes +
+wrap_elements(p_L4_cd) + p_mlr_cd$p_both$L4Yes +
   plot_annotation(title = "CD patients only")
 ```
 
@@ -706,7 +887,7 @@ wrap_elements(p_L4_cd) + p_mlr_cd$plot_everything$L4Yes +
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-wrap_elements(p_behaviour_cd) + p_mlr_cd$plot_everything$`Behaviour_mergedB2 or B3` +
+wrap_elements(p_behaviour_cd) + p_mlr_cd$p_both$`Behaviour_mergedB2 or B3` +
   plot_annotation(title = "CD patients only")
 ```
 
@@ -714,21 +895,8 @@ wrap_elements(p_behaviour_cd) + p_mlr_cd$plot_everything$`Behaviour_mergedB2 or 
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-wrap_elements(p_perianal_cd) + p_mlr_cd$plot_everything$PerianalYes + 
+wrap_elements(p_perianal_cd) + p_mlr_cd$p_both$PerianalYes +
   plot_annotation(title = "CD patients only")
-```
-
-Some statistics to be used in the text:
-
-```{r}
-#myDF.fc %>%
-#  filter(diagnosis == "Crohn's Disease") %>%
-#  filter(missingN_cd == 0) %>%
-#  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC2"), class_order, "Other")) %>%
-#  group_by(class_aux, L4) %>%
-#  summarise(count = n()) %>%
-#  mutate(percentage = (count / sum(count) * 100)) %>%
-#  knitr::kable()
 ```
 
 #### Ulcerative Colitis only
@@ -759,7 +927,8 @@ will facilitate the application of such filter.
 ```{r}
 myDF.fc <- myDF.fc %>%
   mutate(missingN_uc = is.na(Smoke) + is.na(Extent))
-with(myDF.fc[myDF.fc$diagnosis == "Ulcerative Colitis",], table(missingN_uc > 0))
+with(myDF.fc[myDF.fc$diagnosis == "Ulcerative Colitis", ],
+     table(missingN_uc > 0))
 ```
 
 As shown above, `r sum(myDF.fc$missingN_uc[myDF.fc$diagnosis == "Ulcerative Colitis"] > 0)` 
@@ -780,7 +949,7 @@ p_age_uc <- myDF.fc %>%
   filter(missingN_uc == 0) %>%
   ggplot(aes(x = class_order, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
-  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.2) +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
@@ -801,32 +970,75 @@ p_mlr_uc <- myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
   mutate(class_order = relevel(class_order, ref = "FC1")) %>%
-  mlrPlot(var = c("age", "sex", "Smoke", "Extent"),
-          class = "class_order")
+  mlrPlot(
+    var = c("age", "sex", "Smoke", "Extent"),
+    class = "class_order",
+    extern = dk.fc.uc
+  )
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-(wrap_elements(p_age_uc) + p_mlr_uc$plot_both$age) /
-  (wrap_elements(p_sex_uc) + p_mlr_uc$plot_both$sexMale) +
-    plot_annotation(tag_levels = "A", title = "UC patients only")
+(wrap_elements(p_age_uc) + p_mlr_uc$p_both$age) /
+  (wrap_elements(p_sex_uc) + p_mlr_uc$p_both$sexMale) +
+  plot_annotation(tag_levels = "A", title = "UC patients only")
 ```
 
+
 ```{R}
-#| column: page
-#| fig-width: 12
-#| fig-height: 12
-p <- wrap_elements(p_smoke_uc) + 
-  (p_mlr_uc$plot_both$SmokeYes & theme(legend.position = "bottom")) + 
+p <- (p_age_uc + ylim(0, 90) + ggplot()) / (p_mlr_uc$plot_everything$age + ggplot()) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom") &
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
+ggsave("plots/associations/fc-uc-age.pdf",
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
+
+p <- (wrap_elements(p_sex_uc) + ggplot()) /
+  (p_mlr_uc$plot_everything$sexMale + ggplot()) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom") &
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22))
+ggsave("plots/associations/fc-uc-sex.pdf",
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
+```
+
+
+```{R}
+#| column: page
+#| fig-width: 12
+#| fig-height: 12
+
+p_mlr_uc <- myDF.fc %>%
+  filter(diagnosis == "Ulcerative Colitis") %>%
+  filter(missingN_uc == 0) %>%
+  mutate(class_order = relevel(class_order, ref = "FC1")) %>%
+  mlrPlot(
+    var = c("age", "sex", "Smoke", "Extent"),
+    class = "class_order"
+  )
+
+p <- wrap_elements(p_smoke_uc) +
+  (p_mlr_uc$p_both$SmokeYes & theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22))
 ggsave("plots/associations/fc-uc-smoking.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 print(p)
 ```
 
@@ -836,19 +1048,20 @@ print(p)
 #| column: page
 #| fig-width: 15
 #| fig-height: 12
-p <- wrap_elements(p_extent_uc) + 
-  wrap_elements(p_mlr_uc$plot_both$ExtentE2 + p_mlr_uc$plot_both$ExtentE3 +
-     plot_layout(guides = "collect") &
-                  theme(legend.position = "bottom")) + 
-  plot_annotation(tag_levels = "A") + 
+p <- wrap_elements(p_extent_uc) +
+  wrap_elements(p_mlr_uc$p_both$ExtentE2 + p_mlr_uc$p_both$ExtentE3 +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
   plot_layout(widths = c(1.25, 2)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/fc-extent.pdf",
-       p,
-       width = 15,
-       height = 12,
-       units = "in")
+  p,
+  width = 15,
+  height = 12,
+  units = "in"
+)
 print(p)
 ```
 
@@ -858,14 +1071,14 @@ print(p)
 #| fig-height: 12
 (wrap_elements(p_age_uc) + p_mlr_uc$plot_everything$age) /
   (wrap_elements(p_sex_uc) + p_mlr_uc$plot_everything$sexMale) +
-    plot_annotation(tag_levels = "A", title = "UC patients only")
+  plot_annotation(tag_levels = "A", title = "UC patients only")
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-wrap_elements(p_smoke_uc) + p_mlr_uc$plot_everything$SmokeYes + 
+wrap_elements(p_smoke_uc) + p_mlr_uc$plot_everything$SmokeYes +
   plot_annotation(title = "UC patients only")
 ```
 
@@ -873,9 +1086,11 @@ wrap_elements(p_smoke_uc) + p_mlr_uc$plot_everything$SmokeYes +
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-wrap_elements(p_extent_uc) + 
-  (p_mlr_uc$plot_everything$ExtentE2 + ylim(c(-5,5)) + p_mlr_uc$plot_everything$ExtentE3 + ylim(c(-5,5)) +
-     plot_layout(guides = "collect")) +
+wrap_elements(p_extent_uc) +
+  (p_mlr_uc$p_both$ExtentE2 +
+    ylim(c(-5, 5)) +
+    p_mlr_uc$p_both$ExtentE3 + ylim(c(-5, 5)) +
+    plot_layout(guides = "collect")) +
   plot_annotation(title = "UC patients only")
 ```
 
@@ -884,11 +1099,12 @@ Note that, due to small counts of extent E1 in cluster FC3, the model fitted aft
 Some statistics to be used in the text:
 
 ```{r}
-
 myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC8"), class_order, "Other")) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC8"),
+                            class_order,
+                            "Other")) %>%
   group_by(class_aux, sex) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -897,7 +1113,9 @@ myDF.fc %>%
 myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC3"), class_order, "Other")) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC3"),
+                            class_order,
+                            "Other")) %>%
   group_by(class_aux, Extent) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -917,20 +1135,22 @@ lower in FC2.
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-myDF.fc <- myDF.fc %>% 
+myDF.fc <- myDF.fc %>%
   mutate(AT_7Y = ifelse(AT == 1 & AT_line_1 <= 7, 1, 0))
 
-p_AT <- myDF.fc %>% 
+p_AT <- myDF.fc %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
   plotCat("AT_7Y", class = "class_order")
 
 p_AT_mlr <- myDF.fc %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
   mutate(class_order_original = relevel(class_order_original, ref = "FC1")) %>%
-  mlrPlot(var = c("age", "sex", "AT_7Y"),
-          class = "class_order_original")
+  mlrPlot(
+    var = c("age", "sex", "AT_7Y"),
+    class = "class_order_original"
+  )
 
-wrap_elements(p_AT) + p_AT_mlr$plot_both$AT 
+wrap_elements(p_AT) + p_AT_mlr$plot_both$AT
 ```
 
 Some statistics to be used in the text:
@@ -939,10 +1159,12 @@ Some statistics to be used in the text:
 table(myDF.fc$AT_7Y)
 
 myDF.fc %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC2"), class_order_original, "Other")) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC2"),
+                            class_order_original,
+                            "Other")) %>%
   group_by(class_aux, AT_7Y) %>%
   summarise(count = n()) %>%
-  mutate(percentage = (count / sum(count) * 100)) 
+  mutate(percentage = (count / sum(count) * 100))
 ```
 
 However, as seen below, AT use varies across different IBD types (highest
@@ -952,9 +1174,9 @@ among CD patients, lowest among IBDU) patients.
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-myDF.fc %>% 
+myDF.fc %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
-  plotCat("AT_7Y", class = "diagnosis") 
+  plotCat("AT_7Y", class = "diagnosis")
 ```
 
 As such, we also stratify cluster-specific AT usage according to IBD type.
@@ -964,18 +1186,18 @@ For this purpose, we exclude IBDU due to its small size.
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-p_AT_cd <- myDF.fc %>% 
+p_AT_cd <- myDF.fc %>%
   subset(diagnosis == "Crohn's Disease") %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
   plotCat("AT_7Y", class = "class_order_original")
-  
-p_AT_uc <- myDF.fc %>% 
+
+p_AT_uc <- myDF.fc %>%
   subset(diagnosis == "Ulcerative Colitis") %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
   plotCat("AT_7Y", class = "class_order_original")
-  
 
-wrap_elements(p_AT) + ggtitle("CD + UC + IBDU") + 
+
+wrap_elements(p_AT) + ggtitle("CD + UC + IBDU") +
   wrap_elements(p_AT_cd) + ggtitle("CD only") +
   wrap_elements(p_AT_uc) + ggtitle("UC only")
 ```
@@ -983,7 +1205,7 @@ wrap_elements(p_AT) + ggtitle("CD + UC + IBDU") +
 #### AT use within the first year
 
 ```{r}
-myDF.fc <- myDF.fc %>% 
+myDF.fc <- myDF.fc %>%
   mutate(AT_1Y = ifelse(AT == 1 & AT_line_1 <= 1, 1, 0))
 
 table(myDF.fc$AT_1Y)
@@ -991,15 +1213,15 @@ table(myDF.fc$AT_1Y)
 myDF.fc %>%
   count(AT_1Y, group_by = diagnosis)
 
-p_AT_1Y <- myDF.fc %>% 
+p_AT_1Y <- myDF.fc %>%
   mutate(AT_1Y = factor(AT_1Y)) %>%
   plotCat("AT_1Y", class = "class_order_original")
 
-p_AT_1Y_cd <- myDF.fc %>% 
+p_AT_1Y_cd <- myDF.fc %>%
   subset(diagnosis == "Crohn's Disease") %>%
   plotCat("AT_1Y", class = "class_order_original")
 
-p_AT_1Y_cd <- myDF.fc %>% 
+p_AT_1Y_cd <- myDF.fc %>%
   subset(diagnosis == "Ulcerative Colitis") %>%
   plotCat("AT_1Y", class = "class_order_original")
 ```
@@ -1036,61 +1258,80 @@ has digitally removed any strata with fewer than five subjects.
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-km.df <- data.frame(time = numeric(),
-                    cumhaz = numeric(),
-                    class = character(),
-                    diag = character())
+km.df <- data.frame(
+  time = numeric(),
+  cumhaz = numeric(),
+  class = character(),
+  diag = character()
+)
 
-for (g in 1:6) {
-
+for (g in 1:8) {
   # Calculate cumulative patterns
   temp.cd <- myDF.fc %>%
     filter(class_order_original == paste0("FC", g)) %>%
     filter(diagnosis == "Crohn's Disease")
-  
-   temp.uc <- myDF.fc %>%
+
+  temp.uc <- myDF.fc %>%
     filter(class_order_original == paste0("FC", g)) %>%
     filter(diagnosis == "Ulcerative Colitis")
-  
-  
+
+
   km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
-  km.df <- rbind(km.df,
-                 data.frame(time = km$time,
-                            cumhaz =  1 - km$surv,
-                            class = paste0("FC",
-                                           g,
-                                           ", CD=",
-                                           nrow(temp.cd),
-                                           "; UC=",
-                                           nrow(temp.uc)),
-                            diag = "Crohn's disease"))
-  
- 
-  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc) 
-  km.df <- rbind(km.df,
-                 data.frame(time = km$time,
-                            cumhaz =  1 - km$surv,
-                            class = paste0("FC",
-                                           g,
-                                           ", CD=",
-                                           nrow(temp.cd),
-                                           "; UC=",
-                                           nrow(temp.uc)),
-                            diag = "Ulcerative colitis"))
-  
+  km.df <- rbind(
+    km.df,
+    data.frame(
+      time = km$time,
+      cumhaz = 1 - km$surv,
+      class = paste0(
+        "FC",
+        g,
+        ", CD=",
+        nrow(temp.cd),
+        "; UC=",
+        nrow(temp.uc)
+      ),
+      diag = "Crohn's disease"
+    )
+  )
+
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc)
+  km.df <- rbind(
+    km.df,
+    data.frame(
+      time = km$time,
+      cumhaz = 1 - km$surv,
+      class = paste0(
+        "FC",
+        g,
+        ", CD=",
+        nrow(temp.cd),
+        "; UC=",
+        nrow(temp.uc)
+      ),
+      diag = "Ulcerative colitis"
+    )
+  )
+
   temp.all <- myDF.fc %>%
-    filter(class_order_original == paste0("FC", g)) 
-  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.all) 
-  km.df <- rbind(km.df,
-                 data.frame(time = km$time,
-                            cumhaz =  1 - km$surv,
-                            class = paste0("FC",
-                                           g,
-                                           ", CD=",
-                                           nrow(temp.cd),
-                                           "; UC=",
-                                           nrow(temp.uc)),
-                            diag = "All"))
+    filter(class_order_original == paste0("FC", g))
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.all)
+  km.df <- rbind(
+    km.df,
+    data.frame(
+      time = km$time,
+      cumhaz = 1 - km$surv,
+      class = paste0(
+        "FC",
+        g,
+        ", CD=",
+        nrow(temp.cd),
+        "; UC=",
+        nrow(temp.uc)
+      ),
+      diag = "All"
+    )
+  )
 }
 
 p1 <- km.df %>%
@@ -1098,24 +1339,28 @@ p1 <- km.df %>%
   ggplot(aes(x = time, y = cumhaz)) +
   geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
   facet_wrap(~class, ncol = 2) +
-  theme_minimal() + 
-  scale_y_continuous(labels = scales::percent, limits = c(0, 0.7)) +
-  labs(x = "Time (years)",
-       y = "% of subjects receiving an advanced therapy",
-       color = "IBD type") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 0.8)) +
+  labs(
+    x = "Time (years)",
+    y = "% of subjects receiving an advanced therapy",
+    color = "IBD type"
+  ) +
   theme(legend.position = "bottom")
-#p1
+# p1
 
 ggsave("paper/Figure-3.pdf",
-       p1,
-       width = 8 * 3/4,
-       height = 12 * 3/4,
-       units = "in")
+  p1,
+  width = 8 * 3 / 4,
+  height = 12 * 3 / 4,
+  units = "in"
+)
 ggsave("paper/Figure-3.png",
-       p1,
-       width = 8 * 3/4,
-       height = 12 * 3/4,
-       units = "in")
+  p1,
+  width = 8 * 3 / 4,
+  height = 12 * 3 / 4,
+  units = "in"
+)
 ```
 
 ```{R}
@@ -1124,8 +1369,10 @@ km.df %>%
   group_by(class, diag) %>%
   summarise(last_value = 100 * last(cumhaz)) %>%
   mutate(class = gsub(",.*", "", class)) %>%
-  knitr::kable(col.names = c("Cluster", "Diagnosis", "Total percentage"),
-               digits = 1)
+  knitr::kable(
+    col.names = c("Cluster", "Diagnosis", "Total percentage"),
+    digits = 1
+  )
 ```
 
 ## C-reactive protein analysis
@@ -1140,30 +1387,43 @@ we also create discretised versions for some variables.
 ```{r}
 myDF.crp <- crp %>% # may change for crp.median
   group_by(ids) %>%
-  summarise(n.total = n(),
-            followup = max(crp_time),) %>%
-  mutate(followup_cut = cut(followup, breaks = c(0, 2, 4, 6, 7)),
-         n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
-  
+  summarise(
+    n.total = n(),
+    followup = max(crp_time),
+  ) %>%
+  mutate(
+    followup_cut = cut(followup, breaks = c(0, 2, 4, 6, 7)),
+    n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total)))
+  )
+
 myDF.crp <- merge(myDF.crp,
-                  model.crp$pprob,
-                  by = "ids",
-                  all.x = FALSE,
-                  all.y = TRUE)
-myDF.crp <- myDF.crp %>% 
-  mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
-                        prob5, prob6, prob7, prob8)) 
-myDF.crp<- merge(myDF.crp, dict, by = "ids", all.x = TRUE, all.y = FALSE)
+  model.crp$pprob,
+  by = "ids",
+  all.x = FALSE,
+  all.y = TRUE
+)
+myDF.crp <- myDF.crp %>%
+  mutate(probmax = pmax(
+    prob1, prob2, prob3, prob4,
+    prob5, prob6, prob7, prob8
+  ))
+myDF.crp <- merge(myDF.crp, dict, by = "ids", all.x = TRUE, all.y = FALSE)
 
 myDF.crp <- myDF.crp %>%
   mutate(class_order = plyr::mapvalues(
-    class, from = seq_len(8), to = c(2, 3, 1, 4, 5, 7, 6, 8))) %>%
+    class,
+    from = seq_len(8), to = c(2, 3, 1, 4, 5, 7, 6, 8)
+  )) %>%
   mutate(class_order = factor(
-    class_order, levels = 1:8, labels = paste0("CRP", 1:8))) %>%
-  mutate(prob_order1 = prob3, prob_order2 = prob1,
-         prob_order3 = prob2, prob_order4 = prob4,
-         prob_order5 = prob5, prob_order6 = prob7,
-         prob_order7 = prob6, prob_order8 = prob8)
+    class_order,
+    levels = 1:8, labels = paste0("CRP", 1:8)
+  )) %>%
+  mutate(
+    prob_order1 = prob3, prob_order2 = prob1,
+    prob_order3 = prob2, prob_order4 = prob4,
+    prob_order5 = prob5, prob_order6 = prob7,
+    prob_order7 = prob6, prob_order8 = prob8
+  )
 ```
 
 ### Uncertainty cluster assignment probabilities 
@@ -1172,28 +1432,32 @@ First, we calculate the proportion of individuals assigned to each cluster
 with probability above 0.5.
 
 ```{r}
-
-p1 <- myDF.crp %>% 
+p1 <- myDF.crp %>%
   group_by(class_order) %>%
-  summarise(prop50 = 100*mean(probmax > 0.5),
-            prop75 = 100*mean(probmax > 0.75)) %>%
+  summarise(
+    prop50 = 100 * mean(probmax > 0.5),
+    prop75 = 100 * mean(probmax > 0.75)
+  ) %>%
   ggplot(aes(x = class_order, y = prop50)) +
-  ylim(c(0,100)) +
+  ylim(c(0, 100)) +
   xlab("Assigned cluster") +
   ylab("% assigned with prob > 0.5") +
   geom_bar(stat = "identity") +
   theme_minimal()
 
-p1 
+p1
 ```
 
 Next, we calculate average posterior probabilities of cluster assignment. 
 
 ```{r}
-myDF.crp_means <- myDF.crp %>% 
+myDF.crp_means <- myDF.crp %>%
   group_by(class_order, followup_cut) %>%
-  summarise(across(starts_with("prob_order"), function(x) mean(x, na.rm = TRUE)),
-            .groups = "drop") %>%
+  summarise(across(starts_with("prob_order"),
+                   function(x) mean(x, na.rm = TRUE)
+                   ),
+    .groups = "drop"
+  ) %>%
   pivot_longer(cols = starts_with("prob_order"), names_to = "prob_order")
 ```
 
@@ -1222,30 +1486,42 @@ This is not unexpected, as FC3 and FC6 share similar patterns within the first
 #| fig-height: 8
 
 
-# Assign level order otherwise alphanumerical order used 
+# Assign level order otherwise alphanumerical order used
 # and add sample sizes to labels
 myDF.crp_means <- myDF.crp_means %>%
-  mutate(prob_order = factor(prob_order,
-                             levels = c(paste0("prob_order", 1:8)),
-                             labels = c(paste0("CRP", 1:8))),
-         class_order = factor(class_order,
-                              levels = paste0("CRP", 1:8),
-                              labels = paste0("Assigned to CRP", 1:8, "\n n = ",
-                                              as.vector(table(myDF.crp$class_order)))))
+  mutate(
+    prob_order = factor(prob_order,
+      levels = c(paste0("prob_order", 1:8)),
+      labels = c(paste0("CRP", 1:8))
+    ),
+    class_order = factor(class_order,
+      levels = paste0("CRP", 1:8),
+      labels = paste0(
+        "Assigned to CRP", 1:8, "\n n = ",
+        as.vector(table(myDF.crp$class_order))
+      )
+    )
+  )
 
 crp_fup <- myDF.crp_means %>%
   ggplot(aes(fill = prob_order, y = value, x = followup_cut)) +
   geom_bar(position = "fill", stat = "identity") +
-  facet_wrap(.~class_order, ncol = 4) + 
+  facet_wrap(. ~ class_order, ncol = 4) +
   theme_minimal() +
-  theme(legend.title = element_text(hjust = 0.5),
-        strip.background = element_rect(color = "lightgray",
-                                         linewidth = 1.5,
-                                         linetype="solid")) +
-  labs(x = "Follow-up cutoff (years)",
-       y = "",
-       fill = "Mean posterior\nprobability of\ncluster assignment") +
-  scale_fill_viridis_d(option = "D") 
+  theme(
+    legend.title = element_text(hjust = 0.5),
+    strip.background = element_rect(
+      color = "lightgray",
+      linewidth = 1.5,
+      linetype = "solid"
+    )
+  ) +
+  labs(
+    x = "Follow-up cutoff (years)",
+    y = "",
+    fill = "Mean posterior\nprobability of\ncluster assignment"
+  ) +
+  scale_fill_viridis_d(option = "D")
 
 crp_fup
 
@@ -1253,21 +1529,25 @@ ggsave("plots/crp-prob-fup.png", crp_fup, width = 11, height = 8, units = "in")
 ggsave("plots/crp-prob-fup.pdf", crp_fup, width = 11, height = 8, units = "in")
 
 
-p <- fc_fup / crp_fup + plot_annotation(tag_levels = "A") & 
-  theme(plot.tag = element_text(size = 20, face = "bold"),
-        legend.title = element_text(size = 14), 
-        legend.text = element_text(size = 12))
+p <- fc_fup / crp_fup + plot_annotation(tag_levels = "A") &
+  theme(
+    plot.tag = element_text(size = 20, face = "bold"),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12)
+  )
 
 ggsave("plots/prob-fup.pdf",
-       p,
-       width = 11 * 3/4,
-       height = 16 * 3/4,
-       units = "in")
+  p,
+  width = 11 * 3 / 4,
+  height = 16 * 3 / 4,
+  units = "in"
+)
 ggsave("plots/prob-fup.png",
-       p,
-       width = 11 * 3/4,
-       height = 16 * 3/4,
-       units = "in")
+  p,
+  width = 11 * 3 / 4,
+  height = 16 * 3 / 4,
+  units = "in"
+)
 ```
 
 ### Associations with respect to cluster assignments
@@ -1293,7 +1573,7 @@ diagnosis: age, sex and IBD type.
 #| fig-width: 12
 #| fig-height: 12
 p_diagnosis_all <- myDF.crp %>%
-  plotCat("diagnosis", class = "class_order") 
+  plotCat("diagnosis", class = "class_order")
 
 p_sex_all <- myDF.crp %>%
   plotCat("sex", class = "class_order")
@@ -1301,14 +1581,14 @@ p_sex_all <- myDF.crp %>%
 p_age_all <- myDF.crp %>%
   ggplot(aes(x = class_order, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
-  geom_boxplot(width = 0.1, color="black", alpha = 0.2) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.2) +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
 
 p_mlr_all <- myDF.crp %>%
   mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") 
+  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order")
 ```
 
 ```{R}
@@ -1316,44 +1596,115 @@ p_mlr_all <- myDF.crp %>%
 #| fig-width: 15
 #| fig-height: 12
 p <- wrap_elements(p_diagnosis_all) +
-  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
-                  p_mlr_all$plot_both$`diagnosisIBDU` +
-                  plot_layout(guides = "collect") &
-                  theme(legend.position = "bottom")) +
-  plot_annotation(tag_levels = "A") + 
+  wrap_elements(p_mlr_all$p_both$`diagnosisUlcerative Colitis` +
+    p_mlr_all$p_both$`diagnosisIBDU` +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
   plot_layout(widths = c(1.25, 2)) &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/crp-diagnosis.pdf",
-       p,
-       width = 15,
-       height = 12,
-       units = "in",
-       create.dir = TRUE)
+  p,
+  width = 15,
+  height = 12,
+  units = "in",
+  create.dir = TRUE
+)
 
 print(p)
 ```
 
+```{R}
+#| echo: false
+p <- dk.crp %>%
+  filter(Model %in% c("Multivariate", "Multivariate (prob >=0.5)")) %>%
+  mutate(Model = factor(Model, levels = c("Multivariate (prob >=0.5)", "Multivariate"))) %>%
+  libdr:::.plotCI("diagnosisUlcerative Colitis")
+
+ggsave("plots/associations/crp-diagnosis-dk-forest.pdf",
+  p,
+  width = 15,
+  height = 12,
+  units = "in",
+  create.dir = TRUE
+)
+```
 
 ```{R}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$age & theme(legend.position = "none")) /
-  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale +
-                  plot_layout(guides = "collect") &
-                  theme(legend.position = "bottom")) +
+
+p_mlr_all <- myDF.crp %>%
+  mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
+  mlrPlot(
+    var = c("diagnosis", "age", "sex"),
+    class = "class_order",
+    extern = dk.crp
+  )
+
+p <- (wrap_elements(p_age_all) + p_mlr_all$plot_everything$age & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_everything$sexMale +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") +
   plot_layout(widths = c(1, 1)) &
-  theme(plot.tag = element_text(face = "bold", size  = 22))
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/crp-sex-age.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
+print(p)
+
+
+
+p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$age & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size = 22))
+
+ggsave("plots/associations/crp-sex-age.pdf",
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 print(p)
 ```
+
+```{R}
+p <- (p_age_all + ylim(0, 98) + ggplot()) / (p_mlr_all$plot_everything$age + ggplot()) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom") &
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22))
+ggsave("plots/associations/crp-age.pdf",
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
+
+p <- (wrap_elements(p_sex_all) + ggplot()) / (p_mlr_all$plot_everything$sexMale + ggplot()) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom") &
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22))
+ggsave("plots/associations/crp-sex.pdf",
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
+```
+
 
 Restricted to those with posterior probability > 0.5
 
@@ -1363,7 +1714,7 @@ Restricted to those with posterior probability > 0.5
 #| fig-height: 12
 p_diagnosis <- myDF.crp %>%
   filter(probmax > 0.5) %>%
-  plotCat("diagnosis", class = "class_order") 
+  plotCat("diagnosis", class = "class_order")
 
 p_sex <- myDF.crp %>%
   filter(probmax > 0.5) %>%
@@ -1373,49 +1724,10 @@ p_age <- myDF.crp %>%
   filter(probmax > 0.5) %>%
   ggplot(aes(x = class_order, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
-  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.2) +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
-
-#p_mlr <- myDF.crp %>%
-#  filter(probmax > 0.5) %>%
-#  mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
-#  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order") # , "baseline_fc"
-
-#wrap_elements(p_diagnosis_all) +
-#  wrap_elements(p_mlr_all$plot_both$`diagnosisUlcerative Colitis` + 
-#                  p_mlr_all$plot_both$`diagnosisIBDU` + plot_layout(guides = "collect")) +
-#  plot_annotation(tag_levels = "A", title = "All subjects")
-
-#(wrap_elements(p_age_all) + p_mlr_all$plot_both$age) /
-#  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexMale) +
-#    plot_annotation(tag_levels = "A", title = "All subjects")
-```
-
-Some statistics to be used in the text:
-
-```{r}
-#myDF.crp %>%
-#  mutate(class_aux = ifelse(class_order %in% c("CRP1", "CRP3", "CRP4", "CRP7"), class_order, "Other")) %>%
-#  group_by(class_aux, diagnosis) %>%
-#  summarise(count = n()) %>%
-#  mutate(percentage = (count / sum(count) * 100)) %>%
-#  knitr::kable()
-
-#myDF.crp %>%
-#  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC8"), class_order, "Other")) %>%
-#  group_by(class_aux, diagnosis) %>%
-#  summarise(count = n()) %>%
-#  mutate(percentage = (count / sum(count) * 100)) %>%
-#  knitr::kable()
-
-#myDF.crp %>%
-#  mutate(class_aux = ifelse(class_order %in% c("FC7"), class_order, "Other")) %>%
-#  group_by(class_aux, diagnosis) %>%
-#  summarise(count = n()) %>%
-#  mutate(percentage = (count / sum(count) * 100)) %>%
-#  knitr::kable()
 ```
 
 #### Crohn's disease only
@@ -1462,8 +1774,9 @@ when analysing Montreal behaviour.
 ```{r}
 myDF.crp <- myDF.crp %>%
   mutate(Behaviour_merged = plyr::mapvalues(Behaviour,
-                                      from = c("B1", "B2", "B3", NA),
-                                      to = c("B1", "B2 or B3", "B2 or B3", NA)))
+    from = c("B1", "B2", "B3", NA),
+    to = c("B1", "B2 or B3", "B2 or B3", NA)
+  ))
 ```
 
 Montreal behaviour was missing for approximately 
@@ -1505,10 +1818,12 @@ will facilitate the application of such filter.
 
 ```{r}
 myDF.crp <- myDF.crp %>%
-  mutate(missingN_cd = is.na(Smoke) + is.na(Location) + is.na(L4) + 
-           is.na(Behaviour) + is.na(Perianal))
+  mutate(missingN_cd = is.na(Smoke) + is.na(Location) + is.na(L4) +
+    is.na(Behaviour) + is.na(Perianal))
 
-with(myDF.crp[myDF.crp$diagnosis == "Crohn's Disease",], table(missingN_cd > 0))
+with(myDF.crp[myDF.crp$diagnosis == "Crohn's Disease", ],
+     table(missingN_cd > 0)
+             )
 ```
 
 As shown above, `r sum(myDF.crp$missingN_cd[myDF.crp$diagnosis == "Crohn's Disease"] > 0)` will be excluded hereafter. 
@@ -1529,7 +1844,7 @@ p_age_cd <- myDF.crp %>%
   filter(missingN_cd == 0) %>%
   ggplot(aes(x = class_order, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
-  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.2) +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
@@ -1549,7 +1864,9 @@ p_location_cd <- myDF.crp %>%
 p_behaviour_cd <- myDF.crp %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
-  mutate(Behaviour = ifelse(!is.na(Behaviour_merged), Behaviour_merged, "Missing")) %>%
+  mutate(Behaviour = ifelse(!is.na(Behaviour_merged),
+                            Behaviour_merged,
+                            "Missing")) %>%
   plotCat("Behaviour", class = "class_order")
 
 p_L4_cd <- myDF.crp %>%
@@ -1568,8 +1885,10 @@ p_mlr_cd <- myDF.crp %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
   mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
-  mlrPlot(var = c("age", "sex", "Smoke", "Location", "L4", "Behaviour_merged"), 
-          class = "class_order")
+  mlrPlot(
+    var = c("age", "sex", "Smoke", "Location", "L4", "Behaviour_merged"),
+    class = "class_order"
+  )
 ```
 
 ```{R}
@@ -1578,7 +1897,7 @@ p_mlr_cd <- myDF.crp %>%
 #| fig-height: 12
 (wrap_elements(p_age_cd) + p_mlr_cd$plot_both$age) /
   (wrap_elements(p_sex_cd) + p_mlr_cd$plot_both$sexMale) +
-    plot_annotation(tag_levels = "A", title = "CD patients only")
+  plot_annotation(tag_levels = "A", title = "CD patients only")
 ```
 
 
@@ -1587,35 +1906,37 @@ p_mlr_cd <- myDF.crp %>%
 #| fig-width: 12
 #| fig-height: 12
 p <- wrap_elements(p_smoke_cd) +
-  (p_mlr_cd$plot_both$SmokeYes & theme(legend.position = "bottom")) + 
+  (p_mlr_cd$p_both$SmokeYes & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 
 ggsave("plots/associations/crp-cd-smoking.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 15
 #| fig-height: 12
-p <- wrap_elements(p_location_cd) + 
-  wrap_elements(p_mlr_cd$plot_both$LocationL2 + p_mlr_cd$plot_both$LocationL3 + 
-     plot_layout(guides = "collect") &
-                  theme(legend.position = "bottom")) + 
-  plot_annotation(tag_levels = "A") + 
+p <- wrap_elements(p_location_cd) +
+  wrap_elements(p_mlr_cd$p_both$LocationL2 + p_mlr_cd$p_both$LocationL3 +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
   plot_layout(widths = c(1.25, 2)) &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/crp-location.pdf",
-       p,
-       width = 15,
-       height = 12,
-       units = "in")
+  p,
+  width = 15,
+  height = 12,
+  units = "in"
+)
 print(p)
 ```
 
@@ -1625,15 +1946,16 @@ print(p)
 #| fig-width: 12
 #| fig-height: 12
 p <- wrap_elements(p_L4_cd) +
-  (p_mlr_cd$plot_both$L4Yes & theme(legend.position = "bottom")) +
+  (p_mlr_cd$p_both$L4Yes & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/crp-L4.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 
 print(p)
 ```
@@ -1645,14 +1967,15 @@ print(p)
 #| fig-width: 12
 #| fig-height: 12
 p <- wrap_elements(p_behaviour_cd) +
-  (p_mlr_cd$plot_both$`Behaviour_mergedB2 or B3` & theme(legend.position = "bottom")) +
+  (p_mlr_cd$p_both$`Behaviour_mergedB2 or B3` & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(face = "bold", size = 22)) 
+  theme(plot.tag = element_text(face = "bold", size = 22))
 ggsave("plots/associations/crp-behaviour.pdf",
-       p,
-       width = 12,
-       height = 12,
-       units = "in")
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 
 print(p)
 ```
@@ -1663,7 +1986,9 @@ Some statistics to be used in the text:
 myDF.crp %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC2"), class_order, "Other")) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC1", "FC2"),
+                            class_order,
+                            "Other")) %>%
   group_by(class_aux, L4) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -1673,7 +1998,9 @@ myDF.crp %>%
 myDF.crp %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
-  mutate(class_aux = ifelse(class_order %in% c("CRP1", "CRP8"), class_order, "Other")) %>%
+  mutate(class_aux = ifelse(class_order %in% c("CRP1", "CRP8"),
+                            class_order,
+                            "Other")) %>%
   group_by(class_aux, Smoke) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -1709,7 +2036,8 @@ will facilitate the application of such filter.
 myDF.crp <- myDF.crp %>%
   mutate(missingN_uc = is.na(Smoke) + is.na(Extent))
 
-with(myDF.crp[myDF.crp$diagnosis == "Ulcerative Colitis",], table(missingN_uc > 0))
+with(myDF.crp[myDF.crp$diagnosis == "Ulcerative Colitis", ],
+     table(missingN_uc > 0))
 ```
 
 As shown above, `r sum(myDF.crp$missingN_uc[myDF.crp$diagnosis == "Ulcerative Colitis"] > 0)` 
@@ -1730,7 +2058,7 @@ p_age_uc <- myDF.crp %>%
   filter(missingN_uc == 0) %>%
   ggplot(aes(x = class_order, y = age)) +
   geom_violin(fill = "#5DB7DE", color = "#434371") +
-  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.2) +
   theme_minimal() +
   xlab("Cluster") +
   ylab("Age at diagnosis")
@@ -1751,27 +2079,30 @@ p_mlr_uc <- myDF.crp %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
   mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
-  mlrPlot(var = c("age", "sex", "Smoke", "Extent"),
-          class = "class_order")
+  mlrPlot(
+    var = c("age", "sex", "Smoke", "Extent"),
+    class = "class_order"
+  )
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 15
 #| fig-height: 12
-p <- wrap_elements(p_extent_uc) + 
-  wrap_elements(p_mlr_uc$plot_both$ExtentE2 + p_mlr_uc$plot_both$ExtentE3 +
-     plot_layout(guides = "collect") &
-                  theme(legend.position = "bottom")) + 
-  plot_annotation(tag_levels = "A") + 
+p <- wrap_elements(p_extent_uc) +
+  wrap_elements(p_mlr_uc$p_both$ExtentE2 + p_mlr_uc$p_both$ExtentE3 +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
   plot_layout(widths = c(1.25, 2)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
 ggsave("plots/associations/crp-extent.pdf",
-       p,
-       width = 15,
-       height = 12,
-       units = "in")
+  p,
+  width = 15,
+  height = 12,
+  units = "in"
+)
 print(p)
 ```
 
@@ -1781,15 +2112,24 @@ print(p)
 #| fig-height: 12
 (wrap_elements(p_age_uc) + p_mlr_uc$plot_everything$age) /
   (wrap_elements(p_sex_uc) + p_mlr_uc$plot_everything$sexMale) +
-    plot_annotation(tag_levels = "A", title = "UC patients only")
+  plot_annotation(tag_levels = "A", title = "UC patients only")
 ```
 
 ```{R}
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-wrap_elements(p_smoke_uc) + p_mlr_uc$plot_everything$SmokeYes + 
-  plot_annotation(title = "UC patients only")
+
+p <- wrap_elements(p_smoke_uc) + (p_mlr_uc$p_both$SmokeYes & theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 22))
+
+ggsave("plots/associations/crp-uc-smoking.pdf",
+  p,
+  width = 12,
+  height = 12,
+  units = "in"
+)
 ```
 
 Some statistics to be used in the text:
@@ -1798,7 +2138,9 @@ Some statistics to be used in the text:
 myDF.crp %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC8"), class_order, "Other")) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC8"),
+                            class_order,
+                            "Other")) %>%
   group_by(class_aux, sex) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -1807,7 +2149,9 @@ myDF.crp %>%
 myDF.crp %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
-  mutate(class_aux = ifelse(class_order %in% c("FC3"), class_order, "Other")) %>%
+  mutate(class_aux = ifelse(class_order %in% c("FC3"),
+                            class_order,
+                            "Other")) %>%
   group_by(class_aux, Extent) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -1828,24 +2172,25 @@ re-order the trajectories when these are plotted.
 time.pred <- seq(0, 7, by = 0.01)
 
 pred.crp.df <- data.frame(
-      crp_time = c(time.pred, time.pred),
-      diagnosis = c(
-        rep("Crohn's Disease", length(time.pred)),
-        rep("Ulcerative Colitis", length(time.pred))
-      )
-    )
+  crp_time = c(time.pred, time.pred),
+  diagnosis = c(
+    rep("Crohn's Disease", length(time.pred)),
+    rep("Ulcerative Colitis", length(time.pred))
+  )
+)
 pred.crp.df.update <- lcmm::predictY(model.crp,
-                                     pred.crp.df,
-                                    var.time = "crp_time",
-                                    draws = TRUE
-                                    )$pred
+  pred.crp.df,
+  var.time = "crp_time",
+  draws = TRUE
+)$pred
 
 pred <- predictY(model.crp,
-                 pred.crp.df,
-                 var.time = "crp_time",
-                 draws = TRUE)$pred
+  pred.crp.df,
+  var.time = "crp_time",
+  draws = TRUE
+)$pred
 
-pred <- as.data.frame(pred[1:length(time.pred), ])
+pred <- as.data.frame(pred[seq_along(time.pred), ])
 pred$time <- time.pred
 
 ylimit <- log(2500)
@@ -1862,29 +2207,31 @@ after adjusting for age and sex, AT was significantly lower in FC2.
 #| fig-width: 12
 #| fig-height: 12
 
-myDF.crp <- myDF.crp %>% 
+myDF.crp <- myDF.crp %>%
   mutate(AT_7Y = ifelse(AT == 1 & AT_line_1 <= 7, 1, 0))
 
-p_AT <- myDF.crp %>% 
+p_AT <- myDF.crp %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
   plotCat("AT_7Y", class = "class_order")
 
 p_AT_mlr <- myDF.crp %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
   mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
-  mlrPlot(var = c("age", "sex", "AT_7Y"),
-          class = "class_order")
+  mlrPlot(
+    var = c("age", "sex", "AT_7Y"),
+    class = "class_order"
+  )
 
-wrap_elements(p_AT) + p_AT_mlr$plot_both$AT 
+wrap_elements(p_AT) + p_AT_mlr$plot_both$AT
 ```
 
 However, as seen below, AT use varies across different IBD types (highest
 among CD patients, lowest among IBDU) patients. 
 
 ```{r}
-myDF.crp %>% 
+myDF.crp %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
-  plotCat("AT_7Y", class = "diagnosis") 
+  plotCat("AT_7Y", class = "diagnosis")
 ```
 
 As such, we also stratify cluster-specific AT usage according to IBD type.
@@ -1894,18 +2241,18 @@ For this purpose, we exclude IBDU due to its small size.
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-p_AT_cd <- myDF.crp %>% 
+p_AT_cd <- myDF.crp %>%
   subset(diagnosis == "Crohn's Disease") %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
   plotCat("AT_7Y", class = "class_order")
-  
-p_AT_uc <- myDF.crp %>% 
+
+p_AT_uc <- myDF.crp %>%
   subset(diagnosis == "Ulcerative Colitis") %>%
   mutate(AT_7Y = factor(AT_7Y)) %>%
   plotCat("AT_7Y", class = "class_order")
-  
 
-wrap_elements(p_AT) + ggtitle("CD + UC + IBDU") + 
+
+wrap_elements(p_AT) + ggtitle("CD + UC + IBDU") +
   wrap_elements(p_AT_cd) + ggtitle("CD only") +
   wrap_elements(p_AT_uc) + ggtitle("UC only")
 ```
@@ -1913,23 +2260,20 @@ wrap_elements(p_AT) + ggtitle("CD + UC + IBDU") +
 #### AT use within the first year
 
 ```{r}
-myDF.crp <- myDF.crp %>% 
+myDF.crp <- myDF.crp %>%
   mutate(AT_1Y = ifelse(AT == 1 & AT_line_1 <= 1, 1, 0))
 
 table(myDF.crp$AT_1Y)
 
-#myDF.crp %>%
-#  count(AT_1Y, group_by = diagnosis)
-
-p_AT_1Y <- myDF.crp %>% 
+p_AT_1Y <- myDF.crp %>%
   mutate(AT_1Y = factor(AT_1Y)) %>%
   plotCat("AT_1Y", class = "class_order")
 
-p_AT_1Y_cd <- myDF.crp %>% 
+p_AT_1Y_cd <- myDF.crp %>%
   subset(diagnosis == "Crohn's Disease") %>%
   plotCat("AT_1Y", class = "class_order")
 
-p_AT_1Y_cd <- myDF.crp %>% 
+p_AT_1Y_cd <- myDF.crp %>%
   subset(diagnosis == "Ulcerative Colitis") %>%
   plotCat("AT_1Y", class = "class_order")
 ```
@@ -1968,61 +2312,80 @@ has digitally removed any strata with fewer than five subjects.
 #| column: page
 #| fig-width: 12
 #| fig-height: 12
-km.df <- data.frame(time = numeric(),
-                    cumhaz = numeric(),
-                    class = character(),
-                    diag = character())
+km.df <- data.frame(
+  time = numeric(),
+  cumhaz = numeric(),
+  class = character(),
+  diag = character()
+)
 
 for (g in 1:8) {
-
   # Calculate cumulative patterns
   temp.cd <- myDF.crp %>%
     filter(class_order == paste0("CRP", g)) %>%
     filter(diagnosis == "Crohn's Disease")
-  
+
   temp.uc <- myDF.crp %>%
     filter(class_order == paste0("CRP", g)) %>%
     filter(diagnosis == "Ulcerative Colitis")
-  
-  
+
+
   km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.cd)
-  km.df <- rbind(km.df,
-                 data.frame(time = km$time,
-                            cumhaz =  1 - km$surv,
-                            class = paste0("CRP",
-                                           g,
-                                           ", CD=",
-                                           nrow(temp.cd),
-                                           "; UC=",
-                                           nrow(temp.uc)),
-                            diag = "Crohn's disease"))
-  
-  
-  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc) 
-  km.df <- rbind(km.df,
-                 data.frame(time = km$time,
-                            cumhaz =  1 - km$surv,
-                            class = paste0("CRP",
-                                           g,
-                                           ", CD=",
-                                           nrow(temp.cd),
-                                           "; UC=",
-                                           nrow(temp.uc)),
-                            diag = "Ulcerative colitis"))
-  
+  km.df <- rbind(
+    km.df,
+    data.frame(
+      time = km$time,
+      cumhaz = 1 - km$surv,
+      class = paste0(
+        "CRP",
+        g,
+        ", CD=",
+        nrow(temp.cd),
+        "; UC=",
+        nrow(temp.uc)
+      ),
+      diag = "Crohn's disease"
+    )
+  )
+
+
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.uc)
+  km.df <- rbind(
+    km.df,
+    data.frame(
+      time = km$time,
+      cumhaz = 1 - km$surv,
+      class = paste0(
+        "CRP",
+        g,
+        ", CD=",
+        nrow(temp.cd),
+        "; UC=",
+        nrow(temp.uc)
+      ),
+      diag = "Ulcerative colitis"
+    )
+  )
+
   temp.all <- myDF.crp %>%
-    filter(class_order == paste0("CRP", g)) 
-  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.all) 
-  km.df <- rbind(km.df,
-                 data.frame(time = km$time,
-                            cumhaz =  1 - km$surv,
-                            class = paste0("CRP",
-                                           g,
-                                           ", CD=",
-                                           nrow(temp.cd),
-                                           "; UC=",
-                                           nrow(temp.uc)),
-                            diag = "All"))
+    filter(class_order == paste0("CRP", g))
+  km <- survfit(Surv(AT_line_1_cens, AT_7Y) ~ 1, data = temp.all)
+  km.df <- rbind(
+    km.df,
+    data.frame(
+      time = km$time,
+      cumhaz = 1 - km$surv,
+      class = paste0(
+        "CRP",
+        g,
+        ", CD=",
+        nrow(temp.cd),
+        "; UC=",
+        nrow(temp.uc)
+      ),
+      diag = "All"
+    )
+  )
 }
 
 p1 <- km.df %>%
@@ -2030,28 +2393,21 @@ p1 <- km.df %>%
   ggplot(aes(x = time, y = cumhaz)) +
   geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
   facet_wrap(~class, ncol = 2) +
-  theme_minimal() + 
+  theme_minimal() +
   scale_y_continuous(labels = scales::percent, limits = c(0, 0.7)) +
-  labs(x = "Time (years)",
-       y = "% of subjects receiving an advanced therapy",
-       color = "IBD type") +
+  labs(
+    x = "Time (years)",
+    y = "% of subjects receiving an advanced therapy",
+    color = "IBD type"
+  ) +
   theme(legend.position = "bottom")
-#p1
+# p1
 
-ggsave("paper/CRP-AT.pdf", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
-ggsave("paper/CRP-AT.png", p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+ggsave("paper/CRP-AT.pdf", p1, width = 8 * 3 / 4, height = 12 * 3 / 4, units = "in")
+ggsave("paper/CRP-AT.png", p1, width = 8 * 3 / 4, height = 12 * 3 / 4, units = "in")
+
 ```
 
-
-```{R}
-#km.df %>%
-#  filter(diag != "All") %>%
-#  group_by(class, diag) %>%
-#  summarise(last_value = 100 * last(cumhaz)) %>%
-#  mutate(class = gsub(",.*", "", class)) %>%
-#  knitr::kable(col.names = c("Cluster", "Diagnosis", "Total percentage"),
-#               digits = 1)
-```
 
 ### Demographics table
 

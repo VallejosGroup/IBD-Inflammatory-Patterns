@@ -10,7 +10,8 @@ mlrPlot(
   class = "class_combined",
   prob = "probmax",
   minprob = 0.5,
-  extern = NULL
+  extern = NULL,
+  uni = FALSE
 )
 }
 \arguments{
@@ -34,6 +35,9 @@ to be 0.5 if not manually specified}
 \item{extern}{Optional data frame containing multinomial logistic
 regression results obtained from an external dataset. If not given then it
 is assumed that no external data is required.}
+
+\item{uni}{Logical. Should only a univariate model be considered? Defaults
+to FALSE (multivariate modelling).}
 }
 \description{
 Forest plot of multinomial logistic regression model

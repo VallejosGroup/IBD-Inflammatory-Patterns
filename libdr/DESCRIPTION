@@ -20,19 +20,20 @@ Depends:
     magrittr,
     dplyr
 Imports: 
-    lcmm,
-    ggplot2,
-    plyr,
-    knitr,
     ComplexHeatmap,
-    viridis,
     doParallel,
+    forcats,
     foreach,
-    tibble,
-    scales,
+    ggplot2,
+    knitr,
+    lcmm,
     nnet,
+    plyr,
     pracma,
-    tidyr
+    scales,
+    tibble,
+    tidyr,
+    viridis
 Suggests: magick
 Encoding: UTF-8
 LazyData: true

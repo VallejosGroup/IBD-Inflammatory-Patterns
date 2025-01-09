@@ -170,7 +170,8 @@ spaghetti_plot_sub <- function(data,
                                external,
                                var.time) {
   # Global vars
-  layout <- ids <- .data <- calpro_result <- crp_result <- time <- NULL
+  layout <- ids <- .data <- calpro_result <- crp_result <- time <- cluster <-
+    Ypred <- CI1 <- CI2 <- NULL
 
   labels <- labels$list[[G]]
   p <- list()
