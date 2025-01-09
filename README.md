@@ -47,5 +47,6 @@ Any rendered reports will be found in the `docs` directory. [scripts](scripts)
 contains any miscellaneous scripts not used in the reports or passed to Eddie
 (such as scripts which have been used to generate poster figures)
 
+--- 
 
-<img src = "images/cgem-logo.png" height = 75px style = "padding: 20px;">  <img src = "images/MRC_HGU_Edinburgh_RGB.png" height = 75px style = "padding: 20px;"> <img src = "images/PREDICT-logo.webp" height = 75px style = "padding: 20px;"> 
+<img src = "images/cgem-logo.png" height = 75px>  <img src = "images/MRC_HGU_Edinburgh_RGB.png" height = 75px> <img src = "images/PREDICT-logo.webp" height = 75px> 
