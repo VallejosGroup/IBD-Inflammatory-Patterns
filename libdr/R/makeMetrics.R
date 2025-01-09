@@ -3,10 +3,16 @@
 #'   for.
 #' @param models List containing LCMM model fits
 #' @export
-makeMetrics <- function (Gs, models) {
+makeMetrics <- function(Gs, models) {
   hlme.metrics <- matrix(c(numeric(), numeric(), numeric()), ncol = 3)
   for (G in Gs) {
-    temp <- matrix(c(models[[G]]$loglik, models[[G]]$AIC, models[[G]]$BIC), ncol = 3)
+    temp <- matrix(
+      c(
+        models[[G]]$loglik,
+        models[[G]]$AIC, models[[G]]$BIC
+      ),
+      ncol = 3
+    )
     hlme.metrics <- rbind(hlme.metrics, temp)
   }
   rownames(hlme.metrics) <- Gs

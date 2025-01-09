@@ -197,7 +197,7 @@ spaghetti_plot_sub <- function(data,
   for (g in mapping) {
     matchidx <- as.data.frame(which(layout == g, arr.ind = TRUE))
 
-    if(clusters) {
+    if (clusters) {
       id.group <- models[[G]]$pprob[models[[G]]$pprob[, 2] == mapping[g], 1]
       data.sub <- subset(data, class == mapping[g])
     } else {
@@ -216,7 +216,8 @@ spaghetti_plot_sub <- function(data,
               x = .data[[var.time]],
               y = exp(calpro_result)
             )
-          ) + geom_line(aes(group = ids), alpha = 0.1)
+          ) +
+            geom_line(aes(group = ids), alpha = 0.1)
         } else {
           p[[g]] <- ggplot(
             data = data.sub,
@@ -225,7 +226,8 @@ spaghetti_plot_sub <- function(data,
               y = exp(calpro_result),
               color = .data[[color]]
             )
-          ) + geom_line(aes(group = ids), alpha = 0.2)
+          ) +
+            geom_line(aes(group = ids), alpha = 0.2)
         }
 
 
@@ -241,7 +243,8 @@ spaghetti_plot_sub <- function(data,
               x = .data[[var.time]],
               y = exp(crp_result)
             )
-          ) + geom_line(aes(group = ids), alpha = 0.1)
+          ) +
+            geom_line(aes(group = ids), alpha = 0.1)
         } else {
           p[[g]] <- ggplot(
             data = data.sub,
@@ -250,7 +253,8 @@ spaghetti_plot_sub <- function(data,
               y = exp(crp_result),
               color = .data[[color]]
             )
-          ) + geom_line(aes(group = ids), alpha = 0.2)
+          ) +
+            geom_line(aes(group = ids), alpha = 0.2)
         }
         p[[g]] <- p[[g]] +
           xlab("Time (years)") +
@@ -308,7 +312,7 @@ spaghetti_plot_sub <- function(data,
         )
       if (sizes) {
         p[[g]] <- p[[g]] + ggtitle(paste("n =", length(id.group))) +
-            theme(plot.title = element_text(hjust = 0.5))
+          theme(plot.title = element_text(hjust = 0.5))
       }
     } else { # Logged plots
       if (var.time == "calpro_time") {
@@ -319,7 +323,8 @@ spaghetti_plot_sub <- function(data,
               x = .data[[var.time]],
               y = calpro_result
             )
-          ) + geom_line(aes(group = ids), alpha = 0.1)
+          ) +
+            geom_line(aes(group = ids), alpha = 0.1)
         } else {
           p[[g]] <- ggplot(
             data = data.sub,
@@ -328,7 +333,8 @@ spaghetti_plot_sub <- function(data,
               y = calpro_result,
               color = .data[[color]]
             )
-          ) + geom_line(aes(group = ids), alpha = 0.2)
+          ) +
+            geom_line(aes(group = ids), alpha = 0.2)
         }
 
 
@@ -346,19 +352,21 @@ spaghetti_plot_sub <- function(data,
           external.sub <- subset(external, cluster == g)
           p[[g]] <- p[[g]] +
             geom_line(aes(x = time, y = Ypred),
-                      color = "#C8102E",
-                      linewidth = 1.5,
-                      data = external.sub) +
+              color = "#C8102E",
+              linewidth = 1.5,
+              data = external.sub
+            ) +
             geom_line(aes(x = time, y = CI1),
-                      color = "#C8102E",
-                      lty = 2,
-                      data = external.sub) +
+              color = "#C8102E",
+              lty = 2,
+              data = external.sub
+            ) +
             geom_line(aes(x = time, y = CI2),
-                      color ="#C8102E",
-                      lty = 2,
-                      data = external.sub)
+              color = "#C8102E",
+              lty = 2,
+              data = external.sub
+            )
         }
-
       } else if (var.time == "crp_time") {
         if (is.null(color)) {
           p[[g]] <- ggplot(
@@ -367,7 +375,8 @@ spaghetti_plot_sub <- function(data,
               x = .data[[var.time]],
               y = crp_result
             )
-          ) + geom_line(aes(group = ids), alpha = 0.1)
+          ) +
+            geom_line(aes(group = ids), alpha = 0.1)
         } else {
           p[[g]] <- ggplot(
             data = data.sub,
@@ -376,7 +385,8 @@ spaghetti_plot_sub <- function(data,
               y = crp_result,
               color = .data[[color]]
             )
-          ) + geom_line(aes(group = ids), alpha = 0.2)
+          ) +
+            geom_line(aes(group = ids), alpha = 0.2)
         }
 
         p[[g]] <- p[[g]] +
@@ -393,19 +403,21 @@ spaghetti_plot_sub <- function(data,
           external.sub <- subset(external, cluster == g)
           p[[g]] <- p[[g]] +
             geom_line(aes(x = time, y = Ypred),
-                      color = "#C8102E",
-                      linewidth = 1.5,
-                      data = external.sub) +
+              color = "#C8102E",
+              linewidth = 1.5,
+              data = external.sub
+            ) +
             geom_line(aes(x = time, y = CI1),
-                      color = "#C8102E",
-                      lty = 2,
-                      data = external.sub) +
+              color = "#C8102E",
+              lty = 2,
+              data = external.sub
+            ) +
             geom_line(aes(x = time, y = CI2),
-                      color ="#C8102E",
-                      lty = 2,
-                      data = external.sub)
+              color = "#C8102E",
+              lty = 2,
+              data = external.sub
+            )
         }
-
       }
 
       if (knots) {
@@ -734,4 +746,3 @@ labels$list[[12]] <- c("A", "C", "E", "G", "I", "K", "B", "D", "F", "H", "J", "L
 
 ScotBlue <- "#005EB8"
 DanishRed <- "#C8102E"
-

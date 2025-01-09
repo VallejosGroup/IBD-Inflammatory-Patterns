@@ -238,23 +238,23 @@ tab1 <- classes.wide <- classes %>%
 tab2 <- classes.wide %>%
   subset(FC == "FC1") %>%
   count(CRP) %>%
-  mutate(percentage = (n/ sum(n) * 100)) 
+  mutate(percentage = (n / sum(n) * 100))
 
 tab3 <- classes.wide %>%
   subset(CRP %in% c("CRP1", "CRP2")) %>%
   count(FC) %>%
-  mutate(percentage = (n/ sum(n) * 100)) 
+  mutate(percentage = (n / sum(n) * 100))
 
 tab4 <- classes.wide %>%
   subset(CRP %in% c("CRP8")) %>%
   count(FC) %>%
-  mutate(percentage = (n/ sum(n) * 100)) 
+  mutate(percentage = (n / sum(n) * 100))
 
 tab5 <- classes.wide %>%
   subset(diagnosis == "Ulcerative Colitis") %>%
   subset(FC %in% c("FC7")) %>%
   count(CRP) %>%
-  mutate(percentage = (n/ sum(n) * 100)) 
+  mutate(percentage = (n / sum(n) * 100))
 ```
 
 ```{R}

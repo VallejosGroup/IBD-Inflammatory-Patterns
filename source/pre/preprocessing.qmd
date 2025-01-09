@@ -300,8 +300,8 @@ dict <- merge(dict,
   all.y = FALSE
 )
 
-for (i in 1:nrow(dict)) {
-  if (is.na(dict[i, "sex.x"]) & !is.na(dict[i, "sex.y"])) {
+for (i in seq_len(nrow(dict))) {
+  if (is.na(dict[i, "sex.x"]) && !is.na(dict[i, "sex.y"])) {
     dict[i, "sex.x"] <- dict[i, "sex.y"]
   }
 }
@@ -471,7 +471,8 @@ diag.ts <- dict %>%
   summarise(count = n()) %>%
   ungroup()
 
-ggplot(diag.ts, aes(x = as.Date(date.of.diag.month, "%Y-%m"), y = count, group = 1)) +
+diag.ts %>%
+  ggplot(aes(x = as.Date(date.of.diag.month, "%Y-%m"), y = count, group = 1)) +
   geom_line() +
   xlab("Diagnosis date") +
   ylab("Number of diagnosis") +

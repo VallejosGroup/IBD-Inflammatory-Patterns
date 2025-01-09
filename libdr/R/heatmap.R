@@ -26,7 +26,7 @@ lcmmHeatmap <- function(models,
     colnames(clusters)[1 + i] <- paste0("method.", i)
   }
 
-  if (is.null(cores)){
+  if (is.null(cores)) {
     cl <- parallel::makeForkCluster(parallel::detectCores())
   } else {
     cl <- parallel::makeForkCluster(cores)
@@ -54,37 +54,42 @@ lcmmHeatmap <- function(models,
 
   ComplexHeatmap::draw(
     ComplexHeatmap::Heatmap(co.cluster,
-                          name = sprintf("Averaged\nconcordance"),
-                          col = viridis::viridis(100),
-                          show_row_dend = FALSE)
+      name = sprintf("Averaged\nconcordance"),
+      col = viridis::viridis(100),
+      show_row_dend = FALSE
+    )
   )
 
   if (png) {
-    png(paste0(file.name,".png"),
-        width = 8,
-        height = 6,
-        units = "in",
-        res = 300)
+    png(paste0(file.name, ".png"),
+      width = 8,
+      height = 6,
+      units = "in",
+      res = 300
+    )
     ComplexHeatmap::draw(
-    ComplexHeatmap::Heatmap(co.cluster,
-                            name = sprintf("Averaged\nconcordance"),
-                            col = viridis::viridis(100),
-                            show_row_dend = FALSE)
+      ComplexHeatmap::Heatmap(co.cluster,
+        name = sprintf("Averaged\nconcordance"),
+        col = viridis::viridis(100),
+        show_row_dend = FALSE
+      )
     )
     grDevices::dev.off()
   }
   if (pdf) {
-    pdf(paste0(file.name,".pdf"),
-        width = 8,
-        height = 6)
+    pdf(paste0(file.name, ".pdf"),
+      width = 8,
+      height = 6
+    )
     ComplexHeatmap::draw(
-    ComplexHeatmap::Heatmap(co.cluster,
-                            name = sprintf("Averaged\nconcordance"),
-                            col = viridis::viridis(100),
-                            show_row_dend = FALSE,
-                            use_raster = TRUE,
-                            raster_device = "png",
-                            raster_quality = 10)
+      ComplexHeatmap::Heatmap(co.cluster,
+        name = sprintf("Averaged\nconcordance"),
+        col = viridis::viridis(100),
+        show_row_dend = FALSE,
+        use_raster = TRUE,
+        raster_device = "png",
+        raster_quality = 10
+      )
     )
     grDevices::dev.off()
   }
@@ -178,8 +183,5 @@ pprobCutoff <- function(pprob, threshold) {
       inc <- c(inc, FALSE)
     }
   }
-  return (pprob[inc, ]) # Reduce to only subjects above threshold
+  return(pprob[inc, ]) # Reduce to only subjects above threshold
 }
-
-
-

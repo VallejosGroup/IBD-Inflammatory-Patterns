@@ -57,7 +57,7 @@ fcal.all <- read.csv(paste0(prefix, "2024-10-03/fcal-cleaned.csv"))
 crp <- readRDS(paste0(prefix, "processed/median-crp.RDS"))
 dict <- readRDS(paste0(prefix, "processed/dict-initial.RDS"))
 dict <- dict %>%
-  filter(ids %in% c(fcal$ids, crp$ids)) 
+  filter(ids %in% c(fcal$ids, crp$ids))
 updated <- read.csv(paste0(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
 ```
 
@@ -112,7 +112,7 @@ dict.fc %>%
   theme_minimal() +
   ylab("Density") +
   xlab("Age at diagnosis") +
-  wrap_table(gt(quants), space = "free_y")  
+  wrap_table(gt(quants), space = "free_y")
 ```
 
 #### CRP
@@ -133,11 +133,11 @@ Age at diagnosis is missing for `r sum(is.na(dict.crp$age))`
 ```{R}
 dict.crp %>%
   ggplot(aes(x = age)) +
-  geom_density(fill = "#EF2D56", color =  "#BE2544") +
+  geom_density(fill = "#EF2D56", color = "#BE2544") +
   theme_minimal() +
   ylab("Density") +
   xlab("Age at diagnosis") +
-  wrap_table(gt(quants), space = "free_y") 
+  wrap_table(gt(quants), space = "free_y")
 ```
 
 #### Overlap
@@ -162,7 +162,7 @@ dict.both %>%
   theme_minimal() +
   ylab("Density") +
   xlab("Age at diagnosis") +
-  wrap_table(gt(quants), space = "free_y") 
+  wrap_table(gt(quants), space = "free_y")
 ```
 
 :::
@@ -172,18 +172,20 @@ dict.both %>%
 ```{R}
 dict <- fcal.all[, c("ids", "sex")] %>%
   distinct(ids,
-           .keep_all = TRUE) %>%
+    .keep_all = TRUE
+  ) %>%
   merge(x = dict, by = "ids", all.x = TRUE, all.y = FALSE)
 
 
 # Update NA sex if sex available from updated
 dict <- merge(dict,
-              updated[, c("ids", "sex")],
-              by = "ids",
-              all.x = TRUE,
-              all.y = FALSE) 
+  updated[, c("ids", "sex")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
+)
 
-for (i in 1:nrow(dict)){
+for (i in 1:nrow(dict)) {
   if (is.na(dict[i, "sex.x"]) & !is.na(dict[i, "sex.y"])) {
     dict[i, "sex.x"] <- dict[i, "sex.y"]
   }
@@ -193,8 +195,9 @@ dict$sex <- dict$sex.x
 dict$sex.x <- dict$sex.y <- NULL
 
 dict$sex <- plyr::mapvalues(dict$sex,
-                            from = c("F", "M"),
-                            to = c("Female", "Male"))
+  from = c("F", "M"),
+  to = c("Female", "Male")
+)
 ```
 
 Similar to age, sex was obtained directly from health records. 
@@ -216,7 +219,7 @@ dict.fc %>%
   theme_minimal() +
   xlab("Sex") +
   ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y")  
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 #### CRP
@@ -228,11 +231,11 @@ colnames(counts) <- c("Sex", "Frequency")
 
 dict.crp %>%
   ggplot(aes(x = sex)) +
-  geom_bar(fill = "#EF2D56", color = "#BE2544") + 
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
   theme_minimal() +
   xlab("Sex") +
   ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y")  
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 #### Overlap
@@ -244,11 +247,11 @@ colnames(counts) <- c("Sex", "Frequency")
 
 dict.both %>%
   ggplot(aes(x = sex)) +
-  geom_bar(fill = "#42D9C8", color = "#15AB9D") + 
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
   theme_minimal() +
   xlab("Sex") +
   ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y")  
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -257,10 +260,12 @@ dict.both %>%
 
 ```{R}
 dict$diagnosis <- factor(dict$diagnosis,
-                            levels = c("Crohn's Disease",
-                                       "Ulcerative Colitis",
-                                       "IBDU")
-                            )
+  levels = c(
+    "Crohn's Disease",
+    "Ulcerative Colitis",
+    "IBDU"
+  )
+)
 ```
 
 IBD type, defined as either either Crohn's disease, ulcerative colitis, or
@@ -280,12 +285,12 @@ counts <- data.frame(table(dict.fc$diagnosis))
 colnames(counts) <- c("IBD type", "Frequency")
 
 dict.fc %>%
-    ggplot(aes(x = diagnosis)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("IBD type") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y")  
+  ggplot(aes(x = diagnosis)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("IBD type") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 #### CRP
@@ -297,12 +302,12 @@ counts <- data.frame(table(dict.crp$diagnosis))
 colnames(counts) <- c("IBD type", "Frequency")
 
 dict.crp %>%
-    ggplot(aes(x = diagnosis)) +
-    geom_bar(fill = "#EF2D56", color = "#BE2544") +
-    theme_minimal() +
-    xlab("IBD type") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y")  
+  ggplot(aes(x = diagnosis)) +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
+  theme_minimal() +
+  xlab("IBD type") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 #### Overlap
@@ -313,12 +318,12 @@ counts <- data.frame(table(dict.both$diagnosis))
 colnames(counts) <- c("IBD type", "Frequency")
 
 dict.both %>%
-    ggplot(aes(x = diagnosis)) +
-    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
-    theme_minimal() +
-    xlab("IBD type") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y")  
+  ggplot(aes(x = diagnosis)) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  xlab("IBD type") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -330,11 +335,11 @@ dict.both %>%
 # Define eras
 # 2005-2009, 2010-2014, 2015-2017
 dict$era <- NA
-dict <- 
+dict <-
   dict %>%
   mutate(era = if_else(year(date.of.diag) < 2010, "2005-2009", era)) %>%
   mutate(era = if_else(year(date.of.diag) > 2009 & year(date.of.diag) < 2015, "2010-2014", era)) %>%
-  mutate(era = if_else(year(date.of.diag) > 2014 , "2015-2017", era))
+  mutate(era = if_else(year(date.of.diag) > 2014, "2015-2017", era))
 ```
 
 Where possible, full dates for IBD diagnosis were extracted which were used to
@@ -379,12 +384,12 @@ counts <- data.frame(table(dict.fc$era))
 colnames(counts) <- c("Diagnosis era", "Frequency")
 
 dict.fc %>%
-    ggplot(aes(x = era)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Diagnosis era") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = era)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Diagnosis era") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 #### CRP
@@ -393,7 +398,7 @@ dict.fc %>%
 dict.crp <- subset(dict, ids %in% crp$ids)
 dict.crp %>%
   ggplot(aes(x = year(date.of.diag))) +
-  geom_bar(fill = "#EF2D56", color =   "#BE2544") +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
   theme_minimal() +
   xlab("Year of diagnosis") +
   ylab("Frequency")
@@ -404,12 +409,12 @@ counts <- data.frame(table(dict.crp$era))
 colnames(counts) <- c("Diagnosis era", "Frequency")
 
 dict.crp %>%
-    ggplot(aes(x = era)) +
-    geom_bar(fill = "#EF2D56", color = "#BE2544") +
-    theme_minimal() +
-    xlab("Diagnosis era") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = era)) +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
+  theme_minimal() +
+  xlab("Diagnosis era") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 #### Overlap
@@ -429,12 +434,12 @@ counts <- data.frame(table(dict.both$era))
 colnames(counts) <- c("Diagnosis era", "Frequency")
 
 dict.both %>%
-    ggplot(aes(x = era)) +
-    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
-    theme_minimal() +
-    xlab("Diagnosis era") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = era)) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  xlab("Diagnosis era") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -457,13 +462,14 @@ fc.result <- c()
 
 for (id in fc.ids) {
   fc.result <- c(fc.result, subset(temp, ids == id)[1, "calpro_result"])
-} 
+}
 
-dict <- merge(dict, 
-              data.frame(ids = fc.ids, baseline_fc = fc.result),
-              all.x = TRUE,
-              all.y = FALSE,
-              by = "ids")
+dict <- merge(dict,
+  data.frame(ids = fc.ids, baseline_fc = fc.result),
+  all.x = TRUE,
+  all.y = FALSE,
+  by = "ids"
+)
 
 
 temp <- crp
@@ -474,13 +480,14 @@ crp.result <- c()
 
 for (id in crp.ids) {
   crp.result <- c(crp.result, subset(temp, ids == id)[1, "crp_result"])
-} 
+}
 
-dict <- merge(dict, 
-              data.frame(ids = crp.ids, baseline_crp = crp.result),
-              all.x = TRUE,
-              all.y = FALSE,
-              by = "ids")
+dict <- merge(dict,
+  data.frame(ids = crp.ids, baseline_crp = crp.result),
+  all.x = TRUE,
+  all.y = FALSE,
+  by = "ids"
+)
 ```
 
 ::: {.panel-tabset group="biomarker"}
@@ -489,8 +496,9 @@ dict <- merge(dict,
 
 ```{R}
 quants <- quantile(dict$baseline_fc,
-                   na.rm = TRUE,
-                   probs = c(0.25, 0.5, 0.75)) %>%
+  na.rm = TRUE,
+  probs = c(0.25, 0.5, 0.75)
+) %>%
   data.frame()
 quants <- cbind(rownames(quants), round(quants, 2))
 colnames(quants) <- c("Quantile", "Baseline FC")
@@ -502,7 +510,7 @@ dict %>%
   theme_minimal() +
   xlab("Baseline FC") +
   ylab("Density") +
-  wrap_table(gt(quants), space = "free_y") 
+  wrap_table(gt(quants), space = "free_y")
 ```
 
 
@@ -514,8 +522,10 @@ quants <- dict %>%
   filter(!is.na(baseline_crp)) %>%
   filter(!is.na(baseline_fc)) %>%
   select(baseline_fc) %>%
-  quantile(na.rm = TRUE,
-           probs = c(0.25, 0.5, 0.75)) %>%
+  quantile(
+    na.rm = TRUE,
+    probs = c(0.25, 0.5, 0.75)
+  ) %>%
   data.frame()
 quants <- cbind(rownames(quants), round(quants, 2))
 colnames(quants) <- c("Quantile", "Baseline FC")
@@ -528,15 +538,16 @@ dict %>%
   theme_minimal() +
   xlab("Baseline FC") +
   ylab("Density") +
-  wrap_table(gt(quants), space = "free_y") 
+  wrap_table(gt(quants), space = "free_y")
 ```
 
 #### CRP
 
 ```{R}
 quants <- quantile(dict$baseline_crp,
-                   na.rm = TRUE,
-                   probs = c(0.25, 0.5, 0.75)) %>%
+  na.rm = TRUE,
+  probs = c(0.25, 0.5, 0.75)
+) %>%
   data.frame()
 
 quants <- cbind(rownames(quants), round(quants, 2))
@@ -545,11 +556,11 @@ colnames(quants) <- c("Quantile", "Baseline CRP")
 dict %>%
   filter(!is.na(baseline_crp)) %>%
   ggplot(aes(x = baseline_crp)) +
-  geom_density(fill = "#EF2D56", color =   "#BE2544") +
+  geom_density(fill = "#EF2D56", color = "#BE2544") +
   theme_minimal() +
   xlab("Baseline CRP") +
   ylab("Density") +
-  wrap_table(gt(quants), space = "free_y") 
+  wrap_table(gt(quants), space = "free_y")
 ```
 
 We will now consider baseline CRP for the subset of subjects included in both 
@@ -571,11 +582,11 @@ dict %>%
   filter(!is.na(baseline_crp)) %>%
   filter(!is.na(baseline_fc)) %>%
   ggplot(aes(x = baseline_crp)) +
-  geom_density(fill = "#EF2D56", color =   "#BE2544") +
+  geom_density(fill = "#EF2D56", color = "#BE2544") +
   theme_minimal() +
   xlab("Baseline CRP") +
   ylab("Density") +
-  wrap_table(gt(quants), space = "free_y") 
+  wrap_table(gt(quants), space = "free_y")
 ```
 
 :::
@@ -600,38 +611,43 @@ cd.pheno <- cd.pheno %>%
   select(-diagnosis, -sex) %>%
   distinct(ids, .keep_all = TRUE)
 
-dict <- merge(x = dict, y = cd.pheno, all.x = TRUE, all.y  = FALSE, by = "ids")
+dict <- merge(x = dict, y = cd.pheno, all.x = TRUE, all.y = FALSE, by = "ids")
 ```
 
 #### Montreal location
 
 ```{R}
-dict$Location <- 
+dict$Location <-
   plyr::mapvalues(dict$Location,
-                  from = c("1",
-                           "2",
-                           "3",
-                           "isolated vulval disease",
-                           "L1/L4",
-                           "L1+4",
-                           "L2/L4",
-                           "L3/L4",
-                           "L3+4",
-                           "NA",
-                           "L4",
-                           "No luminal"),
-                  to = c("L1",
-                         "L2",
-                         "L3",
-                         NA,
-                         "L1",
-                         "L1",
-                         "L2",
-                         "L3",
-                         "L3",
-                         NA,
-                         NA,
-                         NA))
+    from = c(
+      "1",
+      "2",
+      "3",
+      "isolated vulval disease",
+      "L1/L4",
+      "L1+4",
+      "L2/L4",
+      "L3/L4",
+      "L3+4",
+      "NA",
+      "L4",
+      "No luminal"
+    ),
+    to = c(
+      "L1",
+      "L2",
+      "L3",
+      NA,
+      "L1",
+      "L1",
+      "L2",
+      "L3",
+      "L3",
+      NA,
+      NA,
+      NA
+    )
+  )
 ```
 
 
@@ -647,12 +663,12 @@ counts <- data.frame(table(dict.cd.fc$Location, useNA = "ifany"))
 colnames(counts) <- c("Montreal location", "Frequency")
 
 dict.cd.fc %>%
-    ggplot(aes(x = Location)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Montreal location") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Location)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Montreal location") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### CRP
@@ -664,12 +680,12 @@ counts <- data.frame(table(dict.cd.crp$Location, useNA = "ifany"))
 colnames(counts) <- c("Montreal location", "Frequency")
 
 dict.cd.crp %>%
-    ggplot(aes(x = Location)) +
-    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
-    theme_minimal() +
-    xlab("Montreal location") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Location)) +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
+  theme_minimal() +
+  xlab("Montreal location") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### Overlap
@@ -681,12 +697,12 @@ counts <- data.frame(table(dict.cd.both$Location, useNA = "ifany"))
 colnames(counts) <- c("Montreal location", "Frequency")
 
 dict.cd.both %>%
-    ggplot(aes(x = Location)) +
-    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
-    theme_minimal() +
-    xlab("Montreal location") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Location)) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  xlab("Montreal location") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -695,9 +711,10 @@ dict.cd.both %>%
 
 
 ```{R}
-dict$L4 <- plyr::mapvalues(dict$L4, 
-                               from = c("0", "1", "N"),
-                               to = c("No", "Yes", "No"))
+dict$L4 <- plyr::mapvalues(dict$L4,
+  from = c("0", "1", "N"),
+  to = c("No", "Yes", "No")
+)
 ```
 
 ::: {.panel-tabset group="biomarker"}
@@ -711,12 +728,12 @@ counts <- data.frame(table(dict.cd.fc$L4, useNA = "ifany"))
 colnames(counts) <- c("L4 present", "Frequency")
 
 dict.cd.fc %>%
-    ggplot(aes(x = L4)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("L4 present") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = L4)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("L4 present") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 
@@ -729,12 +746,12 @@ counts <- data.frame(table(dict.cd.crp$L4, useNA = "ifany"))
 colnames(counts) <- c("L4 present", "Frequency")
 
 dict.cd.crp %>%
-    ggplot(aes(x = L4)) +
-    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
-    theme_minimal() +
-    xlab("L4 present") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = L4)) +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
+  theme_minimal() +
+  xlab("L4 present") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### Overlap
@@ -746,12 +763,12 @@ counts <- data.frame(table(dict.cd.both$L4, useNA = "ifany"))
 colnames(counts) <- c("L4 present", "Frequency")
 
 dict.cd.both %>%
-    ggplot(aes(x = L4)) +
-    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
-    theme_minimal() +
-    xlab("L4 present") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = L4)) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  xlab("L4 present") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -760,28 +777,33 @@ dict.cd.both %>%
 
 ```{R}
 dict$Behaviour <- plyr::mapvalues(dict$Behaviour,
-                                      from = c("0",
-                                               "1",
-                                               "2",
-                                               "3",
-                                               "B0",
-                                               "C1",
-                                               "L2",
-                                               "L3",
-                                               "NA",
-                                               "No luminal",
-                                               "No luminal disease"),
-                                      to = c(NA,
-                                             "B1",
-                                             "B2",
-                                             "B3",
-                                             NA,
-                                             NA,
-                                             NA,
-                                             NA,
-                                             NA,
-                                             NA,
-                                             NA))
+  from = c(
+    "0",
+    "1",
+    "2",
+    "3",
+    "B0",
+    "C1",
+    "L2",
+    "L3",
+    "NA",
+    "No luminal",
+    "No luminal disease"
+  ),
+  to = c(
+    NA,
+    "B1",
+    "B2",
+    "B3",
+    NA,
+    NA,
+    NA,
+    NA,
+    NA,
+    NA,
+    NA
+  )
+)
 ```
 
 ::: {.panel-tabset group="biomarker"}
@@ -795,12 +817,12 @@ counts <- data.frame(table(dict.cd.fc$Behaviour, useNA = "ifany"))
 colnames(counts) <- c("Montreal behaviour", "Frequency")
 
 dict.cd.fc %>%
-    ggplot(aes(x = Behaviour)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Montreal behaviour") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Behaviour)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Montreal behaviour") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### CRP
@@ -812,12 +834,12 @@ counts <- data.frame(table(dict.cd.crp$Behaviour, useNA = "ifany"))
 colnames(counts) <- c("Montreal behaviour", "Frequency")
 
 dict.cd.crp %>%
-    ggplot(aes(x = Behaviour)) +
-    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
-    theme_minimal() +
-    xlab("Montreal behaviour") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Behaviour)) +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
+  theme_minimal() +
+  xlab("Montreal behaviour") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### Overlap
@@ -829,11 +851,11 @@ counts <- data.frame(table(dict.cd.both$Behaviour, useNA = "ifany"))
 colnames(counts) <- c("Montreal behaviour", "Frequency")
 
 dict.cd.both %>%
-    ggplot(aes(x = Behaviour)) +
-    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
-    theme_minimal() +
-    xlab("Montreal behaviour") +
-    ylab("Frequency") +
+  ggplot(aes(x = Behaviour)) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  xlab("Montreal behaviour") +
+  ylab("Frequency") +
   wrap_table(gt(counts), space = "free_y")
 ```
 
@@ -843,8 +865,9 @@ dict.cd.both %>%
 
 ```{R}
 dict$Perianal <- plyr::mapvalues(dict$Perianal,
-                                 from = c("0", "1", "n", "N", "NA", "Y" ),
-                                 to = c("No", "Yes", "No", "No", NA, "Yes"))
+  from = c("0", "1", "n", "N", "NA", "Y"),
+  to = c("No", "Yes", "No", "No", NA, "Yes")
+)
 ```
 
 ::: {.panel-tabset group="biomarker"}
@@ -858,12 +881,12 @@ counts <- data.frame(table(dict.cd.fc$Perianal, useNA = "ifany"))
 colnames(counts) <- c("Perianal disease present", "Frequency")
 
 dict.cd.fc %>%
-    ggplot(aes(x = Perianal)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Perianal disease present") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Perianal)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Perianal disease present") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### CRP
@@ -875,12 +898,12 @@ counts <- data.frame(table(dict.cd.crp$Perianal, useNA = "ifany"))
 colnames(counts) <- c("Perianal disease present", "Frequency")
 
 dict.cd.crp %>%
-    ggplot(aes(x = Perianal)) +
-    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
-    theme_minimal() +
-    xlab("Perianal disease present") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Perianal)) +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
+  theme_minimal() +
+  xlab("Perianal disease present") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### Overlap
@@ -890,13 +913,13 @@ dict.cd.both <- subset(dict, ids %in% crp$ids & ids %in% fcal$ids & diagnosis ==
 counts <- data.frame(table(dict.cd.both$Perianal, useNA = "ifany"))
 colnames(counts) <- c("Perianal disease present", "Frequency")
 
-dict.cd.both  %>%
-    ggplot(aes(x = Perianal)) +
-    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
-    theme_minimal() +
-    xlab("Perianal disease present") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+dict.cd.both %>%
+  ggplot(aes(x = Perianal)) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  xlab("Perianal disease present") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -904,42 +927,47 @@ dict.cd.both  %>%
 #### Smoking status
 
 ```{R}
-dict$Smoke <- 
+dict$Smoke <-
   plyr::mapvalues(dict$Smoke,
-                  from = c("?",
-                           "0",
-                           "1",
-                           "1`",
-                           "2",
-                           "current",
-                           "Current",
-                           "Curent",
-                           "ex",
-                           "Ex",
-                           "EX",
-                           "N",
-                           "never",
-                           "Never",
-                           "NEVER",
-                           "Unknown", 
-                           "NA"), 
-                  to = c(NA,
-                         "No",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "No",
-                         "No",
-                         "No",
-                         "No",
-                         NA,
-                         NA))
+    from = c(
+      "?",
+      "0",
+      "1",
+      "1`",
+      "2",
+      "current",
+      "Current",
+      "Curent",
+      "ex",
+      "Ex",
+      "EX",
+      "N",
+      "never",
+      "Never",
+      "NEVER",
+      "Unknown",
+      "NA"
+    ),
+    to = c(
+      NA,
+      "No",
+      "Yes",
+      "Yes",
+      "Yes",
+      "Yes",
+      "Yes",
+      "Yes",
+      "Yes",
+      "Yes",
+      "Yes",
+      "No",
+      "No",
+      "No",
+      "No",
+      NA,
+      NA
+    )
+  )
 ```
 
 
@@ -953,12 +981,12 @@ counts <- data.frame(table(dict.cd.fc$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
 dict.cd.fc %>%
-    ggplot(aes(x = Smoke)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Previously smoked") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Smoke)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Previously smoked") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### CRP
@@ -969,12 +997,12 @@ counts <- data.frame(table(dict.cd.crp$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
 dict.cd.crp %>%
-    ggplot(aes(x = Smoke)) +
-    geom_bar(fill = "#EF2D56", color =   "#BE2544") +
-    theme_minimal() +
-    xlab("Previously smoked") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Smoke)) +
+  geom_bar(fill = "#EF2D56", color = "#BE2544") +
+  theme_minimal() +
+  xlab("Previously smoked") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### Overlap
@@ -985,12 +1013,12 @@ counts <- data.frame(table(dict.cd.both$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
 dict.cd.both %>%
-    ggplot(aes(x = Smoke)) +
-    geom_bar(fill = "#42D9C8", color = "#15AB9D") +
-    theme_minimal() +
-    xlab("Previously smoked") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Smoke)) +
+  geom_bar(fill = "#42D9C8", color = "#15AB9D") +
+  theme_minimal() +
+  xlab("Previously smoked") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -1003,44 +1031,54 @@ associated with better disease outcomes [@Noor2024; @Dhaens2008].
 
 ```{R}
 #| warning: false
-cd.bio1 <- read.csv(paste0(prefix,
-                            "2024-10-29/cd-bio_to-do Master Copy (NathanNoID)",
-                            ".csv"))
+cd.bio1 <- read.csv(paste0(
+  prefix,
+  "2024-10-29/cd-bio_to-do Master Copy (NathanNoID)",
+  ".csv"
+))
 
-bad.dates <- c("na",
-               "2017  00:00:00",
-               "?2018",
-               "01/10/2019 (induction course), restarted 01/06/2020",
-               "?2018-2023",
-               "?2022",
-               "UNKNOWN",
-               "No Follow up")
+bad.dates <- c(
+  "na",
+  "2017  00:00:00",
+  "?2018",
+  "01/10/2019 (induction course), restarted 01/06/2020",
+  "?2018-2023",
+  "?2022",
+  "UNKNOWN",
+  "No Follow up"
+)
 
-ineligble <-  c("(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
-               "(Toculizamab for RA?)")
+ineligble <- c(
+  "(Single agent Rituximab and RCHOP therapy post liver transplant- 2014)",
+  "(Toculizamab for RA?)"
+)
 
 cd.bio1 <- cd.bio1 %>%
-  select(ids,
-         Date.started...7, 
-         Date.started...10,
-         Date.started...13,
-         Date.started...16,
-         Date.started...19,
-         Date.started...22,
-         Date.started...25)
+  select(
+    ids,
+    Date.started...7,
+    Date.started...10,
+    Date.started...13,
+    Date.started...16,
+    Date.started...19,
+    Date.started...22,
+    Date.started...25
+  )
 
-colnames(cd.bio1) <- c("ids",
-                       "X1ST.LINE.START",
-                       "X2ND.LINE.START",
-                       "X3RD.LINE.START",
-                       "X4TH.LINE.START",
-                       "X5TH.LINE.START",
-                       "X6th.line.start",
-                       "X7TH.LINE.START")
+colnames(cd.bio1) <- c(
+  "ids",
+  "X1ST.LINE.START",
+  "X2ND.LINE.START",
+  "X3RD.LINE.START",
+  "X4TH.LINE.START",
+  "X5TH.LINE.START",
+  "X6th.line.start",
+  "X7TH.LINE.START"
+)
 cd.bio1$X8TH.LINE.START <- NA
 
 temp <- function(x) {
-  x[x %in% bad.dates]  <- NA
+  x[x %in% bad.dates] <- NA
   x
 }
 
@@ -1048,30 +1086,36 @@ cd.bio1 <- as.data.frame(lapply(cd.bio1, temp))
 
 cd.bio1 <- fix_date_df(cd.bio1, colnames(cd.bio1)[-1], excel = TRUE)
 
-cd.bio2 <- read.csv(paste0(prefix,
-                            "2024-10-29/cd-bio_general",
-                            ".csv"))
+cd.bio2 <- read.csv(paste0(
+  prefix,
+  "2024-10-29/cd-bio_general",
+  ".csv"
+))
 
 cd.bio2 <- cd.bio2 %>%
-  select(ids,
-         Date.1st.biologic,
-         X2ND.LINE.START,
-         X3RD.LINE.START, 
-         X4TH.LINE.START,
-         X5TH.LINE.START,
-         X6th.line.start,
-         X7th.line.start,
-         X8th.line.start)
+  select(
+    ids,
+    Date.1st.biologic,
+    X2ND.LINE.START,
+    X3RD.LINE.START,
+    X4TH.LINE.START,
+    X5TH.LINE.START,
+    X6th.line.start,
+    X7th.line.start,
+    X8th.line.start
+  )
 
-colnames(cd.bio2) <- c("ids",
-                       "X1ST.LINE.START",
-                       "X2ND.LINE.START",
-                       "X3RD.LINE.START",
-                       "X4TH.LINE.START",
-                       "X5TH.LINE.START",
-                       "X6th.line.start",
-                       "X7TH.LINE.START",
-                       "X8TH.LINE.START")
+colnames(cd.bio2) <- c(
+  "ids",
+  "X1ST.LINE.START",
+  "X2ND.LINE.START",
+  "X3RD.LINE.START",
+  "X4TH.LINE.START",
+  "X5TH.LINE.START",
+  "X6th.line.start",
+  "X7TH.LINE.START",
+  "X8TH.LINE.START"
+)
 
 cd.bio2 <- as.data.frame(lapply(cd.bio2, temp))
 
@@ -1083,37 +1127,42 @@ cd.bio <- rbind(cd.bio1, cd.bio2) %>%
 
 cd.bio <- cd.bio %>%
   drop_na(X1ST.LINE.START) %>% # Require at least one bio
-  filter(ids %in% dict$ids) %>% # Only subjects included in study 
+  filter(ids %in% dict$ids) %>% # Only subjects included in study
   mutate(AT = 1) # All subjects have an AT
 
 # Subtract date of diagnosis and scale to years
 cd.bio <- merge(cd.bio,
-                dict[, c("ids", "date.of.diag")],
-                by = "ids",
-                all.x = FALSE,
-                all.y = FALSE) %>%
-  mutate(X1ST.LINE.START = as.numeric(X1ST.LINE.START - date.of.diag)/365.25,
-         X2ND.LINE.START = as.numeric(X2ND.LINE.START - date.of.diag)/365.25,
-         X3RD.LINE.START = as.numeric(X3RD.LINE.START - date.of.diag)/365.25,
-         X4TH.LINE.START = as.numeric(X4TH.LINE.START - date.of.diag)/365.25,
-         X5TH.LINE.START = as.numeric(X5TH.LINE.START - date.of.diag)/365.25,
-         X6th.line.start = as.numeric(X6th.line.start - date.of.diag)/365.25,
-         X7TH.LINE.START = as.numeric(X7TH.LINE.START - date.of.diag)/365.25,
-         X8TH.LINE.START = as.numeric(X8TH.LINE.START - date.of.diag)/365.25)
+  dict[, c("ids", "date.of.diag")],
+  by = "ids",
+  all.x = FALSE,
+  all.y = FALSE
+) %>%
+  mutate(
+    X1ST.LINE.START = as.numeric(X1ST.LINE.START - date.of.diag) / 365.25,
+    X2ND.LINE.START = as.numeric(X2ND.LINE.START - date.of.diag) / 365.25,
+    X3RD.LINE.START = as.numeric(X3RD.LINE.START - date.of.diag) / 365.25,
+    X4TH.LINE.START = as.numeric(X4TH.LINE.START - date.of.diag) / 365.25,
+    X5TH.LINE.START = as.numeric(X5TH.LINE.START - date.of.diag) / 365.25,
+    X6th.line.start = as.numeric(X6th.line.start - date.of.diag) / 365.25,
+    X7TH.LINE.START = as.numeric(X7TH.LINE.START - date.of.diag) / 365.25,
+    X8TH.LINE.START = as.numeric(X8TH.LINE.START - date.of.diag) / 365.25
+  )
 
 
 # Set negative times to 0
 cd.bio[cd.bio < 0] <- 0
 
-names(cd.bio) <- c("ids",
-                   paste0("AT_line_", 1:8),
-                   "AT",
-                   "date.of.diag")
+names(cd.bio) <- c(
+  "ids",
+  paste0("AT_line_", 1:8),
+  "AT",
+  "date.of.diag"
+)
 
 dict <- cd.bio %>%
   select(-date.of.diag) %>%
   merge(x = dict, all.x = TRUE, all.y = TRUE, by = "ids") %>%
-  mutate(AT = if_else(diagnosis == "Crohn's Disease" & is.na(AT), 0, AT)) 
+  mutate(AT = if_else(diagnosis == "Crohn's Disease" & is.na(AT), 0, AT))
 ```
 
 
@@ -1124,12 +1173,14 @@ dict <- cd.bio %>%
 ```{R}
 dict.fc.cd <- subset(dict, diagnosis == "Crohn's Disease" & ids %in% fcal$ids)
 
-#Apply censoring
+# Apply censoring
 dict.fc.cd <- dict.fc.cd %>%
-  mutate(AT_line_1  = if_else(AT == 0, 7, as.numeric(AT_line_1 ))) %>%
+  mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
   mutate(AT = if_else(AT_line_1 > 7, 0, 1)) %>%
-  mutate(AT_line_1 = if_else(AT_line_1  > 7, 7, AT_line_1),
-         AT = if_else(AT_line_1 == 7, 0, AT))
+  mutate(
+    AT_line_1 = if_else(AT_line_1 > 7, 7, AT_line_1),
+    AT = if_else(AT_line_1 == 7, 0, AT)
+  )
 
 
 survfit(Surv(AT_line_1, AT) ~ 1, data = dict.fc.cd) %>%
@@ -1141,15 +1192,17 @@ survfit(Surv(AT_line_1, AT) ~ 1, data = dict.fc.cd) %>%
 ```{R}
 dict.crp.cd <- subset(dict, diagnosis == "Crohn's Disease" & ids %in% crp$ids)
 
-#Apply censoring
+# Apply censoring
 dict.crp.cd <- dict.crp.cd %>%
   mutate(AT_line_1 = if_else(AT == 0, 7, as.numeric(AT_line_1))) %>%
   mutate(AT = if_else(AT_line_1 > 7, 0, 1)) %>%
-   mutate(AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1))
+  mutate(AT_line_1 = if_else(AT_line_1 > 7, 7, AT_line_1))
 
 dict.crp.cd <- dict.crp.cd %>%
-  mutate(AT_line_1= if_else(AT_line_1 < 0, 0, AT_line_1),
-         AT = if_else(AT_line_1 == 7, 0, AT))
+  mutate(
+    AT_line_1 = if_else(AT_line_1 < 0, 0, AT_line_1),
+    AT = if_else(AT_line_1 == 7, 0, AT)
+  )
 
 survfit(Surv(AT_line_1, AT) ~ 1, data = dict.crp.cd) %>%
   ggsurvplot()
@@ -1161,15 +1214,17 @@ survfit(Surv(AT_line_1, AT) ~ 1, data = dict.crp.cd) %>%
 
 ```{R}
 uc.pheno.1 <- read_xlsx(paste0(prefix, "2024-10-23/UC-pheno.xlsx"),
-                      range = cell_cols(1:4))
+  range = cell_cols(1:4)
+)
 
 uc.pheno.2 <- read_xlsx(paste0(prefix, "2024-12-11/UC-pheno-crp.xlsx"),
-                        range = cell_cols(1:4))
+  range = cell_cols(1:4)
+)
 uc.pheno <- rbind(uc.pheno.1, uc.pheno.2) %>%
   distinct(ids, .keep_all = TRUE)
 
 
-uc.pheno <- select(uc.pheno, -diagnosis) 
+uc.pheno <- select(uc.pheno, -diagnosis)
 dict <- merge(dict, uc.pheno, by = "ids", all.x = TRUE, all.y = FALSE) %>%
   mutate(Smoke = if_else(is.na(Smoke.x), Smoke.y, Smoke.x)) %>%
   select(-Smoke.x, -Smoke.y)
@@ -1180,8 +1235,9 @@ dict <- merge(dict, uc.pheno, by = "ids", all.x = TRUE, all.y = FALSE) %>%
 ```{R}
 dict <- dict %>%
   mutate(Extent = if_else(!is.na(Extent) & !str_detect(Extent, "E"),
-                          paste0("E", Extent),
-                          NA))
+    paste0("E", Extent),
+    NA
+  ))
 ```
 
 ::: {.panel-tabset group="biomarker"}
@@ -1189,57 +1245,63 @@ dict <- dict %>%
 ##### Faecal calprotectin
 
 ```{R}
-dict.uc.fc <- subset(dict,
-                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)))
+dict.uc.fc <- subset(
+  dict,
+  diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids))
+)
 
 
 counts <- data.frame(table(dict.uc.fc$Extent, useNA = "ifany"))
 colnames(counts) <- c("Montreal extent", "Frequency")
 
 dict.uc.fc %>%
-    ggplot(aes(x = Extent)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Montreal location") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Extent)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Montreal location") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### CRP
 
 ```{R}
-dict.uc.crp <- subset(dict,
-                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(crp$ids)))
+dict.uc.crp <- subset(
+  dict,
+  diagnosis == "Ulcerative Colitis" & (ids %in% unique(crp$ids))
+)
 
 
 counts <- data.frame(table(dict.uc.crp$Extent, useNA = "ifany"))
 colnames(counts) <- c("Montreal extent", "Frequency")
 
 dict.uc.crp %>%
-    ggplot(aes(x = Extent)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Montreal extent") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Extent)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Montreal extent") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### Overlap
 
 ```{R}
-dict.uc.both <- subset(dict,
-                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)) & (ids %in% unique(crp$ids)))
+dict.uc.both <- subset(
+  dict,
+  diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)) & (ids %in% unique(crp$ids))
+)
 
 counts <- data.frame(table(dict.uc.both$Extent, useNA = "ifany"))
 colnames(counts) <- c("Montreal extent", "Frequency")
 
 dict.uc.both %>%
-    ggplot(aes(x = Extent)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Montreal location") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Extent)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Montreal location") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -1247,22 +1309,27 @@ dict.uc.both %>%
 #### Smoking status
 
 ```{R}
-dict$Smoke <- 
+dict$Smoke <-
   plyr::mapvalues(dict$Smoke,
-                  from = c("0",
-                           "0.01",
-                           "never",
-                           "1",
-                           "2",
-                           "ex",
-                           "former"), 
-                  to = c("No",
-                         "No",
-                         "No",
-                         "Yes",
-                         "Yes",
-                         "Yes",
-                         "Yes"))
+    from = c(
+      "0",
+      "0.01",
+      "never",
+      "1",
+      "2",
+      "ex",
+      "former"
+    ),
+    to = c(
+      "No",
+      "No",
+      "No",
+      "Yes",
+      "Yes",
+      "Yes",
+      "Yes"
+    )
+  )
 ```
 
 ::: {.panel-tabset group="biomarker"}
@@ -1270,55 +1337,61 @@ dict$Smoke <-
 ##### Faecal calprotectin
 
 ```{R}
-dict.uc.fc <- subset(dict,
-                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)))
+dict.uc.fc <- subset(
+  dict,
+  diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids))
+)
 
 counts <- data.frame(table(dict.uc.fc$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
 dict.uc.fc %>%
-    ggplot(aes(x = Smoke)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Previously smoked") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Smoke)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Previously smoked") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### CRP
 
 ```{R}
-dict.uc.crp <- subset(dict,
-                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(crp$ids)))
+dict.uc.crp <- subset(
+  dict,
+  diagnosis == "Ulcerative Colitis" & (ids %in% unique(crp$ids))
+)
 
 counts <- data.frame(table(dict.uc.crp$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
 dict.uc.crp %>%
-    ggplot(aes(x = Smoke)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Previously smoked") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Smoke)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Previously smoked") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 ##### Overlap
 
 ```{R}
-dict.uc.both <- subset(dict,
-                     diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)) & (ids %in% unique(crp$ids)))
+dict.uc.both <- subset(
+  dict,
+  diagnosis == "Ulcerative Colitis" & (ids %in% unique(fcal$ids)) & (ids %in% unique(crp$ids))
+)
 
 counts <- data.frame(table(dict.uc.both$Smoke, useNA = "ifany"))
 colnames(counts) <- c("Previously smoked", "Frequency")
 
 dict.uc.both %>%
-    ggplot(aes(x = Smoke)) +
-    geom_bar(fill = "#541388", color = "#2E294E") +
-    theme_minimal() +
-    xlab("Previously smoked") +
-    ylab("Frequency") +
-  wrap_table(gt(counts), space = "free_y") 
+  ggplot(aes(x = Smoke)) +
+  geom_bar(fill = "#541388", color = "#2E294E") +
+  theme_minimal() +
+  xlab("Previously smoked") +
+  ylab("Frequency") +
+  wrap_table(gt(counts), space = "free_y")
 ```
 
 :::
@@ -1332,38 +1405,46 @@ uc.bio.all <- read.csv(paste0(prefix, "2024-10-17/UC-cleaned.csv"), na.strings =
 
 ```{R}
 uc.bio.dates <- uc.bio.all %>%
-  select(ids,
-         X1ST.LINE.START,
-         X2ND.LINE.START,
-         X3RD.LINE.START,
-         X4TH.LINE.START,
-         X5TH.LINE.START,
-         X6th.line.start,
-         X7TH.LINE.START,
-         X8TH.LINE.START)
+  select(
+    ids,
+    X1ST.LINE.START,
+    X2ND.LINE.START,
+    X3RD.LINE.START,
+    X4TH.LINE.START,
+    X5TH.LINE.START,
+    X6th.line.start,
+    X7TH.LINE.START,
+    X8TH.LINE.START
+  )
 uc.bio.dates <- fix_date_df(uc.bio.dates,
-                            names(uc.bio.dates)[-1],
-                            excel = TRUE)
+  names(uc.bio.dates)[-1],
+  excel = TRUE
+)
 uc.bio.dates <- subset(uc.bio.dates, ids %in% unique(fcal$ids))
 uc.bio.dates <- merge(uc.bio.dates,
-                      dict[, c("ids", "date.of.diag")],
-                      by = "ids",
-                      all.x = FALSE,
-                      all.y = FALSE) %>%
-  mutate(X1ST.LINE.START = as.numeric(X1ST.LINE.START - date.of.diag)/365.25,
-         X2ND.LINE.START = as.numeric(X2ND.LINE.START - date.of.diag)/365.25,
-         X3RD.LINE.START = as.numeric(X3RD.LINE.START - date.of.diag)/365.25,
-         X4TH.LINE.START = as.numeric(X4TH.LINE.START - date.of.diag)/365.25,
-         X5TH.LINE.START = as.numeric(X5TH.LINE.START - date.of.diag)/365.25,
-         X6th.line.start = as.numeric(X6th.line.start - date.of.diag)/365.25,
-         X7TH.LINE.START = as.numeric(X7TH.LINE.START - date.of.diag)/365.25,
-         X8TH.LINE.START = as.numeric(X8TH.LINE.START - date.of.diag)/365.25)
+  dict[, c("ids", "date.of.diag")],
+  by = "ids",
+  all.x = FALSE,
+  all.y = FALSE
+) %>%
+  mutate(
+    X1ST.LINE.START = as.numeric(X1ST.LINE.START - date.of.diag) / 365.25,
+    X2ND.LINE.START = as.numeric(X2ND.LINE.START - date.of.diag) / 365.25,
+    X3RD.LINE.START = as.numeric(X3RD.LINE.START - date.of.diag) / 365.25,
+    X4TH.LINE.START = as.numeric(X4TH.LINE.START - date.of.diag) / 365.25,
+    X5TH.LINE.START = as.numeric(X5TH.LINE.START - date.of.diag) / 365.25,
+    X6th.line.start = as.numeric(X6th.line.start - date.of.diag) / 365.25,
+    X7TH.LINE.START = as.numeric(X7TH.LINE.START - date.of.diag) / 365.25,
+    X8TH.LINE.START = as.numeric(X8TH.LINE.START - date.of.diag) / 365.25
+  )
 
 
 uc.bio.dates[uc.bio.dates < 0] <- 0
-names(uc.bio.dates) <- c("ids",
-                         paste0("AT_line_", 1:8),
-                         "date.of.diag")
+names(uc.bio.dates) <- c(
+  "ids",
+  paste0("AT_line_", 1:8),
+  "date.of.diag"
+)
 
 
 
@@ -1374,30 +1455,34 @@ dict <- uc.bio.dates %>%
   merge(x = dict, all.x = TRUE, all.y = TRUE, by = "ids")
 
 dict <- dict %>%
-  mutate(AT_line_1 = if_else(!is.na(AT_line_1.x), AT_line_1.x, AT_line_1.y),
-         AT_line_2 = if_else(!is.na(AT_line_2.x), AT_line_2.x, AT_line_2.y),
-         AT_line_3 = if_else(!is.na(AT_line_3.x), AT_line_3.x, AT_line_3.y),
-         AT_line_4 = if_else(!is.na(AT_line_4.x), AT_line_4.x, AT_line_4.y),
-         AT_line_5 = if_else(!is.na(AT_line_5.x), AT_line_5.x, AT_line_5.y),
-         AT_line_6 = if_else(!is.na(AT_line_6.x), AT_line_6.x, AT_line_6.y),
-         AT_line_7 = if_else(!is.na(AT_line_7.x), AT_line_7.x, AT_line_7.y),
-         AT_line_8 = if_else(!is.na(AT_line_8.x), AT_line_8.x, AT_line_8.y)) %>%
-  select(-AT_line_1.x,
-         -AT_line_2.x,
-         -AT_line_3.x,
-         -AT_line_4.x,
-         -AT_line_5.x,
-         -AT_line_6.x,
-         -AT_line_7.x,
-         -AT_line_8.x,
-         -AT_line_1.y,
-         -AT_line_2.y,
-         -AT_line_3.y,
-         -AT_line_4.y,
-         -AT_line_5.y,
-         -AT_line_6.y,
-         -AT_line_7.y,
-         -AT_line_8.y) %>%
+  mutate(
+    AT_line_1 = if_else(!is.na(AT_line_1.x), AT_line_1.x, AT_line_1.y),
+    AT_line_2 = if_else(!is.na(AT_line_2.x), AT_line_2.x, AT_line_2.y),
+    AT_line_3 = if_else(!is.na(AT_line_3.x), AT_line_3.x, AT_line_3.y),
+    AT_line_4 = if_else(!is.na(AT_line_4.x), AT_line_4.x, AT_line_4.y),
+    AT_line_5 = if_else(!is.na(AT_line_5.x), AT_line_5.x, AT_line_5.y),
+    AT_line_6 = if_else(!is.na(AT_line_6.x), AT_line_6.x, AT_line_6.y),
+    AT_line_7 = if_else(!is.na(AT_line_7.x), AT_line_7.x, AT_line_7.y),
+    AT_line_8 = if_else(!is.na(AT_line_8.x), AT_line_8.x, AT_line_8.y)
+  ) %>%
+  select(
+    -AT_line_1.x,
+    -AT_line_2.x,
+    -AT_line_3.x,
+    -AT_line_4.x,
+    -AT_line_5.x,
+    -AT_line_6.x,
+    -AT_line_7.x,
+    -AT_line_8.x,
+    -AT_line_1.y,
+    -AT_line_2.y,
+    -AT_line_3.y,
+    -AT_line_4.y,
+    -AT_line_5.y,
+    -AT_line_6.y,
+    -AT_line_7.y,
+    -AT_line_8.y
+  ) %>%
   mutate(AT = if_else(!is.na(AT_line_1), 1, 0))
 ```
 
@@ -1410,8 +1495,10 @@ dict <- dict %>%
 dict.fc.uc <- dict %>%
   filter(diagnosis == "Ulcerative Colitis" & ids %in% fcal$ids) %>%
   mutate(AT_line_1 = if_else(AT == 0, 7, AT_line_1)) %>%
-  mutate(AT = if_else(AT_line_1 > 7, 0, 1),
-         AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+  mutate(
+    AT = if_else(AT_line_1 > 7, 0, 1),
+    AT_line_1 = if_else(AT_line_1 > 7, 7, AT_line_1)
+  ) %>%
   mutate(AT = if_else(AT_line_1 == 7, 0, AT))
 
 survfit(Surv(AT_line_1, AT) ~ 1, data = dict.fc.uc) %>%
@@ -1424,8 +1511,10 @@ survfit(Surv(AT_line_1, AT) ~ 1, data = dict.fc.uc) %>%
 dict.crp.uc <- dict %>%
   filter(diagnosis == "Ulcerative Colitis" & ids %in% crp$ids) %>%
   mutate(AT_line_1 = if_else(AT == 0, 7, AT_line_1)) %>%
-  mutate(AT = if_else(AT_line_1 > 7, 0, 1),
-         AT_line_1  = if_else(AT_line_1  > 7, 7, AT_line_1)) %>%
+  mutate(
+    AT = if_else(AT_line_1 > 7, 0, 1),
+    AT_line_1 = if_else(AT_line_1 > 7, 7, AT_line_1)
+  ) %>%
   mutate(AT = if_else(AT_line_1 == 7, 0, AT))
 
 survfit(Surv(AT_line_1, AT) ~ 1, data = dict.crp.uc) %>%
@@ -1475,4 +1564,3 @@ table1(~ age + sex + diagnosis | model,
 ```{R}
 saveRDS(dict, paste0(prefix, "processed/dict.RDS"))
 ```
-

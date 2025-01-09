@@ -7,7 +7,7 @@
 #' @param alluvial.df Data frame containing class assignments for subjects for
 #'   differing G
 #' @export
-reLabel <- function(new.G, alluvial.df){
+reLabel <- function(new.G, alluvial.df) {
   # Global vars
   G <- ids <- NULL
 
@@ -18,10 +18,11 @@ reLabel <- function(new.G, alluvial.df){
   # Dictionary to hold old and new labels for G.
   dict <- data.frame(old.g = numeric(), new.g = numeric())
 
-  potential <-  1:new.G # potential labels
+  potential <- 1:new.G # potential labels
 
   gs <- as.numeric(names(sort(table(new.g$class)[table(new.g$class) != 0],
-                              decreasing = TRUE))) # Order new.g by size
+    decreasing = TRUE
+  ))) # Order new.g by size
   for (g in gs) {
     # Find old classes
     tab <- table(subset(old.g, ids %in% subset(new.g, class == g)$ids)$class)
@@ -38,12 +39,13 @@ reLabel <- function(new.G, alluvial.df){
       dict <- rbind(dict, data.frame(old.g = g, new.g = new.g.cands[1]))
     }
     # Stop label being assigned twice by removing it from list of potential labs
-    potential <- potential[potential!=new.g.cands[1]]
+    potential <- potential[potential != new.g.cands[1]]
   }
 
-  alluvial.df[alluvial.df[, "G"] == new.G, "class" ] <-
+  alluvial.df[alluvial.df[, "G"] == new.G, "class"] <-
     plyr::mapvalues(alluvial.df[alluvial.df[, "G"] == new.G, "class"],
-                    from = dict[, "old.g"],
-                    to = dict[, "new.g"])
+      from = dict[, "old.g"],
+      to = dict[, "new.g"]
+    )
   return(alluvial.df)
 }
