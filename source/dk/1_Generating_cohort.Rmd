@@ -1,0 +1,408 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-04-30"
+editor_options: 
+  chunk_output_type: console
+---
+
+Author: Marie Vibeke Vestergaard
+This is adapted from the code from Nathan Constantine-Cooke
+
+This script will find IBD patients eligible for this study
+- They should be diagnosed after 2015
+
+Read in packages and file paths:
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(lubridate)
+path_registers <- "/ngc/projects2/predict_r/research/data/sds_registers/2022-09"
+path_project <- "/ngc/projects2/predict_r/research/projects/0042_IBD_fcal_crp_trajectories"
+path_basefiles <- "/ngc/projects2/predict_r/research/data/basefiles/2023-07" 
+```
+
+## Select IBD patients:
+The full IBD cohort and lab results are extracted from registries previously
+```{r}
+full_ibd_cohort <- read.csv("/ngc/projects2/predict_r/research/projects/0007_Genetics_SNP_QC_IMP_PKU_NordIBD/GeneratedData/cohort_information/complementary_files/All_IBD_patients.csv", sep=";")
+
+#Select diagnosed after 2015:
+cohort <- full_ibd_cohort %>% filter(as.Date(diag_date)>=as.Date("2015-01-01"))
+
+#Lab tests
+lab_IBD <- read.csv("/ngc/projects2/predict_r/research/projects/0007_Genetics_SNP_QC_IMP_PKU_NordIBD/GeneratedData/lab/IBD_lab_Nathan.txt.gz", sep="\t")
+lab_IBD <- lab_IBD %>% filter(lbnr %in% cohort$lbnr)
+
+f_cal <- c("NPU19717", "NPU26814")
+crp <- c("NPU19748", "NPU01423")
+
+table(lab_IBD$ANALYSISCODE)
+# NPU01423 NPU19717 NPU19748 NPU26814  -> (= CRP, f-cal, CRP, f-cal)
+#    24815   237726  1797955    90098 
+
+p1 <- ggplot(lab_IBD %>% filter(ANALYSISCODE %in% crp))+
+  geom_density(aes(x=as.numeric(VALUE), fill=ANALYSISCODE), alpha=0.5)+
+  theme_classic()+xlim(c(0,400))
+
+ggsave(p1, file=paste0(path_project, "/Illustrations/NPU_distributions_CRP.tiff"))
+
+p2 <- ggplot(lab_IBD %>% filter(ANALYSISCODE %in% f_cal))+
+  geom_density(aes(x=as.numeric(VALUE), fill=ANALYSISCODE), alpha=0.5)+
+  theme_classic()+xlim(c(0,5000))
+
+ggsave(p2, file=paste0(path_project, "/Illustrations/NPU_distributions_Fcal.tiff"))
+
+#FC values appear similar for both NPU codes - merge!
+#CRP values appears to be higher for NPU01423. It has much fewer samples --> for consistency, just go for just NPU19748
+crp <- c("NPU19748")
+
+#Combine and filter
+#Period: from 90 days before diagnosis till 5 years after. 
+lab_IBD <- left_join(lab_IBD, full_ibd_cohort %>% select(lbnr, diag_date, final_diag, sex, birth_date), by="lbnr") %>% filter(as.Date(SAMPLINGDATE)>=as.Date(diag_date)-days(90)) %>% filter(as.Date(SAMPLINGDATE)<=as.Date(diag_date)+years(5))
+
+lab_crp <- lab_IBD %>% filter(ANALYSISCODE %in% crp)
+lab_fcal<- lab_IBD %>% filter(ANALYSISCODE %in% f_cal)
+
+#CRP
+#Those with sampling at diagnosis +- 90 days
+crp_diag <- lab_crp %>% filter(as.Date(SAMPLINGDATE)>=as.Date(diag_date)-days(90) & as.Date(SAMPLINGDATE)<=as.Date(diag_date)+days(90))
+
+#Those with at least 3 in total:
+crp_rest <- lab_crp %>% group_by(lbnr) %>% mutate(n=n()) %>% filter(n>2)
+
+lab_crp <- lab_crp %>% filter(lbnr %in% crp_diag$lbnr & lbnr %in% crp_rest$lbnr)
+length(unique(lab_crp$lbnr)) # 7740 IBD patients 
+
+lab_crp <- lab_crp %>% mutate(final_diag = ifelse(final_diag %in% c("CD", "CD_unc"), "CD", "UC"))
+
+#F-cal:
+#Those with sampling at diagnosis
+fcal_diag <- lab_fcal %>% filter(as.Date(SAMPLINGDATE)>=as.Date(diag_date)-days(90) & as.Date(SAMPLINGDATE)<=as.Date(diag_date)+days(90))
+
+#Those with at least 3 in total:
+fcal_rest <- lab_fcal %>% group_by(lbnr) %>% mutate(n=n()) %>% filter(n>2)
+
+#Those fulfilling both criteria:
+lab_fcal <- lab_fcal %>% filter(lbnr %in% fcal_diag$lbnr & lbnr %in% fcal_rest$lbnr)
+length(unique(lab_fcal$lbnr)) #5445 IBD patients 
+
+lab_fcal <- lab_fcal %>% mutate(final_diag = ifelse(final_diag %in% c("CD", "CD_unc"), "CD", "UC"))
+
+#Save files:
+write.table(lab_crp, paste0(path_project, "/GeneratedData/CRP_values.txt"), sep="\t", quote = F, row.names = F, col.names = T)
+write.table(lab_fcal, paste0(path_project, "/GeneratedData/Fcal_values.txt"), sep="\t", quote = F, row.names = F, col.names = T)
+```
+
+## Retiming of sampling
+```{r}
+lab_crp <- read.csv(paste0(path_project, "/GeneratedData/CRP_values.txt"), sep="\t") %>% mutate(diag_date = as.Date(diag_date), SAMPLINGDATE = as.Date(SAMPLINGDATE), birth_date = as.Date(birth_date))
+lab_fcal <- read.csv(paste0(path_project, "/GeneratedData/Fcal_values.txt"), sep="\t")%>% mutate(diag_date = as.Date(diag_date), SAMPLINGDATE = as.Date(SAMPLINGDATE), birth_date = as.Date(birth_date))
+
+#Check, that there are no missing date of birth, sex or date of diagnosis
+sum(is.na(lab_crp$birth_date))
+sum(is.na(lab_crp$sex))
+sum(is.na(lab_crp$diag_date))
+sum(is.na(lab_fcal$birth_date))
+sum(is.na(lab_fcal$sex))
+sum(is.na(lab_fcal$diag_date))
+
+# Add age at IBD diagnosis
+lab_crp <- lab_crp %>% mutate(diag_age = as.numeric(diag_date-birth_date)/365.24)
+lab_fcal <- lab_fcal %>% mutate(diag_age = as.numeric(diag_date-birth_date)/365.24)
+
+#Retiming: If there's a test in the 90 days prior to diagnosis, this one's sampling date will be t=0. Otherwise, t=0 is at date of diagnosis
+lab_crp <- lab_crp %>% arrange(SAMPLINGDATE) %>% group_by(lbnr) %>% mutate(first_sampling = min(SAMPLINGDATE))
+lab_crp <- lab_crp %>% mutate(new_diag_date = as.Date(ifelse(first_sampling<diag_date, first_sampling, diag_date))) %>% mutate(t = as.numeric(SAMPLINGDATE-new_diag_date)) %>% arrange(lbnr, SAMPLINGDATE)
+
+lab_fcal <- lab_fcal %>% arrange(SAMPLINGDATE) %>% group_by(lbnr) %>% mutate(first_sampling = min(SAMPLINGDATE))
+lab_fcal <- lab_fcal %>% mutate(new_diag_date = as.Date(ifelse(first_sampling<diag_date, first_sampling, diag_date))) %>% mutate(t = as.numeric(SAMPLINGDATE-new_diag_date)) %>% arrange(lbnr, SAMPLINGDATE)
+
+#Reapply filter of <= 5 years and >=3 measurements:
+lab_crp <- lab_crp %>% filter(t<=5*365.24) %>% group_by(lbnr) %>% mutate(n=n()) %>% filter(n>=3)
+length(unique(lab_crp$lbnr)) #14186 IBD patients
+
+lab_fcal <- lab_fcal %>% filter(t<=5*365.24) %>% group_by(lbnr) %>% mutate(n=n()) %>% filter(n>=3)
+length(unique(lab_fcal$lbnr)) #8762 IBD patients
+```
+
+## Repeating Nathan's plots (LIBDR) evaluating diagnosis date:
+```{r}
+# Year of diagnosis (the original)
+p1 <- ggplot(lab_crp)+
+  geom_histogram(aes(x=year(diag_date)), fill = "#B8F2E6", color = "black", binwidth = 1)+
+  theme_minimal() +
+  xlab("Year of IBD diagnosis") +
+  ylab("Frequency")
+
+ggsave(p1, file=paste0(path_project, "/Illustrations/Diag_year.tiff"))
+
+p2 <- ggplot(lab_crp, aes(x = as.factor(month(diag_date, label = TRUE)))) +
+  geom_bar(color = "black", fill = "#FEC601", linewidth = 0.3) +
+  theme_minimal() +
+  ylab("Frequency") +
+  xlab("Month of IBD Diagnosis")
+
+ggsave(p2, file=paste0(path_project, "/Illustrations/Diag_month.tiff"))
+```
+
+
+## Dealing with right and left cencored test values - f-cal:
+```{r}
+#F-cal
+lab_fcal$value <- as.numeric(lab_fcal$VALUE)
+lab_fcal$VALUE[which(is.na(lab_fcal$value))] #We should recode >1800 to 1800 
+lab_fcal$value <- ifelse(lab_fcal$VALUE %in% c(">1800", ">3600"), 1800, lab_fcal$value)
+
+p1 <- ggplot(lab_fcal, aes(x = value)) +
+  geom_density(linewidth = 0.8, alpha = 0.5, fill = "#9FD8CB", color = "#517664") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("FCAL (µg/g)") +
+  ylab("Density")
+
+ggsave(p1, file=paste0(path_project, "/Illustrations/Fcal_values.tiff"))
+
+#Change all >1800 results to 1800
+lab_fcal$value <- ifelse(lab_fcal$value > 1800, 1800, lab_fcal$value)
+
+p2 <- ggplot(lab_fcal, aes(x = value)) +
+  geom_density(linewidth = 0.8, alpha = 0.5, fill = "#9FD8CB", color = "#517664") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("FCAL (µg/g)") +
+  ylab("Density")
+
+ggsave(p2, file=paste0(path_project, "/Illustrations/Fcal_values_right_censor.tiff"))
+
+#Log transformation:
+p3 <- ggplot(lab_fcal, aes(x = log(value+1))) +
+  geom_density(linewidth = 0.8, alpha = 0.5, fill = "#9FD8CB", color = "#517664") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("log(FCAL (µg/g))") +
+  ylab("Density")
+
+ggsave(p3, file=paste0(path_project, "/Illustrations/Fcal_values_log.tiff"))
+
+#Plot number of f-cal measurements pr. individual
+p4 <- ggplot(lab_fcal, aes(x = n)) +
+  geom_histogram(binwidth = 1, fill = "#887C9B") +
+  geom_vline(xintercept = 2.5, color = "#D80032") +
+  theme_minimal() +
+  xlab("Number of FCAL observations per subject") +
+  ylab("Count")
+
+ggsave(p4, file=paste0(path_project, "/Illustrations/Fcal_measurements_pr_individuals.tiff"))
+
+#Timing of sampling
+p5 <- ggplot(lab_fcal, aes(x = t, y = log(value+1), color = factor(lbnr))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.6) +
+  theme_minimal() +
+  scale_color_manual(values = viridis::viridis(length(unique(lab_fcal$lbnr)))) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(FCAL (µg/g))") +
+  ggtitle("")
+
+ggsave(p5, file=paste0(path_project, "/Illustrations/Fcal_measurements_timing.tiff")) 
+
+#Follow-up:
+p6 <- ggplot(lab_fcal %>% arrange(desc(t)) %>% group_by(lbnr) %>% slice(1), aes(x = t/365)) +
+  geom_histogram(color = "black", fill = "#5BBA6F", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Followup (years)")
+
+ggsave(p6, file=paste0(path_project, "/Illustrations/Fcal_followup.tiff"))
+
+#Followup vs. N
+p7 <- ggplot(lab_fcal %>% arrange(desc(t)) %>% group_by(lbnr) %>% slice(1), aes(y = n, x = t/365)) +
+  geom_point(color = "#FF4F79", size = 2) +
+  ylab("Number of FCAL measurements") + xlab("Followup")+
+  theme_minimal()
+
+ggsave(p7, file=paste0(path_project, "/Illustrations/Fcal_followup_N.tiff"))
+
+#Proportion of right censoring
+p8 <- ggplot(lab_fcal %>% group_by(lbnr) %>% summarise(prop = sum(value == 1800)/n(), n=sum(value == 1800)),aes(
+    x = prop, y = n)) + 
+  geom_point(alpha = 0.5, size = 0.9, color = "#D5896F") +
+  ylab("Total number of observations") +
+  xlab("Proportion of right-censored observations") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave(p8, file=paste0(path_project, "/Illustrations/Fcal_right_censor.tiff"))
+
+# Exclude patients with less that three non-censored observations:
+lab_fcal <- lab_fcal %>% group_by(lbnr) %>% mutate(n_cens=sum(value == 1800)) %>% filter(n-n_cens >=3)
+length(unique(lab_fcal$lbnr)) #7880 IBD patients
+```
+
+## Dealing with right and left cencored test values - CRP:
+```{r}
+#F-cal
+lab_crp$value <- as.numeric(lab_crp$VALUE)
+unique(lab_crp$VALUE[which(is.na(lab_crp$value))]) # <4 --> recode to 4
+lab_crp$value <- ifelse(lab_crp$VALUE == "<4" , 4, lab_crp$value)
+
+p1 <- ggplot(lab_crp, aes(x = value)) +
+  geom_density(linewidth = 0.8, alpha = 0.5, fill = "#FFC800", color = "#FF8427") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("CRP (mg/L)") +
+  ylab("Density")
+
+ggsave(p1, file=paste0(path_project, "/Illustrations/CRP_values.tiff"))
+
+
+#Log transformation:
+p3 <- ggplot(lab_crp, aes(x = log(value+1))) +
+  geom_density(linewidth = 0.8, alpha = 0.5, fill = "#FFC800", color = "#FF8427") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  xlab("log(CRP (mg/L))") +
+  ylab("Density")
+
+ggsave(p3, file=paste0(path_project, "/Illustrations/CRP_values_log.tiff"))
+
+#Plot number of measurements pr. individual
+p4 <- ggplot(lab_crp, aes(x = n)) +
+  geom_histogram(binwidth = 1, fill = "#0081A7") +
+  geom_vline(xintercept = 2.5, color = "#FF88DC") +
+  theme_minimal() +
+  xlab("Number of CRP observations per subject") +
+  ylab("Count")
+
+ggsave(p4, file=paste0(path_project, "/Illustrations/CRP_measurements_pr_individuals.tiff"))
+#Again, this looks different, as we have already applied the filtering
+
+#Timing of sampling
+p5 <- ggplot(lab_crp, aes(x = t, y = log(value+1), color = factor(lbnr))) +
+  geom_line(alpha = 0.2) +
+  geom_point(alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = viridis::viridis(length(unique(lab_crp$lbnr)))) +
+  guides(color = "none") +
+  xlab("Time (years)") +
+  ylab("Log(CRP (mg/L))") +
+  ggtitle("")
+
+ggsave(p5, file=paste0(path_project, "/Illustrations/CRP_measurements_timing.tiff"))
+
+#Follow-up:
+p6 <- ggplot(lab_crp %>% arrange(desc(t)) %>% group_by(lbnr) %>% slice(1), aes(x = t/365)) +
+  geom_histogram(color = "black", fill = "#B38D97", binwidth = 1) +
+  theme_minimal() +
+  ylab("Count") +
+  xlab("Followup (years)")
+
+ggsave(p6, file=paste0(path_project, "/Illustrations/CRP_followup.tiff"))
+
+#Followup vs. N
+p7 <- ggplot(lab_crp %>% arrange(desc(t)) %>% group_by(lbnr) %>% slice(1), aes(y = n, x = t/365)) +
+  geom_point(color = "#216869", size = 2) +
+  ylab("Number of CRP measurements") + xlab("Followup")+
+  theme_minimal()
+
+ggsave(p7, file=paste0(path_project, "/Illustrations/CRP_followup_N.tiff"))
+
+#There are many CRP measurements! Group into time intervals and use median for several observations:
+id.list <- unique(lab_crp$lbnr) #14186
+crp.ma <- matrix(NA, nrow = length(id.list), ncol = 5)
+
+for (i in seq_along(id.list)) {
+  subject_data <- subset(lab_crp, lbnr == id.list[i])
+  for (j in seq(0, 4)) {
+    if (j == 4) {
+      sub.obs <- subset(
+        subject_data,
+        t/365 >= j - 0.5 & t/365 <= j + 1
+      )
+    } else {
+      sub.obs <- subset(
+        subject_data,
+        t/365 >= j - 0.5 & t/365 < j + 0.5
+      )
+    }
+    if (nrow(sub.obs) > 0) {
+      crp.ma[i, j + 1] <- median(sub.obs$value)
+    }
+  }
+}
+
+rownames(crp.ma) <- id.list
+
+crp.ma  <- crp.ma [rowSums(is.na(crp.ma)) <= 2, ] #Should have at least 3 measurements, after splitting intp intervals.
+
+id.list <- rownames(crp.ma) #10041
+
+crp.ma <- reshape2::melt(t(crp.ma ), id.vars = row.names(crp.ma ), na.rm = TRUE)
+head(crp.ma)
+colnames(crp.ma) <- c("t", "lbnr", "value")
+crp.ma  <- crp.ma[, c(2, 3, 1)]
+crp.ma$t <- crp.ma$t - 1
+
+# Take into account uneven spacing at start and end
+crp.ma$t <- plyr::mapvalues(crp.ma$t,
+  from = c(0, 4),
+  to = c(0.25, 4.25)
+)
+
+# Add diagnosis type back
+length(unique(crp.ma$lbnr)) #10041 IBD patients, 21910 time points
+lab_crp <- left_join(crp.ma, lab_crp %>% group_by(lbnr) %>% slice(1) %>% select(lbnr, diag_date, final_diag, sex, birth_date, diag_age, new_diag_date, n), by="lbnr")
+
+```
+
+Save data:
+```{r}
+write.table(lab_crp, paste0(path_project, "/GeneratedData/CRP_values_prep.txt"), sep="\t", quote = F, row.names = F, col.names = T)
+write.table(lab_fcal %>% select(lbnr, value, t, diag_date, final_diag, sex, birth_date, diag_age, new_diag_date, n), paste0(path_project, "/GeneratedData/Fcal_values_prep.txt"), sep="\t", quote = F, row.names = F, col.names = T)
+```
+
+# IBD subtype information
+```{r}
+lab_one <- lab_crp %>% group_by(lbnr) %>% slice(1)
+table(lab_one$final_diag)
+#  CD   UC 
+#4415 5626
+
+lab_one <- lab_fcal %>% group_by(lbnr) %>% slice(1)
+table(lab_one$final_diag)
+#  CD   UC 
+#3931 3949 
+```
+
+# Overview of f-cal and CRP over the years:
+```{r}
+lab_IBD <- read.csv("/ngc/projects2/predict_r/research/projects/0007_Genetics_SNP_QC_IMP_PKU_NordIBD/GeneratedData/lab/IBD_lab_Nathan.txt.gz", sep="\t")
+f_cal <- c("NPU19717", "NPU26814")
+crp <- c("NPU19748")
+
+lab_crp <- lab_IBD %>% filter(ANALYSISCODE %in% crp)
+lab_fcal <- lab_IBD %>% filter(ANALYSISCODE %in% f_cal)
+rm(lab_IBD)
+
+p1 <- ggplot(lab_crp) +
+  geom_histogram(aes(x=year(SAMPLINGDATE)), binwidth = 1, boundary = 0.5, fill="lightblue", color="black")+
+  theme_classic()+
+  xlab("Year of sampling")+ylab("Number of CRP tests for patients with IBD")+
+  theme(text = element_text(family="sans", size=8), axis.title = element_text(family="sans", size=8), axis.text = element_text(family="sans", size=8))+
+  geom_vline(aes(xintercept=2014.5), linetype="dashed", color="red")
+
+
+p2 <- ggplot(lab_fcal) +
+  geom_histogram(aes(x=year(SAMPLINGDATE)), binwidth = 1, boundary = 0.5, fill="gold", color="black")+
+  theme_classic()+
+  xlab("Year of sampling")+ylab("Number of f-calpro tests for patients with IBD")+
+  theme(text = element_text(family="sans", size=8), axis.title = element_text(family="sans", size=8), axis.text = element_text(family="sans", size=8))+
+  geom_vline(aes(xintercept=2014.5), linetype="dashed", color="red")
+
+ggsave(p1, file=paste0(path_project, "/Illustrations/CRP_total_measurements.tiff"))
+ggsave(p2, file=paste0(path_project, "/Illustrations/F-calpro_total_measurements.tiff"))
+```
+

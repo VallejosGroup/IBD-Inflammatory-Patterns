@@ -1,0 +1,1122 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-11-27"
+editor_options: 
+  chunk_output_type: console
+---
+
+Author: Marie Vibeke Vestergaard
+This is adapted from the code from Nathan Constantine-Cooke
+
+Read in packages and paths:
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(lubridate)
+library(lcmm)
+library(splines)
+library(kml)
+library(mice)
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+library(tidyr)
+library(tidyverse)
+library(nnet) 
+library(survival)
+library(survminer)
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+library(table1)
+library(viridis)
+#library(ggmosaic)
+
+packageVersion("lcmm")
+packageVersion("ggalluvial")
+packageVersion("nnet")
+#packageVersion("datefixR")
+
+path_registers <- "/ngc/projects2/predict_r/research/data/sds_registers/2022-09"
+path_project <- "/ngc/projects2/predict_r/research/projects/0042_IBD_fcal_crp_trajectories"
+path_basefiles <- "/ngc/projects2/predict_r/research/data/basefiles/2023-07" 
+```
+
+# Read in data and the 8 cluster results:
+```{r}
+#Raw data
+fcal <- read.csv(paste0(path_project, "/GeneratedData/Fcal_values_prep.txt"), sep="\t")
+fcal$value <- log(fcal$value+1)
+fcal$t <- fcal$t/365.24
+
+#Model
+models.fcal <- list()
+models.fcal[[8]] <- readRDS(paste0(path_project, "/GeneratedData/cache/fcal-2knots-8.RDS"))
+models.fcal[[8]]$loglik
+models.fcal[[8]]$BIC
+models.fcal[[8]]$AIC
+
+#Add cluster assignment to fcal:
+cluster <- numeric()
+for (id in unique(fcal$lbnr)) { 
+  cluster <- c(cluster,
+               subset(models.fcal[[8]]$pprob, lbnr == id)$class)
+}
+cluster <- cbind(data.frame(lbnr = unique(fcal$lbnr)), cluster)
+fcal <- left_join(fcal, cluster, by="lbnr")
+```
+
+# Make trajectory plots - medians of 6: 
+```{r}
+set.seed(123)
+
+fcal.dict <- fcal %>% select(-value, -t) %>% group_by(lbnr) %>% slice(1) %>% ungroup()
+
+# Data frame to hold processed data
+new.fc <- data.frame(lbnr = numeric(),
+                     value = numeric(),
+                     t = numeric(),
+                     class = numeric())
+
+for (clust in 1:8) {
+  ids.clust <- subset(fcal.dict, cluster == clust)$lbnr
+  n.clust <- length(ids.clust)
+  rand <- sample(n.clust, n.clust) # Randomise the order of the ids
+  iters <- floor(n.clust / 6) # How many groups of six are there?
+
+  # Matrix to hold the smoothed data
+  fcal.ma <- matrix(NA, nrow = iters, ncol = 5)
+  for (i in 0:(iters - 1)) {
+    # Find ids for group of five
+    ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
+    fcal.subset <- subset(fcal, lbnr %in% ids.select)
+    # Median process as per CRP preprocessing
+    for (j in seq(0, 4)) {
+      if (j == 4) {
+        sub.obs <- subset(
+          fcal.subset,
+          t >= j - 0.5 & t <= j + 1
+        )
+      } else {
+        sub.obs <- subset(
+          fcal.subset,
+          t >= j - 0.5 & t < j + 0.5
+        )
+      }
+      if (nrow(sub.obs) > 0) {
+        fcal.ma[i+1, j + 1] <- median(sub.obs$value)
+      }
+    }
+  }
+
+  rownames(fcal.ma) <- 1:iters
+  fcal.ma <- reshape2::melt(t(fcal.ma ),
+                            id.vars = row.names(fcal.ma),
+                            na.rm = TRUE)
+  colnames(fcal.ma) <- c("t", "lbnr", "value")
+  fcal.ma  <- fcal.ma[, c(2, 3, 1)] # Make ids first column
+  fcal.ma$t <- fcal.ma$t - 1
+  # Take into account uneven spacing at start and end
+  fcal.ma$t <- plyr::mapvalues(fcal.ma$t,
+                                         from = c(0, 4),
+                                         to = c(0.25, 4.25))
+  fcal.ma$class <- clust # Identify cluster assignment
+  new.fc <- rbind(new.fc, fcal.ma)
+}
+
+cairo_pdf(paste0(path_project, "/Illustrations/2-knots-fcal_8_mediantraj.pdf"), width = 7, height = 9)
+spaghettiPlot(new.fc,
+              models.fcal,
+              8,
+              clusters = TRUE,
+              tmax = 5,
+              sizes = TRUE)
+invisible(dev.off())
+
+#Another plot with x-axis to 7 years:
+cairo_pdf(paste0(path_project, "/Illustrations/2-knots-fcal_8_mediantraj_to7.pdf"), width = 7, height = 9)
+spaghettiPlot(new.fc,
+              models.fcal,
+              8,
+              clusters = TRUE,
+              tmax = 7,
+              sizes = TRUE)
+invisible(dev.off())
+
+```
+
+# Summary statistics:
+```{r}
+#%males:
+sum(fcal.dict$sex=="M")
+sum(fcal.dict$sex=="M")/dim(fcal.dict)[1]
+
+#Age of onset
+summary(fcal.dict$diag_age)
+
+#Baseline FC
+fcal_base <- fcal %>% filter(t>=-90/365.25 & t<=90/365.25)
+summary(fcal_base$t)
+summary(exp(fcal_base$value))
+
+#Advanced therapies information
+#Med procedures
+proc <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures.csv"), sep=";")
+proc_lpr3 <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures_lpr3.csv"), sep=";")
+
+proc_bio <- proc %>% filter(grepl(paste("BOHJ18A1", "BOHJ18A", "BOHJ18A3", "BOHJ18B3", "BOHJ19H4", "BOHJ26", "BOHJ18A5", "BOHJ18A4", "BOHJ19N1", "BOHJ28D", "BWHP107", sep="|"), C_OPR))%>% filter(lbnr %in% fcal.dict$lbnr)
+proc_bio_lpr3 <- proc_lpr3 %>% filter(grepl(paste("BOHJ18A1", "BOHJ18A", "BOHJ18A3", "BOHJ18B3", "BOHJ19H4", "BOHJ26", "BOHJ18A5", "BOHJ18A4", "BOHJ19N1", "BOHJ28D", "BWHP107", sep="|"), procedurekode))%>% filter(lbnr %in% fcal.dict$lbnr) %>% select(lbnr, dato_start, procedurekode)
+colnames(proc_bio_lpr3) <- colnames(proc_bio)
+proc_bio <- rbind(proc_bio, proc_bio_lpr3)
+rm(proc, proc_lpr3, proc_im_lpr3, proc_bio_lpr3)
+
+df_bio <- proc_bio %>% rename(eksd=D_ODTO)
+df_bio <- left_join(df_bio, fcal.dict, by="lbnr")
+df_bio <- df_bio %>% mutate(s_dat = as.numeric(as.Date(eksd)-as.Date(new_diag_date))/365.24) %>% filter(s_dat <=5 & s_dat>=0)
+#remove BOHJ18A2
+df_bio <- df_bio %>% filter(C_OPR !="BOHJ18A2")
+
+cd_df <- fcal.dict %>% filter(final_diag=="CD")
+uc_df <- fcal.dict %>% filter(final_diag=="UC")
+
+#Within 5 years
+sum(cd_df$lbnr %in% df_bio$lbnr)
+sum(cd_df$lbnr %in% df_bio$lbnr)/dim(cd_df)[1]
+
+sum(uc_df$lbnr %in% df_bio$lbnr)
+sum(uc_df$lbnr %in% df_bio$lbnr)/dim(uc_df)[1]
+
+#within 1 years
+df_bio1 <- df_bio %>% filter(s_dat <=1)
+sum(cd_df$lbnr %in% df_bio1$lbnr)
+sum(cd_df$lbnr %in% df_bio1$lbnr)/dim(cd_df)[1]
+
+sum(uc_df$lbnr %in% df_bio1$lbnr)
+sum(uc_df$lbnr %in% df_bio1$lbnr)/dim(uc_df)[1]
+
+#Samples per cluster
+n_clust <- fcal %>% group_by(lbnr, cluster) %>% summarise(n=n())
+n_clust %>% group_by(cluster) %>% summarise(Q2=median(n), Q1 = quantile(n, probs=0.25), Q3 = quantile(n, probs=0.75), n=n())
+```
+
+
+# Association plots:
+```{r}
+myDF.fc <- fcal %>%
+  group_by(lbnr) %>%
+  summarise(n.total = n(),
+            followup = max(t),) %>%
+  mutate(followup_cut = cut(followup, breaks = c(0, 2, 4, 5)),
+         n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20, max(n.total))))
+  
+myDF.fc <- merge(myDF.fc, models.fcal[[8]]$pprob, by = "lbnr", all.x = FALSE, all.y = TRUE)
+myDF.fc <- myDF.fc %>% 
+  mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
+                        prob5, prob6, prob7, prob8)) 
+myDF.fc <- merge(myDF.fc, fcal.dict, by = "lbnr", all.x = TRUE, all.y = FALSE)
+
+#Change order
+myDF.fc <- myDF.fc %>%
+  mutate(class_order = plyr::mapvalues(
+    class, from = seq_len(8), to = c(3,1,7,5,8,2,4,6))) %>%
+  mutate(class_order = factor(
+    class_order, levels = 1:8, labels = paste0("FC", 1:8))) %>%
+  mutate(prob_order1 = prob2, prob_order2 = prob6,
+         prob_order3 = prob1, prob_order4 = prob7,
+         prob_order5 = prob4, prob_order6 = prob8,
+         prob_order7 = prob3, prob_order8 = prob5)
+
+
+#Merge F4-6:
+myDF.fc <- myDF.fc %>% mutate(class_order2 = plyr::mapvalues(
+    class_order, from = paste0("FC", 1:8), to = c(1,2,3,4,4,4,5,6))) %>%
+  mutate(class_order2 = factor(class_order2, levels = 1:6, labels = paste0("FC", 1:6)))
+
+p_diagnosis_all <- myDF.fc %>%
+  plotCat("final_diag", class = "class_order2") 
+
+p_sex_all <- myDF.fc %>%
+  plotCat("sex", class = "class_order2")
+
+p_age_all <- myDF.fc %>%
+  ggplot(aes(x = class_order2, y = diag_age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+#Export data for making figures
+t1 <- table(myDF.fc[, c("final_diag", "class_order2")])
+write.table(t1, paste0(paste0(path_project, "/Output/Fcal_cluster_diag_merge4_6.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+t2 <- table(myDF.fc[, c("sex", "class_order2")])
+write.table(t2, paste0(paste0(path_project, "/Output/Fcal_cluster_sex_merge4_6.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+#Forest plots
+p_mlr_all <- myDF.fc %>%
+  mutate(class_order = relevel(class_order2, ref = "FC6")) %>%
+  mlrPlot(var = c("final_diag", "diag_age", "sex"), class = "class_order2") 
+
+#Export summary stats:
+write.table(p_mlr_all$tab_everything, paste0(paste0(path_project, "/Output/Fcal_association_tests_merge4_6.csv")), sep=";", row.names = F, quote = F, col.names = T)
+
+#Combined diagnosis plot
+p <- wrap_elements(p_diagnosis_all) +
+  wrap_elements(p_mlr_all$plot_both$final_diagUC + ggtitle("Ulcerative colitis")+ 
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(widths = c(1.25, 2)) &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
+
+ggsave(paste0(path_project, "/Illustrations/fc-diagnosis_merge4_6.pdf"),
+       p,
+       width = 15,
+       height = 12,
+       units = "in")
+
+print(p)
+
+#Sex+age plot
+p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$diag_age +ggtitle("Age") & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexM + ggtitle("Male sex")+
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave(paste0(path_project, "/Illustrations/fc-sex-age_merge4_6.pdf"),
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+print(p)
+
+## Split by CD / UC
+p_sex_CD <- myDF.fc %>% filter(final_diag=="CD") %>%
+  plotCat("sex", class = "class_order2")
+
+p_age_CD <- myDF.fc %>% filter(final_diag=="CD") %>%
+  ggplot(aes(x = class_order2, y = diag_age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+p_sex_UC <- myDF.fc %>% filter(final_diag=="UC") %>%
+  plotCat("sex", class = "class_order2")
+
+p_age_UC <- myDF.fc %>% filter(final_diag=="UC") %>%
+  ggplot(aes(x = class_order2, y = diag_age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+#Export data for making figures
+t2 <- table(myDF.fc[, c("sex", "class_order2", "final_diag")])
+write.table(t2, paste0(paste0(path_project, "/Output/Fcal_cluster_sex_merge4_6_byIBD_subtype.csv")), sep=";", row.names = T, quote = F, col.names = T)
+#How to export data on age?
+
+#Forest plots
+p_mlr_CD <- myDF.fc %>%  filter(final_diag=="CD") %>%
+  mutate(class_order = relevel(class_order2, ref = "FC6")) %>%
+  mlrPlot(var = c( "diag_age", "sex"), class = "class_order2") 
+
+p_mlr_UC <- myDF.fc %>%  filter(final_diag=="UC") %>%
+  mutate(class_order = relevel(class_order2, ref = "FC6")) %>%
+  mlrPlot(var = c( "diag_age", "sex"), class = "class_order2") 
+
+#Export summary stats:
+write.table(p_mlr_CD$tab_everything, paste0(paste0(path_project, "/Output/Fcal_association_tests_merge4_6_CD.csv")), sep=";", row.names = F, quote = F, col.names = T)
+
+write.table(p_mlr_UC$tab_everything, paste0(paste0(path_project, "/Output/Fcal_association_tests_merge4_6_UC.csv")), sep=";", row.names = F, quote = F, col.names = T)
+
+
+p <- (wrap_elements(p_age_CD) + p_mlr_CD$plot_both$diag_age +ggtitle("Age") & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_CD) + p_mlr_CD$plot_both$sexM + ggtitle("Male sex")+
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave(paste0(path_project, "/Illustrations/fc-sex-age_merge4_6_CD.pdf"),
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+print(p)
+
+p <- (wrap_elements(p_age_UC) + p_mlr_UC$plot_both$diag_age +ggtitle("Age") & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_UC) + p_mlr_UC$plot_both$sexM + ggtitle("Male sex")+
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave(paste0(path_project, "/Illustrations/fc-sex-age_merge4_6_UC.pdf"),
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+print(p)
+
+## Sensitivity: only prob>0.5
+p_diagnosis_all <- myDF.fc %>% filter(probmax>0.5)%>%
+  plotCat("final_diag", class = "class_order2") 
+
+p_sex_all <- myDF.fc %>%  filter(probmax>0.5)%>%
+  plotCat("sex", class = "class_order2")
+
+p_age_all <- myDF.fc %>%  filter(probmax>0.5)%>%
+  ggplot(aes(x = class_order2, y = diag_age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+#Export data for making figures
+t1 <- table(myDF.fc %>%filter(probmax>0.5)%>%select(final_diag, class_order2))
+write.table(t1, paste0(paste0(path_project, "/Output/Fcal_cluster_diag_merge4_6_sens.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+t2 <- table(myDF.fc %>%filter(probmax>0.5)%>%select(sex, class_order2))
+write.table(t2, paste0(paste0(path_project, "/Output/Fcal_cluster_sex_merge4_6_sens.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+#Forest plots
+p_mlr_all <- myDF.fc %>%filter(probmax>0.5)%>%
+  mutate(class_order = relevel(class_order2, ref = "FC6")) %>%
+  mlrPlot(var = c("final_diag", "diag_age", "sex"), class = "class_order2") 
+
+#Export summary stats:
+write.table(p_mlr_all$tab_everything, paste0(paste0(path_project, "/Output/Fcal_association_tests_merge4_6_sens.csv")), sep=";", row.names = F, quote = F, col.names = T)
+
+#Combined diagnosis plot
+p <- wrap_elements(p_diagnosis_all) +
+  wrap_elements(p_mlr_all$plot_both$final_diagUC + ggtitle("Ulcerative colitis")+ 
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(widths = c(1.25, 2)) &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
+
+ggsave(paste0(path_project, "/Illustrations/fc-diagnosis_merge4_6_sens.pdf"),
+       p,
+       width = 15,
+       height = 12,
+       units = "in")
+
+print(p)
+
+#Sex+age plot
+p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$diag_age +ggtitle("Age") & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexM + ggtitle("Male sex")+
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave(paste0(path_project, "/Illustrations/fc-sex-age_merge4_6_sens.pdf"),
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+print(p)
+
+
+```
+
+# First line advanced therapies:
+Read in data:
+```{r}
+#prescriptions
+med <- read.csv(paste0(path_basefiles, "/ibd_patients_all_medications.csv"), sep=";")
+
+#Keep iimunomodulators and biologicals:
+med_im <- med %>% filter(atc %in% c("L04AX01", "L01BB02", "L04AX03", "L01BA01")) %>% filter(lbnr %in% fcal.dict$lbnr)
+med_cort <- med %>% filter(atc %in% c("H02AB01", "H02AB02", "H02AB04", "H02AB06", "H02AB07", "H02AB08", "H02AB09")) %>% filter(lbnr %in% fcal.dict$lbnr)
+rm(med)
+
+#Med procedures
+proc <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures.csv"), sep=";")
+proc_lpr3 <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures_lpr3.csv"), sep=";")
+
+#Keep immunomodulators and biologicals:
+proc_im <- proc %>% filter(grepl(paste("BWHB83", "BWHA115", sep="|"), C_OPR))%>% filter(lbnr %in% fcal.dict$lbnr)
+proc_im_lpr3 <- proc_lpr3 %>% filter(grepl(paste("BWHB83", "BWHA115", sep="|"), procedurekode))%>% filter(lbnr %in% fcal.dict$lbnr) %>% select(lbnr, dato_start, procedurekode)
+colnames(proc_im_lpr3) <- colnames(proc_im)
+proc_im <- rbind(proc_im, proc_im_lpr3)
+
+proc_bio <- proc %>% filter(grepl(paste("BOHJ18A1", "BOHJ18A", "BOHJ18A3", "BOHJ18B3", "BOHJ19H4", "BOHJ26", "BOHJ18A5", "BOHJ18A4", "BOHJ19N1", "BOHJ28D", "BWHP107", sep="|"), C_OPR))%>% filter(lbnr %in% fcal.dict$lbnr)
+proc_bio_lpr3 <- proc_lpr3 %>% filter(grepl(paste("BOHJ18A1", "BOHJ18A", "BOHJ18A3", "BOHJ18B3", "BOHJ19H4", "BOHJ26", "BOHJ18A5", "BOHJ18A4", "BOHJ19N1", "BOHJ28D", "BWHP107", sep="|"), procedurekode))%>% filter(lbnr %in% fcal.dict$lbnr) %>% select(lbnr, dato_start, procedurekode)
+colnames(proc_bio_lpr3) <- colnames(proc_bio)
+proc_bio <- rbind(proc_bio, proc_bio_lpr3)
+rm(proc, proc_lpr3, proc_im_lpr3, proc_bio_lpr3)
+
+#Bio DF
+df_bio <- proc_bio %>% rename(eksd=D_ODTO)
+df_bio <- left_join(df_bio, fcal.dict, by="lbnr")
+df_bio <- df_bio %>% mutate(s_dat = as.numeric(as.Date(eksd)-as.Date(new_diag_date))/365.24) %>% filter(s_dat <=5 & s_dat>=0)
+#remove BOHJ18A2
+df_bio <- df_bio %>% filter(C_OPR !="BOHJ18A2")
+
+#Immuno:
+df_im <- rbind(med_im %>% select(lbnr, eksd, atc), proc_im %>% rename(eksd=D_ODTO, atc=C_OPR) %>% select(lbnr, eksd, atc))
+df_im <- left_join(df_im, fcal.dict, by="lbnr")
+df_im <- df_im %>% mutate(s_dat = as.numeric(as.Date(eksd)-as.Date(new_diag_date))/365.24) %>% filter(s_dat <=5 & s_dat>=0)
+
+#Cortico:
+df_cort <- med_cort %>% select(lbnr, eksd)
+df_cort <- left_join(df_cort, fcal.dict, by="lbnr")
+df_cort <- df_cort %>% mutate(s_dat = as.numeric(as.Date(eksd)-as.Date(new_diag_date))/365.24) %>% filter(s_dat <=5 & s_dat>=0)
+
+```
+
+First line:
+```{r}
+#Select only the first use of medication for each patient:
+df_bio_first <- df_bio %>% arrange(s_dat) %>% group_by(lbnr) %>% slice(1) %>%ungroup()
+
+#Redefine groups:
+fcal.dict <- fcal.dict %>% mutate(class_order = plyr::mapvalues(
+    cluster, from = seq_len(8), to = c(3,1,7,5,8,2,4,6))) %>%
+  mutate(class_order = factor(
+    class_order, levels = 1:8, labels = paste0("FC", 1:8)))
+
+#Generate column: Is there advanced therapy within the 5 years?
+fcal.dict <- fcal.dict %>% mutate(AT = ifelse(lbnr %in% df_bio_first$lbnr, 1, 0))
+
+#Add censoring (time at AT or 5 years):
+fcal.dict <- left_join(fcal.dict, df_bio_first %>% select(lbnr, s_dat), by="lbnr")
+fcal.dict <- fcal.dict %>% mutate(s_dat = ifelse(is.na(s_dat), 5, s_dat))
+
+#Summary stats:
+for (i in 1:8){
+  print(paste0("FC", i, ", CD: "))
+  print(dim(fcal.dict%>% filter(class_order==paste0("FC",i) & AT==1 & final_diag=="CD"))[1]/dim(fcal.dict%>% filter(class_order==paste0("FC",i) & final_diag=="CD"))[1])
+  print(paste0("FC", i, ", UC: "))
+print(dim(fcal.dict%>% filter(class_order==paste0("FC",i) & AT==1 & final_diag=="UC"))[1]/dim(fcal.dict%>% filter(class_order==paste0("FC",i) & final_diag=="UC"))[1])
+}
+
+```
+
+# Analysis:
+```{r}
+km.df <- data.frame(time = numeric(), cumhaz = numeric(), class = character(), diag = character())
+
+for (g in 1:8) {
+  # Calculate cumulative patterns
+  temp.cd <- fcal.dict %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(final_diag == "CD")
+  
+  temp.uc <- fcal.dict %>%
+    filter(class_order == paste0("FC", g)) %>%
+    filter(final_diag == "UC")
+  
+  km <- survfit(Surv(s_dat, AT) ~ 1, data = temp.cd)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
+                            diag = "Crohn's disease"))
+  
+  
+  km <- survfit(Surv(s_dat, AT) ~ 1, data = temp.uc) 
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
+                            diag = "Ulcerative colitis"))
+  
+  temp.all <- fcal.dict %>%
+    filter(class_order == paste0("FC", g)) 
+  km <- survfit(Surv(s_dat, AT) ~ 1, data = temp.all) 
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("FC",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
+                            diag = "All"))
+}
+
+p1 <- km.df %>%
+  subset(diag != "All") %>% filter(!(diag == "Crohn's disease"&class=="FC5, CD=7; UC=192")) %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() + 
+  scale_y_continuous(labels = scales::percent, limits=c(0,1)) +
+  labs(x = "Time (years)",
+       y = "% of subjects receiving an advanced therapy",
+       color = "IBD type") +
+  theme(legend.position = "bottom")
+p1
+
+
+ggsave(paste0(path_project, "/Illustrations/FC_AT.pdf"), p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+ggsave(paste0(path_project, "/Illustrations/FC_AT.png"), p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+```
+
+
+# Stacked density plots of treatments
+
+Prepare data - advanced:
+```{r}
+#Remove generic anti-TNF in "different ones" plot
+df_bio_first <- df_bio %>% filter(C_OPR != "BOHJ18A")
+
+#First use of each type:
+df_bio_first <- df_bio_first %>% arrange(s_dat) %>% group_by(lbnr, C_OPR) %>% slice(1) %>%ungroup()
+
+#Data frame: lbnr, time (in intervals), numbers
+df_plot <- data.frame(lbnr=c(), time=c(), types=c())
+for (i in unique(fcal.dict$lbnr)){
+  if (i %in% df_bio_first$lbnr){
+    df_sub <- df_bio_first %>% filter(lbnr==i) %>% arrange(s_dat)
+    df_sub$types <- c(seq(1,dim(df_sub)[1]))
+  for (j in c(seq(0.5,5,0.25))){
+    df_subsub <- df_sub %>% filter(s_dat<j)
+    if (dim(df_subsub)[1]==0){
+      df_plot <- rbind(df_plot, data.frame(lbnr=i, time=j, types=0))
+    }else{
+      df_plot <- rbind(df_plot, data.frame(lbnr=i, time=j, types=max(df_subsub$types)))
+    }
+  }}else{
+    df_plot <- rbind(df_plot, data.frame(lbnr=i, time=c(seq(0.5,5,0.25)), types=0))
+  }
+}
+
+df_plot <- left_join(df_plot, fcal.dict%>% select(lbnr, class_order), by="lbnr")
+
+write.table(df_plot, paste0(path_project, "/GeneratedData/treatment/Advanced_therapies.csv"), sep=";", col.names = T, row.names = F, quote = F)
+```
+
+Plot - advanced (all IBD patients, and split by CD/UC):
+```{r}
+df_plot <- read.csv(paste0(path_project, "/GeneratedData/treatment/Advanced_therapies.csv"), sep=";")
+colors <- magma(14)
+
+#Only CD
+df_plot <- left_join(df_plot, fcal.dict%>% select(lbnr, final_diag), by="lbnr")
+df_plot_CD <- df_plot %>% filter(final_diag =="CD")
+
+#Only UC
+df_plot_UC <- df_plot %>% filter(final_diag =="UC")
+```
+
+Plot - advanced (all CD patients, per cluster):
+```{r}
+#Loop through the different times - merge too small groups
+df_plot_cens <- data.frame()
+for (t in c(seq(0.5,5,0.25))){
+  for (i in c(paste0("FC", 1:8))){
+    df_sub <- df_plot_CD %>% filter(time==t & class_order==i)
+    for (j in max(df_sub$types):min(df_sub$types)){
+      if (dim(df_sub %>% filter(types==j))[1]<5){
+        df_sub <- df_sub %>% mutate(types = ifelse(types==j, j-1, types))
+      }}
+    df_plot_cens <- rbind(df_plot_cens, df_sub)
+    }
+}
+
+for (i in 1:8){
+  if(i !=5){
+    assign(paste0("p", i, "_CD"), ggplot(df_plot_cens%>%filter(class_order==paste0("FC", i)), aes(x=time,group=factor(types), fill=factor(types))) + 
+  geom_bar(position="fill")+
+  theme_classic()+
+  labs(x="Years", y="Proportion", fill="Numbers of \nadvanced therapies")+
+  scale_fill_manual(values = rev(colors), labels=c(seq(0,4),"≥5"), drop=F))
+  }
+    }
+
+```
+
+Plot - advanced (all UC patients, per cluster):
+```{r}
+#Loop through the different times - merge too small groups
+df_plot_cens <- data.frame()
+for (t in c(seq(0.5,5,0.25))){
+  for (i in c(paste0("FC", 1:8))){
+    df_sub <- df_plot_UC %>% filter(time==t & class_order==i)
+    for (j in max(df_sub$types):min(df_sub$types)){
+      if (dim(df_sub %>% filter(types==j))[1]<5){
+        df_sub <- df_sub %>% mutate(types = ifelse(types==j, j-1, types))
+      }}
+    df_plot_cens <- rbind(df_plot_cens, df_sub)
+    }
+}
+
+for (i in 1:8){
+  assign(paste0("p", i, "_UC"), ggplot(df_plot_cens%>%filter(class_order==paste0("FC", i)), aes(x=time,group=factor(types), fill=factor(types))) + 
+  geom_bar(position="fill")+
+  theme_classic()+
+  labs(x="Years", y="Proportion", fill="Numbers of \nadvanced therapies")+
+  scale_fill_manual(values = rev(colors), labels=c(seq(0,4),"≥5"), drop=F))
+  }
+
+```
+
+# Prepare data - Immunomodulators:
+```{r}
+#Merge codes belonging to same type of medicine:
+df_im <- df_im %>% mutate(atc = ifelse(atc=="BWHB83", "L04AX01", ifelse(atc=="BWHA115", "L04AX03", atc)))
+table(df_im$atc)
+
+#First use of each type:
+df_im  <- df_im  %>% arrange(s_dat) %>% group_by(lbnr, atc) %>% slice(1) %>%ungroup()
+
+#Dataframe: lbnr, time (in intervals), numbers
+df_plot_im <- data.frame(lbnr=c(), time=c(), types=c())
+for (i in unique(fcal.dict$lbnr)){
+  if (i %in% df_im$lbnr){
+    df_sub <- df_im %>% filter(lbnr==i) %>% arrange(s_dat)
+    df_sub$types <- c(seq(1,dim(df_sub)[1]))
+  for (j in c(seq(0.5,5,0.25))){
+    df_subsub <- df_sub %>% filter(s_dat<j)
+    if (dim(df_subsub)[1]==0){
+      df_plot_im <- rbind(df_plot_im, data.frame(lbnr=i, time=j, types=0))
+    }else{
+      df_plot_im <- rbind(df_plot_im, data.frame(lbnr=i, time=j, types=max(df_subsub$types)))
+    }
+  }}else{
+    df_plot_im <- rbind(df_plot_im, data.frame(lbnr=i, time=c(seq(0.5,5,0.25)), types=0))
+  }
+}
+
+df_plot_im <- left_join(df_plot_im, fcal.dict%>% select(lbnr, class_order, final_diag), by="lbnr")
+
+write.table(df_plot_im, paste0(path_project, "/GeneratedData/treatment/Immunomodulators.csv"), sep=";", col.names = T, row.names = F, quote = F)
+```
+
+Plot - Immonu (all, IBD-CD-UC):
+```{r}
+df_plot_im <- read.csv(paste0(path_project, "/GeneratedData/treatment/Immunomodulators.csv"), sep=";")
+
+#CD
+df_plot_im_CD <- df_plot_im %>% filter(final_diag=="CD")
+
+#UC
+df_plot_im_UC <- df_plot_im %>% filter(final_diag=="UC")
+```
+
+Per cluster (CD):
+```{r}
+#Loop through the different times - merge too small groups
+df_plot_cens <- data.frame()
+for (t in c(seq(0.5,5,0.25))){
+  for (i in c(paste0("FC", 1:8))){
+    df_sub <- df_plot_im_CD %>% filter(time==t & class_order==i)
+    for (j in max(df_sub$types):min(df_sub$types)){
+      if (dim(df_sub %>% filter(types==j))[1]<5){
+        df_sub <- df_sub %>% mutate(types = ifelse(types==j, j-1, types))
+      }}
+    df_plot_cens <- rbind(df_plot_cens, df_sub)
+    }
+}
+
+for (i in 1:8){
+  if(i !=5){
+    assign(paste0("q", i, "_CD"), ggplot(df_plot_cens%>%filter(class_order==paste0("FC", i)), aes(x=time,group=factor(types), fill=factor(types))) + 
+  geom_bar(position="fill")+
+  theme_classic()+
+  labs(x="Years", y="Proportion", fill="Numbers of \nimmunomodulators")+
+  scale_fill_manual(values = rev(colors), labels=c(0,1,2), drop=F))
+  }}
+
+```
+
+Per cluster (UC):
+```{r}
+#Loop through the different times - merge too small groups
+df_plot_cens <- data.frame()
+for (t in c(seq(0.5,5,0.25))){
+  for (i in c(paste0("FC", 1:8))){
+    df_sub <- df_plot_im_UC %>% filter(time==t & class_order==i)
+    for (j in max(df_sub$types):min(df_sub$types)){
+      if (dim(df_sub %>% filter(types==j))[1]<5){
+        df_sub <- df_sub %>% mutate(types = ifelse(types==j, j-1, types))
+      }}
+    df_plot_cens <- rbind(df_plot_cens, df_sub)
+    }
+}
+
+for (i in 1:8){
+  assign(paste0("q", i, "_UC"), ggplot(df_plot_cens%>%filter(class_order==paste0("FC", i)), aes(x=time,group=factor(types), fill=factor(types))) + 
+  geom_bar(position="fill")+
+  theme_classic()+
+  labs(x="Years", y="Proportion", fill="Numbers of \nimmunomodulators")+
+  scale_fill_manual(values = rev(colors), labels=c(0,1,2), drop=F))
+  }
+
+```
+
+# Prepare data - systemic corticosteroids:
+```{r}
+med_cort <- left_join(med_cort, fcal.dict, by="lbnr")
+med_cort_df <- med_cort %>% mutate(s_dat = as.numeric(as.Date(eksd)-as.Date(new_diag_date))/365.24) %>% filter(s_dat <=5 & s_dat>=0)
+
+#Cummulative mg and then change to number of treatments (treatment = 500 mg)
+med_cort_df$packsize <- as.numeric(med_cort_df$packsize)
+med_cort_df$strnum <- as.numeric(med_cort_df$strnum)
+med_cort_df <- med_cort_df %>% filter(strunit != ".") %>% mutate(dosis = apk*packsize*strnum) # number of packages * tablets/ml pr package * strength of tables/ml
+
+med_cort_df <- med_cort_df %>% group_by(lbnr) %>% arrange(s_dat) %>% mutate(cum_dosis = cumsum(dosis)) %>% ungroup()
+
+med_cort_df <- med_cort_df %>% select(lbnr, s_dat, cum_dosis)
+
+#Dataframe: lbnr, time (in intervals), numbers
+df_plot_cort <- data.frame(lbnr=c(), time=c(), types=c())
+for (i in unique(fcal.dict$lbnr)){
+  if (i %in% med_cort_df$lbnr){
+    df_sub <- med_cort_df %>% filter(lbnr==i) %>% arrange(s_dat)
+  for (j in c(seq(0.5,5,0.25))){
+    df_subsub <- df_sub %>% filter(s_dat<j)
+    if (dim(df_subsub)[1]==0){
+      df_plot_cort <- rbind(df_plot_cort, data.frame(lbnr=i, time=j, types=0))
+    }else{
+      df_plot_cort <- rbind(df_plot_cort, data.frame(lbnr=i, time=j, types=floor(max(df_subsub$cum_dosis)/1500)))
+    }
+  }}else{
+    df_plot_cort <- rbind(df_plot_cort, data.frame(lbnr=i, time=c(seq(0.5,5,0.25)), types=0))
+  }
+}
+
+df_plot_cort <- left_join(df_plot_cort, fcal.dict%>% select(lbnr, class_order, final_diag), by="lbnr")
+
+write.table(df_plot_cort, paste0(path_project, "/GeneratedData/treatment/Corticosteroids.csv"), sep=";", col.names = T, row.names = F, quote = F)
+```
+
+
+Plot - cortico: All - IBD, CD, UC
+```{r}
+df_plot_cort <- read.csv(paste0(path_project, "/GeneratedData/treatment/Corticosteroids.csv"), sep=";")
+
+#CD
+df_plot_cort_CD <- df_plot_cort %>% filter(final_diag=="CD")
+
+#UC
+df_plot_cort_UC <- df_plot_cort %>% filter(final_diag=="UC")
+
+```
+
+Plot - cortico: All - By cluster, CD
+```{r}
+#Loop through the different times - merge too small groups
+df_plot_cens <- data.frame()
+for (t in c(seq(0.5,5,0.25))){
+  for (i in c(paste0("FC", 1:8))){
+    df_sub <- df_plot_cort_CD %>% filter(time==t & class_order==i)
+    for (j in max(df_sub$types):min(df_sub$types)){
+      if (dim(df_sub %>% filter(types==j))[1]<5){
+        df_sub <- df_sub %>% mutate(types = ifelse(types==j, j-1, types))
+      }}
+    df_plot_cens <- rbind(df_plot_cens, df_sub)
+    }
+}
+
+for (i in 1:8){
+  if(i !=5){
+    assign(paste0("r", i, "_CD"), ggplot(df_plot_cens%>%filter(class_order==paste0("FC", i)), aes(x=time,group=factor(types), fill=factor(types))) + 
+  geom_bar(position="fill")+
+  theme_classic()+
+  labs(x="Years", y="Proportion", fill="Treatments with \ncorticosteroids")+
+  scale_fill_manual(values = rev(colors), labels=c(seq(0,10),"≥11"), drop=F))
+  }
+  }
+
+```
+
+Plot - cortico: By cluster - UC
+```{r}
+#Loop through the different times - merge too small groups
+df_plot_cens <- data.frame()
+for (t in c(seq(0.5,5,0.25))){
+  for (i in c(paste0("FC", 1:8))){
+    df_sub <- df_plot_cort_UC %>% filter(time==t & class_order==i)
+    for (j in max(df_sub$types):min(df_sub$types)){
+      if (dim(df_sub %>% filter(types==j))[1]<5){
+        df_sub <- df_sub %>% mutate(types = ifelse(types==j, j-1, types))
+      }}
+    df_plot_cens <- rbind(df_plot_cens, df_sub)
+    }
+}
+
+for (i in 1:8){
+  assign(paste0("r", i, "_UC"), ggplot(df_plot_cens%>%filter(class_order==paste0("FC", i)), aes(x=time,group=factor(types), fill=factor(types))) + 
+  geom_bar(position="fill")+
+  theme_classic()+
+  labs(x="Years", y="Proportion", fill="Treatments with \ncorticosteroids")+
+  scale_fill_manual(values = rev(colors), labels=c(seq(0,12),"≥13"), drop=F))
+  }
+
+```
+
+
+# Prepare data - major IBD-related surgeries:
+```{r}
+#Read in surgery data (both LPR2 and LPR3):
+ibd_surgeries <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures.csv"), sep=";") %>% filter(lbnr %in% fcal.dict$lbnr)
+ibd_surgeries_lpr3 <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures_lpr3.csv"), sep=";")%>% filter(lbnr %in% fcal.dict$lbnr)
+
+#Major surgeries (selected by Kristine Allin):
+ibd_surgeries <- ibd_surgeries %>% filter(grepl(paste("KJGB", "KJFB", "KJFC", "KJFF", "KJFH", "KJFA60", "KJFA61", "KJFA63", "KJFA96", "KJFA97", "KJFW", "KJFL", sep="|"), C_OPR)) %>% filter(!(C_OPR %in% c("KJFB10", "KJFB13")))
+
+ibd_surgeries_lpr3 <- ibd_surgeries_lpr3 %>% filter(grepl(paste("KJGB", "KJFB", "KJFC", "KJFF", "KJFH", "KJFA60", "KJFA61", "KJFA63", "KJFA96", "KJFA97", "KJFW", "KJFL", sep="|"), procedurekode)) %>% filter(!(procedurekode %in% c("KJFB10", "KJFB13")))
+
+#Combine:
+ibd_surgeries_lpr3 <- ibd_surgeries_lpr3 %>% select(lbnr, dato_start, procedurekode)
+colnames(ibd_surgeries_lpr3) <- colnames(ibd_surgeries)
+ibd_surgeries_all <- rbind(ibd_surgeries, ibd_surgeries_lpr3)
+
+#Combine with cohort and keep only contacts within follow-up time:
+surg <- left_join(ibd_surgeries_all, fcal.dict, by="lbnr") %>% mutate(s_dat = as.numeric(as.Date(D_ODTO)-as.Date(new_diag_date))/365.24) %>% filter(s_dat <=5 & s_dat>=0)
+
+#Count each surgery and not just each type!
+
+#Dataframe: lbnr, time (in intervals), numbers
+df_plot_surg <- data.frame(lbnr=c(), time=c(), types=c())
+for (i in unique(fcal.dict$lbnr)){
+  if (i %in% surg$lbnr){
+    df_sub <- surg %>% filter(lbnr==i) %>% arrange(s_dat)
+    df_sub$types <- c(seq(1,dim(df_sub)[1]))
+  for (j in c(seq(0.5,5,0.25))){
+    df_subsub <- df_sub %>% filter(s_dat<j)
+    if (dim(df_subsub)[1]==0){
+      df_plot_surg <- rbind(df_plot_surg, data.frame(lbnr=i, time=j, types=0))
+    }else{
+      df_plot_surg <- rbind(df_plot_surg, data.frame(lbnr=i, time=j, types=max(df_subsub$types)))
+    }
+  }}else{
+    df_plot_surg <- rbind(df_plot_surg, data.frame(lbnr=i, time=c(seq(0.5,5,0.25)), types=0))
+  }
+}
+
+df_plot_surg <- left_join(df_plot_surg, fcal.dict%>% select(lbnr, class_order, final_diag), by="lbnr")
+
+write.table(df_plot_surg, paste0(path_project, "/GeneratedData/treatment/Major_surgeries.csv"), sep=";", col.names = T, row.names = F, quote = F)
+```
+
+
+Plot - surg: All - IBD, CD, UC:
+```{r}
+df_plot_surg <- read.csv(paste0(path_project, "/GeneratedData/treatment/Major_surgeries.csv"), sep=";")
+
+#CD
+df_plot_surg_CD <- df_plot_surg %>% filter(final_diag=="CD")
+
+#UC
+df_plot_surg_UC <- df_plot_surg %>% filter(final_diag=="UC")
+
+```
+
+Plot - surg: By cluster, CD:
+```{r}
+#Loop through the different times - merge too small groups
+df_plot_cens <- data.frame()
+for (t in c(seq(0.5,5,0.25))){
+  for (i in c(paste0("FC", 1:8))){
+    df_sub <- df_plot_surg_CD %>% filter(time==t & class_order==i)
+    for (j in max(df_sub$types):min(df_sub$types)){
+      if (dim(df_sub %>% filter(types==j))[1]<5){
+        df_sub <- df_sub %>% mutate(types = ifelse(types==j, j-1, types))
+      }}
+    df_plot_cens <- rbind(df_plot_cens, df_sub)
+    }
+}
+
+for (i in 1:8){
+  if(i !=5){
+    assign(paste0("s", i, "_CD"), ggplot(df_plot_cens%>%filter(class_order==paste0("FC", i)), aes(x=time,group=factor(types), fill=factor(types))) + 
+  geom_bar(position="fill")+
+  theme_classic()+
+  labs(x="Years", y="Proportion", fill="Number of major \nsurgeries")+
+  scale_fill_manual(values = rev(colors), labels=c(0,1,2,"≥3"), drop=F))
+    
+  } }
+
+```
+
+Plot - surg: By cluster, UC:
+```{r}
+#Loop through the different times - merge too small groups
+df_plot_cens <- data.frame()
+for (t in c(seq(0.5,5,0.25))){
+  for (i in c(paste0("FC", 1:8))){
+    df_sub <- df_plot_surg_UC %>% filter(time==t & class_order==i)
+    for (j in max(df_sub$types):min(df_sub$types)){
+      if (dim(df_sub %>% filter(types==j))[1]<5){
+        df_sub <- df_sub %>% mutate(types = ifelse(types==j, j-1, types))
+      }}
+    df_plot_cens <- rbind(df_plot_cens, df_sub)
+    }
+}
+
+for (i in 1:8){
+  assign(paste0("s", i, "_UC"), ggplot(df_plot_cens%>%filter(class_order==paste0("FC", i)), aes(x=time,group=factor(types), fill=factor(types))) + 
+  geom_bar(position="fill")+
+  theme_classic()+
+  labs(x="Years", y="Proportion", fill="Number of major \nsurgeries")+
+  scale_fill_manual(values = rev(colors), labels=c(seq(0,2),"≥3")))}
+
+```
+
+
+# Combine and save plots:
+```{r}
+#CD, by cluster
+for (i in c(1,2,3,4,6)){
+  assign(paste0("plot", i), 
+         ggarrange(eval(parse(text=paste0("p",i,"_CD")))+guides(fill="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+labs(y=""), 
+                   eval(parse(text=paste0("q",i,"_CD")))+guides(fill="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+labs(y=""), 
+                   eval(parse(text=paste0("r",i,"_CD")))+guides(fill="none")+theme(axis.title.x=element_blank())+labs(y=""), 
+                   ncol=1, nrow=3, labels = c("A)", "B)", "C)"),font.label = list(size=10, family="sans"), heights=c(1,1,1.2)))
+}
+for (i in c(7,8)){
+  assign(paste0("plot", i), 
+         ggarrange(eval(parse(text=paste0("p",i,"_CD")))+guides(fill="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+labs(y=""), 
+                   eval(parse(text=paste0("q",i,"_CD")))+guides(fill="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+labs(y=""), 
+                   eval(parse(text=paste0("r",i,"_CD")))+guides(fill="none")+labs(y=""), 
+                   ncol=1, nrow=3, labels = c("A)", "B)", "C)"),font.label = list(size=10, family="sans"), heights=c(1,1,1.5)))
+}
+
+le <- get_legend(r8_CD+labs(fill="")+guides(fill=guide_legend(nrow=1)), position = "bottom")
+
+#Empty plot for FC5:
+blurb = paste("\nPlot censored due to\n",
+         "small sample size (n=7)\n")
+plot5 <- ggplot() + 
+  annotate("text", x = 4, y = 25, size=4, label = blurb, color="darkgrey") + 
+  theme_void()
+
+p_total <- ggarrange(annotate_figure(plot1, top = text_grob("  FC1",face = "bold", size = 11)), 
+                     annotate_figure(plot2, top = text_grob("  FC2",face = "bold", size = 11)), 
+                     annotate_figure(plot3, top = text_grob("  FC3",face = "bold", size = 11)), 
+                     annotate_figure(plot4, top = text_grob("  FC4",face = "bold", size = 11)), 
+                     annotate_figure(plot5, top = text_grob("  FC5",face = "bold", size = 11)), 
+                     annotate_figure(plot6, top = text_grob("  FC6",face = "bold", size = 11)), 
+                     annotate_figure(plot7, top = text_grob("  FC7",face = "bold", size = 11)), 
+                     annotate_figure(plot8, top = text_grob("  FC8",face = "bold", size = 11)), 
+                     ncol=2, nrow=4, legend.grob = le, legend="bottom")
+
+ggsave(p_total, filename=paste0(path_project, "/Illustrations/Medical_treatments_CD.tiff"), width = 180, height = 250, units = "mm", dpi = 300, bg="white")
+
+
+#UC, by cluster
+for (i in c(1,2,3,4,5,6)){
+  assign(paste0("plot", i), 
+         ggarrange(eval(parse(text=paste0("p",i,"_UC")))+guides(fill="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+labs(y=""), 
+                   eval(parse(text=paste0("q",i,"_UC")))+guides(fill="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+labs(y=""), 
+                   eval(parse(text=paste0("r",i,"_UC")))+guides(fill="none")+theme(axis.title.x=element_blank())+labs(y=""), 
+                   ncol=1, nrow=3, labels = c("A)", "B)", "C)"),font.label = list(size=10, family="sans"), heights=c(1,1,1.2)))
+}
+for (i in c(7,8)){
+  assign(paste0("plot", i), 
+         ggarrange(eval(parse(text=paste0("p",i,"_UC")))+guides(fill="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+labs(y=""), 
+                   eval(parse(text=paste0("q",i,"_UC")))+guides(fill="none")+theme(axis.title.x=element_blank(),axis.text.x=element_blank(), axis.ticks.x=element_blank())+labs(y=""), 
+                   eval(parse(text=paste0("r",i,"_UC")))+guides(fill="none")+labs(y=""), 
+                   ncol=1, nrow=3, labels = c("A)", "B)", "C)"),font.label = list(size=10, family="sans"), heights=c(1,1,1.5)))
+}
+
+le <- get_legend(r8_UC+labs(fill="")+guides(fill=guide_legend(nrow=1)), position = "bottom")
+
+p_total <- ggarrange(annotate_figure(plot1, top = text_grob("  FC1",face = "bold", size = 11)), 
+                     annotate_figure(plot2, top = text_grob("  FC2",face = "bold", size = 11)), 
+                     annotate_figure(plot3, top = text_grob("  FC3",face = "bold", size = 11)), 
+                     annotate_figure(plot4, top = text_grob("  FC4",face = "bold", size = 11)),
+                     annotate_figure(plot5, top = text_grob("  FC5",face = "bold", size = 11)),
+                     annotate_figure(plot6, top = text_grob("  FC6",face = "bold", size = 11)), 
+                     annotate_figure(plot7, top = text_grob("  FC7",face = "bold", size = 11)), 
+                     annotate_figure(plot8, top = text_grob("  FC8",face = "bold", size = 11)), 
+                     ncol=2, nrow=4, legend.grob = le, legend="bottom")
+
+ggsave(p_total, filename=paste0(path_project, "/Illustrations/Medical_treatments_UC.tiff"), width = 180, height = 250, units = "mm", dpi = 300, bg="white")
+
+
+#CD surgery:
+le <- get_legend(s1_CD+labs(fill="")+guides(fill=guide_legend(nrow=1)), position = "bottom")
+plot5 <- ggplot() + 
+  annotate("text", x = 4, y = 25, size=4, label = blurb, color="darkgrey") + 
+  theme_void()
+p_total <- ggarrange(annotate_figure(s1_CD+guides(fill="none"), top = text_grob("  FC1",face = "bold", size = 11)), 
+                     annotate_figure(s2_CD+guides(fill="none"), top = text_grob("  FC2",face = "bold", size = 11)), 
+                     annotate_figure(s3_CD+guides(fill="none"), top = text_grob("  FC3",face = "bold", size = 11)), 
+                     annotate_figure(s4_CD+guides(fill="none"), top = text_grob("  FC4",face = "bold", size = 11)),
+                     annotate_figure(plot5+guides(fill="none"), top = text_grob("  FC5",face = "bold", size = 11)),
+                     annotate_figure(s6_CD+guides(fill="none"), top = text_grob("  FC6",face = "bold", size = 11)), 
+                     annotate_figure(s7_CD+guides(fill="none"), top = text_grob("  FC7",face = "bold", size = 11)), 
+                     annotate_figure(s8_CD+guides(fill="none"), top = text_grob("  FC8",face = "bold", size = 11)), 
+                     ncol=2, nrow=4,legend.grob = le, legend="bottom")
+
+ggsave(p_total, filename=paste0(path_project, "/Illustrations/Surgery_CD.tiff"), width = 180, height = 200, units = "mm", dpi = 300, bg="white")
+
+#UC surgery:
+le <- get_legend(s8_UC+labs(fill="")+guides(fill=guide_legend(nrow=1)), position = "bottom")
+p_total <- ggarrange(annotate_figure(s1_UC+guides(fill="none"), top = text_grob("  FC1",face = "bold", size = 11)), 
+                     annotate_figure(s2_UC+guides(fill="none"), top = text_grob("  FC2",face = "bold", size = 11)), 
+                     annotate_figure(s3_UC+guides(fill="none"), top = text_grob("  FC3",face = "bold", size = 11)), 
+                     annotate_figure(s4_UC+guides(fill="none"), top = text_grob("  FC4",face = "bold", size = 11)),
+                     annotate_figure(s5_UC+guides(fill="none"), top = text_grob("  FC5",face = "bold", size = 11)),
+                     annotate_figure(s6_UC+guides(fill="none"), top = text_grob("  FC6",face = "bold", size = 11)), 
+                     annotate_figure(s7_UC+guides(fill="none"), top = text_grob("  FC7",face = "bold", size = 11)), 
+                     annotate_figure(s8_UC+guides(fill="none"), top = text_grob("  FC8",face = "bold", size = 11)), 
+                     ncol=2, nrow=4,legend.grob = le, legend="bottom")
+
+ggsave(p_total, filename=paste0(path_project, "/Illustrations/Surgery_UC.tiff"), width = 180, height = 200, units = "mm", dpi = 300, bg="white")
+```
+
+
+# Figure: FC tests per cluster
+```{r}
+#read in fcal data:
+lab_IBD <- read.csv("/ngc/projects2/predict_r/research/projects/0007_Genetics_SNP_QC_IMP_PKU_NordIBD/GeneratedData/lab/IBD_lab_Nathan.txt.gz", sep="\t")
+f_cal <- c("NPU19717", "NPU26814")
+lab_IBD <- lab_IBD %>% filter(lbnr %in% fcal.dict$lbnr & ANALYSISCODE %in% f_cal)
+
+fcal_lab <- left_join(lab_IBD, fcal.dict, by="lbnr") %>% mutate(timing = as.numeric(as.Date(SAMPLINGDATE )-as.Date(diag_date)))
+
+p <- fcal_lab %>%
+  ggplot(aes(x = timing)) +
+  geom_density(fill = "#20A39E", color = "#187370") +
+  theme_minimal() +
+  labs(y = "Density",
+       x = "Time from diagnosis to faecal calprotectin (days)") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+  xlim(c(-100,100))+
+  facet_grid(rows = vars(cluster))
+
+ggsave(paste0(path_project, "/Illustrations/FC_timing.png"),
+       p,
+       width = 16 * 2/3,
+       height = 18 * 2/3,
+       units = "in")
+
+```
+

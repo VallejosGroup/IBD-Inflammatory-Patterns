@@ -1,0 +1,755 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-11-27"
+editor_options: 
+  chunk_output_type: console
+---
+
+Author: Marie Vibeke Vestergaard
+This is adapted from the code from Nathan Constantine-Cooke
+
+Read in packages and paths:
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(lubridate)
+library(lcmm)
+library(splines)
+library(kml)
+library(mice)
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+library(tidyr)
+
+path_registers <- "/ngc/projects2/predict_r/research/data/sds_registers/2022-09"
+path_project <- "/ngc/projects2/predict_r/research/projects/0042_IBD_fcal_crp_trajectories"
+path_basefiles <- "/ngc/projects2/predict_r/research/data/basefiles/2023-07" 
+```
+
+# Read in results data:
+```{r}
+#Raw data
+crp <- read.csv(paste0(path_project, "/GeneratedData/CRP_values_prep.txt"), sep="\t")
+crp$value <- log(crp$value+1)
+crp$crp_time <- crp$t
+
+#Model
+models.crp <- list()
+models.crp[[8]] <- readRDS(paste0(path_project, "/GeneratedData/cache/crp-2knots-8.RDS"))
+models.crp[[8]]$loglik
+models.crp[[8]]$BIC
+models.crp[[8]]$AIC
+
+#Add cluster assignment to crp:
+cluster <- numeric()
+for (id in unique(crp$lbnr)) { 
+  cluster <- c(cluster,
+               subset(models.crp[[8]]$pprob, lbnr == id)$class)
+}
+cluster <- cbind(data.frame(lbnr = unique(crp$lbnr)), cluster)
+crp <- left_join(crp, cluster, by="lbnr")
+```
+
+Make trajectory plots - medians of 6: 
+```{r}
+set.seed(123)
+crp.dict <- crp %>% select(-value, -t) %>% group_by(lbnr) %>% slice(1) %>% ungroup()
+
+# Data frame to hold processed data
+new.fc <- data.frame(lbnr = numeric(),
+                     value = numeric(),
+                     crp_time = numeric(),
+                     class = numeric())
+
+for (clust in 1:8) {
+  ids.clust <- subset(crp, cluster == clust)$lbnr
+  n.clust <- length(ids.clust)
+  rand <- sample(n.clust, n.clust) # Randomise the order of the ids
+  iters <- floor(n.clust / 6) # How many groups of six are there?
+
+  # Matrix to hold the smoothed data
+  crp.ma <- matrix(NA, nrow = iters, ncol = 5)
+  for (i in 0:(iters - 1)) {
+    # Find ids for group of five
+    ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
+    crp.subset <- subset(crp, lbnr %in% ids.select)
+    # Median process as per CRP preprocessing
+    for (j in seq(0, 4)) {
+      if (j == 4) {
+        sub.obs <- subset(
+          crp.subset,
+          crp_time >= j - 0.5 & crp_time <= j + 1
+        )
+      } else {
+        sub.obs <- subset(
+          crp.subset,
+          crp_time >= j - 0.5 & crp_time < j + 0.5
+        )
+      }
+      if (nrow(sub.obs) > 0) {
+        crp.ma[i+1, j + 1] <- median(sub.obs$value)
+      }
+    }
+  }
+
+  rownames(crp.ma) <- 1:iters
+  crp.ma <- reshape2::melt(t(crp.ma ),
+                            id.vars = row.names(crp.ma),
+                            na.rm = TRUE)
+  colnames(crp.ma) <- c("crp_time", "lbnr", "value")
+  crp.ma  <- crp.ma[, c(2, 3, 1)] # Make ids first column
+  crp.ma$crp_time <- crp.ma$crp_time - 1
+  # Take into account uneven spacing at start and end
+  crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+                                         from = c(0, 4),
+                                         to = c(0.25, 4.25))
+  crp.ma$class <- clust # Identify cluster assignment
+  new.fc <- rbind(new.fc, crp.ma)
+}
+
+cairo_pdf(paste0(path_project, "/Illustrations/2-knots-crp_8_mediantraj.pdf"), width = 7, height = 9)
+spaghettiPlot(new.fc,
+              models.crp,
+              8,
+              clusters = TRUE,
+              tmax = 5,
+              sizes = TRUE, 
+              var.time = "crp_time")
+invisible(dev.off())
+
+#Replot with x-lim to 7 years
+cairo_pdf(paste0(path_project, "/Illustrations/2-knots-crp_8_mediantraj_to7.pdf"), width = 7, height = 9)
+spaghettiPlot(new.fc,
+              models.crp,
+              8,
+              clusters = TRUE,
+              tmax = 6.25,
+              sizes = TRUE, 
+              var.time = "crp_time")
+invisible(dev.off())
+
+png(paste0(path_project, "/Illustrations/2-knots-crp_8_mediantraj.png"), width = 7, height = 9, unit="in", res=300)
+spaghettiPlot(new.fc,
+              models.crp,
+              8,
+              clusters = TRUE,
+              tmax = 5,
+              sizes = TRUE, 
+              var.time = "crp_time")
+invisible(dev.off())
+```
+
+# Summary statistics:
+```{r}
+#%males:
+sum(crp.dict$sex=="M")
+sum(crp.dict$sex=="M")/dim(crp.dict)[1]
+
+#Age of onset
+summary(crp.dict$diag_age)
+
+#n samples
+crp_samples <- crp %>% group_by(lbnr) %>% summarise(n=n())
+summary(crp_samples$n)
+sum(crp_samples$n==5)
+
+#Advanced therapies information
+proc <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures.csv"), sep=";")
+proc_lpr3 <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures_lpr3.csv"), sep=";")
+
+proc_bio <- proc %>% filter(grepl(paste("BOHJ18A1", "BOHJ18A", "BOHJ18A3", "BOHJ18B3", "BOHJ19H4", "BOHJ26", "BOHJ18A5", "BOHJ18A4", "BOHJ19N1", "BOHJ28D", "BWHP107", sep="|"), C_OPR))%>% filter(lbnr %in% crp.dict$lbnr)
+proc_bio_lpr3 <- proc_lpr3 %>% filter(grepl(paste("BOHJ18A1", "BOHJ18A", "BOHJ18A3", "BOHJ18B3", "BOHJ19H4", "BOHJ26", "BOHJ18A5", "BOHJ18A4", "BOHJ19N1", "BOHJ28D", "BWHP107", sep="|"), procedurekode))%>% filter(lbnr %in% crp.dict$lbnr) %>% select(lbnr, dato_start, procedurekode)
+colnames(proc_bio_lpr3) <- colnames(proc_bio)
+proc_bio <- rbind(proc_bio, proc_bio_lpr3)
+rm(proc, proc_lpr3, proc_im_lpr3, proc_bio_lpr3)
+
+df_bio <- proc_bio %>% rename(eksd=D_ODTO)
+df_bio <- left_join(df_bio, crp.dict, by="lbnr")
+df_bio <- df_bio %>% mutate(s_dat = as.numeric(as.Date(eksd)-as.Date(new_diag_date))/365.24) %>% filter(s_dat <=5 & s_dat>=0)
+#remove BOHJ18A2
+df_bio <- df_bio %>% filter(C_OPR !="BOHJ18A2")
+
+cd_df <- crp.dict %>% filter(final_diag=="CD")
+uc_df <- crp.dict %>% filter(final_diag=="UC")
+
+#Within 5 years
+sum(cd_df$lbnr %in% df_bio$lbnr)
+sum(cd_df$lbnr %in% df_bio$lbnr)/dim(cd_df)[1]
+
+sum(uc_df$lbnr %in% df_bio$lbnr)
+sum(uc_df$lbnr %in% df_bio$lbnr)/dim(uc_df)[1]
+
+#within 1 years
+df_bio1 <- df_bio %>% filter(s_dat <=1)
+sum(cd_df$lbnr %in% df_bio1$lbnr)
+sum(cd_df$lbnr %in% df_bio1$lbnr)/dim(cd_df)[1]
+
+sum(uc_df$lbnr %in% df_bio1$lbnr)
+sum(uc_df$lbnr %in% df_bio1$lbnr)/dim(uc_df)[1]
+
+#Baseline CRP
+lab_crp <- read.csv(paste0(path_project, "/GeneratedData/CRP_values_v2.txt"), sep="\t") %>% mutate(diag_date = as.Date(diag_date), SAMPLINGDATE = as.Date(SAMPLINGDATE), birth_date = as.Date(birth_date))
+lab_crp <- left_join(lab_crp, crp.dict %>% select(lbnr, new_diag_date), by="lbnr")
+crp_base <- lab_crp %>% filter(as.Date(SAMPLINGDATE)>=as.Date(new_diag_date) & as.Date(SAMPLINGDATE)<=as.Date(new_diag_date)+days(90))
+summary(as.numeric(crp_base$VALUE))
+
+#Total CRP
+lab_crp <- read.csv(paste0(path_project, "/GeneratedData/CRP_values_v2.txt"), sep="\t") %>% mutate(diag_date = as.Date(diag_date), SAMPLINGDATE = as.Date(SAMPLINGDATE), birth_date = as.Date(birth_date))
+crp_base <- lab_crp %>% filter(as.Date(SAMPLINGDATE)-days(90)>=as.Date(diag_date) & as.Date(SAMPLINGDATE)<=as.Date(diag_date)+years(5))
+
+#Samples per cluster
+n_clust <- crp %>% group_by(lbnr, cluster) %>% summarise(n=n())
+n_clust %>% group_by(cluster) %>% summarise(Q2=median(n), Q1 = quantile(n, probs=0.25), Q3 = quantile(n, probs=0.75), n=n())
+```
+
+## Associations:
+```{r}
+myDF.fc <- crp %>%
+  group_by(lbnr) %>%
+  summarise(n.total = n(),
+            followup = max(crp_time),) %>%
+  mutate(followup_cut = cut(followup, breaks = c(0, 2, 4, 5)),
+         n.total_cut = cut(n.total, breaks = c(0, 5, 10, 20)))
+  
+myDF.fc <- merge(myDF.fc, models.crp[[8]]$pprob, by = "lbnr", all.x = FALSE, all.y = TRUE)
+myDF.fc <- myDF.fc %>% 
+  mutate(probmax = pmax(prob1, prob2, prob3, prob4, 
+                        prob5, prob6, prob7, prob8)) 
+myDF.fc <- merge(myDF.fc, crp.dict, by = "lbnr", all.x = TRUE, all.y = FALSE)
+
+#Change order
+myDF.fc <- myDF.fc %>%
+  mutate(class_order = plyr::mapvalues(
+    class, from = seq_len(8), to = c(1,2,8,3,5,7,6,4))) %>%
+  mutate(class_order = factor(
+    class_order, levels = 1:8, labels = paste0("CRP", 1:8))) %>%
+  mutate(prob_order1 = prob1, prob_order2 = prob2,
+         prob_order3 = prob4, prob_order4 = prob8,
+         prob_order5 = prob5, prob_order6 = prob7,
+         prob_order7 = prob6, prob_order8 = prob3)
+
+
+p_diagnosis_all <- myDF.fc %>%
+  plotCat("final_diag", class = "class_order") 
+
+p_sex_all <- myDF.fc %>%
+  plotCat("sex", class = "class_order")
+
+p_age_all <- myDF.fc %>%
+  ggplot(aes(x = class_order, y = diag_age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+#Export data for making figures
+t1 <- table(myDF.fc[, c("final_diag", "class_order")])
+write.table(t1, paste0(paste0(path_project, "/Output/CRP_cluster_diag.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+t2 <- table(myDF.fc[, c("sex", "class_order")])
+write.table(t2, paste0(paste0(path_project, "/Output/CRP_cluster_sex.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+#Forest plots
+p_mlr_all <- myDF.fc %>%
+  mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
+  mlrPlot(var = c("final_diag", "diag_age", "sex"), class = "class_order") 
+
+#Export summary stats:
+write.table(p_mlr_all$tab_everything, paste0(paste0(path_project, "/Output/CRP_association_tests.csv")), sep=";", row.names = F, quote = F, col.names = T)
+
+
+#Combined diagnosis plot
+p <- wrap_elements(p_diagnosis_all) +
+  wrap_elements(p_mlr_all$plot_both$final_diagUC + ggtitle("Ulcerative colitis")+ 
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(widths = c(1.25, 2)) &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
+
+ggsave(paste0(path_project, "/Illustrations/crp-diagnosis.pdf"),
+       p,
+       width = 15,
+       height = 12,
+       units = "in")
+
+print(p)
+
+#Sex+age plot
+p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$diag_age +ggtitle("Age") & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexM + ggtitle("Male sex")+
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave(paste0(path_project, "/Illustrations/crp-sex-age.pdf"),
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+print(p)
+
+## Split by CD / UC
+p_sex_CD <- myDF.fc %>% filter(final_diag=="CD") %>%
+  plotCat("sex", class = "class_order")
+
+p_age_CD <- myDF.fc %>% filter(final_diag=="CD") %>%
+  ggplot(aes(x = class_order, y = diag_age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+p_sex_UC <- myDF.fc %>% filter(final_diag=="UC") %>%
+  plotCat("sex", class = "class_order")
+
+p_age_UC <- myDF.fc %>% filter(final_diag=="UC") %>%
+  ggplot(aes(x = class_order, y = diag_age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+#Export data for making figures
+t2 <- table(myDF.fc[, c("sex", "class_order", "final_diag")])
+write.table(t2, paste0(paste0(path_project, "/Output/CRP_cluster_sex_byIBD_subtype.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+#Forest plots
+p_mlr_CD <- myDF.fc %>%  filter(final_diag=="CD") %>%
+  mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
+  mlrPlot(var = c( "diag_age", "sex"), class = "class_order") 
+
+p_mlr_UC <- myDF.fc %>%  filter(final_diag=="UC") %>%
+  mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
+  mlrPlot(var = c( "diag_age", "sex"), class = "class_order") 
+
+#Export summary stats:
+write.table(p_mlr_CD$tab_everything, paste0(paste0(path_project, "/Output/CRP_association_tests_CD.csv")), sep=";", row.names = F, quote = F, col.names = T)
+
+write.table(p_mlr_UC$tab_everything, paste0(paste0(path_project, "/Output/CRP_association_tests_UC.csv")), sep=";", row.names = F, quote = F, col.names = T)
+
+
+p <- (wrap_elements(p_age_CD) + p_mlr_CD$plot_both$diag_age +ggtitle("Age") & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_CD) + p_mlr_CD$plot_both$sexM + ggtitle("Male sex")+
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave(paste0(path_project, "/Illustrations/crp-sex-age_CD.pdf"),
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+print(p)
+
+p <- (wrap_elements(p_age_UC) + p_mlr_UC$plot_both$diag_age +ggtitle("Age") & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_UC) + p_mlr_UC$plot_both$sexM + ggtitle("Male sex")+
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave(paste0(path_project, "/Illustrations/crp-sex-age_UC.pdf"),
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+print(p)
+
+
+## Sensitivity: only prob>0.5
+p_diagnosis_all <- myDF.fc %>% filter(probmax>0.5)%>%
+  plotCat("final_diag", class = "class_order") 
+
+p_sex_all <- myDF.fc %>%  filter(probmax>0.5)%>%
+  plotCat("sex", class = "class_order")
+
+p_age_all <- myDF.fc %>%  filter(probmax>0.5)%>%
+  ggplot(aes(x = class_order, y = diag_age)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width=0.1, color="black", alpha=0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("Age at diagnosis")
+
+#Export data for making figures
+t1 <- table(myDF.fc %>%filter(probmax>0.5)%>%select(final_diag, class_order))
+write.table(t1, paste0(paste0(path_project, "/Output/CRP_cluster_diag_sens.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+t2 <- table(myDF.fc %>%filter(probmax>0.5)%>%select(sex, class_order))
+write.table(t2, paste0(paste0(path_project, "/Output/CRP_cluster_sex_sens.csv")), sep=";", row.names = T, quote = F, col.names = T)
+
+#Forest plots
+p_mlr_all <- myDF.fc %>%filter(probmax>0.5)%>%
+  mutate(class_order = relevel(class_order, ref = "CRP1")) %>%
+  mlrPlot(var = c("final_diag", "diag_age", "sex"), class = "class_order") 
+
+#Export summary stats:
+write.table(p_mlr_all$tab_everything, paste0(paste0(path_project, "/Output/CRP_association_tests_sens.csv")), sep=";", row.names = F, quote = F, col.names = T)
+
+#Combined diagnosis plot
+p <- wrap_elements(p_diagnosis_all) +
+  wrap_elements(p_mlr_all$plot_both$final_diagUC + ggtitle("Ulcerative colitis")+ 
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") + 
+  plot_layout(widths = c(1.25, 2)) &
+  theme(plot.tag = element_text(face = "bold", size = 22)) 
+
+ggsave(paste0(path_project, "/Illustrations/crp-diagnosis_sens.pdf"),
+       p,
+       width = 15,
+       height = 12,
+       units = "in")
+
+print(p)
+
+#Sex+age plot
+p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$diag_age +ggtitle("Age") & theme(legend.position = "none")) /
+  (wrap_elements(p_sex_all) + p_mlr_all$plot_both$sexM + ggtitle("Male sex")+
+                  plot_layout(guides = "collect") &
+                  theme(legend.position = "bottom")) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(widths = c(1, 1)) &
+  theme(plot.tag = element_text(face = "bold", size  = 22))
+
+ggsave(paste0(path_project, "/Illustrations/crp-sex-age_sens.pdf"),
+       p,
+       width = 12,
+       height = 12,
+       units = "in")
+print(p)
+
+```
+
+# First line advanced therapies:
+Read in data:
+```{r}
+#prescriptions
+med <- read.csv(paste0(path_basefiles, "/ibd_patients_all_medications.csv"), sep=";")
+
+#Med procedures
+proc <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures.csv"), sep=";")
+proc_lpr3 <- read.csv(paste0(path_basefiles, "/ibd_patients_all_procedures_lpr3.csv"), sep=";")
+
+#Keep biologicals:
+proc_bio <- proc %>% filter(grepl(paste("BOHJ18A1", "BOHJ18A", "BOHJ18A3", "BOHJ18B3", "BOHJ19H4", "BOHJ26", "BOHJ18A5", "BOHJ18A4", "BOHJ19N1", "BOHJ28D", "BWHP107", sep="|"), C_OPR))%>% filter(lbnr %in% crp.dict$lbnr)
+proc_bio_lpr3 <- proc_lpr3 %>% filter(grepl(paste("BOHJ18A1", "BOHJ18A", "BOHJ18A3", "BOHJ18B3", "BOHJ19H4", "BOHJ26", "BOHJ18A5", "BOHJ18A4", "BOHJ19N1", "BOHJ28D", "BWHP107", sep="|"), procedurekode))%>% filter(lbnr %in% crp.dict$lbnr) %>% select(lbnr, dato_start, procedurekode)
+colnames(proc_bio_lpr3) <- colnames(proc_bio)
+proc_bio <- rbind(proc_bio, proc_bio_lpr3)
+rm(proc, proc_lpr3, proc_im_lpr3, proc_bio_lpr3)
+
+#Bio DF
+df_bio <- proc_bio %>% rename(eksd=D_ODTO)
+df_bio <- left_join(df_bio, crp.dict, by="lbnr")
+df_bio <- df_bio %>% mutate(s_dat = as.numeric(as.Date(eksd)-as.Date(new_diag_date))/365.24) %>% filter(s_dat <=5 & s_dat>=0)
+#remove BOHJ18A2
+df_bio <- df_bio %>% filter(C_OPR !="BOHJ18A2")
+```
+
+First line:
+```{r}
+#Select only the first use of medication for each patient:
+df_bio_first <- df_bio %>% arrange(s_dat) %>% group_by(lbnr) %>% slice(1) %>%ungroup()
+
+#Redefine groups:
+crp.dict <- crp.dict %>% mutate(class_order = plyr::mapvalues(
+    cluster, from = seq_len(8), to = c(1,2,8,3,5,7,6,4))) %>%
+  mutate(class_order = factor(
+    class_order, levels = 1:8, labels = paste0("CRP", 1:8)))
+
+#Column: Is there advanced therapy within the 5 years?
+crp.dict <- crp.dict %>% mutate(AT = ifelse(lbnr %in% df_bio_first$lbnr, 1, 0))
+
+#Add censoring (time at AT or 5 years):
+crp.dict <- left_join(crp.dict, df_bio_first %>% select(lbnr, s_dat), by="lbnr")
+crp.dict <- crp.dict %>% mutate(s_dat = ifelse(is.na(s_dat), 5, s_dat))
+
+#Summary stats:
+for (i in 1:8){
+  print(paste0("CRP", i, ", CD: "))
+  print(dim(crp.dict%>% filter(class_order==paste0("CRP",i) & AT==1 & final_diag=="CD"))[1]/dim(crp.dict%>% filter(class_order==paste0("CRP",i) & final_diag=="CD"))[1])
+  print(paste0("CRP", i, ", UC: "))
+print(dim(crp.dict%>% filter(class_order==paste0("CRP",i) & AT==1 & final_diag=="UC"))[1]/dim(crp.dict%>% filter(class_order==paste0("CRP",i) & final_diag=="UC"))[1])
+}
+```
+
+# Analysis:
+```{r}
+km.df <- data.frame(time = numeric(), cumhaz = numeric(), class = character(), diag = character())
+
+for (g in 1:8) {
+  # Calculate cumulative patterns
+  temp.cd <- crp.dict %>%
+    filter(class_order == paste0("CRP", g)) %>%
+    filter(final_diag == "CD")
+  
+  temp.uc <- crp.dict %>%
+    filter(class_order == paste0("CRP", g)) %>%
+    filter(final_diag == "UC")
+  
+  km <- survfit(Surv(s_dat, AT) ~ 1, data = temp.cd)
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("CRP",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
+                            diag = "Crohn's disease"))
+  
+  
+  km <- survfit(Surv(s_dat, AT) ~ 1, data = temp.uc) 
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("CRP",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
+                            diag = "Ulcerative colitis"))
+  
+  temp.all <- crp.dict %>%
+    filter(class_order == paste0("CRP", g)) 
+  km <- survfit(Surv(s_dat, AT) ~ 1, data = temp.all) 
+  km.df <- rbind(km.df,
+                 data.frame(time = km$time,
+                            cumhaz =  1 - km$surv,
+                            class = paste0("CRP",
+                                           g,
+                                           ", CD=",
+                                           nrow(temp.cd),
+                                           "; UC=",
+                                           nrow(temp.uc)),
+                            diag = "All"))
+}
+
+p1 <- km.df %>%
+  subset(diag != "All") %>%
+  ggplot(aes(x = time, y = cumhaz)) +
+  geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
+  facet_wrap(~class, ncol = 2) +
+  theme_minimal() + 
+  scale_y_continuous(labels = scales::percent, limits=c(0,1)) +
+  labs(x = "Time (years)",
+       y = "% of subjects receiving an advanced therapy",
+       color = "IBD type") +
+  theme(legend.position = "bottom")
+p1
+
+
+ggsave(paste0(path_project, "/Illustrations/CRP_AT.pdf"), p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+ggsave(paste0(path_project, "/Illustrations/CRP_AT.png"), p1, width = 8 * 3/4, height = 12 * 3/4, units = "in")
+```
+
+# Figure: CRP tests per cluster
+```{r}
+#read in fcal data:
+lab_IBD <- read.csv("/ngc/projects2/predict_r/research/projects/0007_Genetics_SNP_QC_IMP_PKU_NordIBD/GeneratedData/lab/IBD_lab_Nathan.txt.gz", sep="\t")
+crp <- c("NPU19748")
+lab_IBD <- lab_IBD %>% filter(lbnr %in% crp.dict$lbnr & ANALYSISCODE %in% crp)
+
+crp_lab <- left_join(lab_IBD, crp.dict, by="lbnr") %>% mutate(timing = as.numeric(as.Date(SAMPLINGDATE )-as.Date(diag_date)))
+
+p <- crp_lab %>%
+  ggplot(aes(x = timing)) +
+  geom_density(fill = "#20A39E", color = "#187370") +
+  theme_minimal() +
+  labs(y = "Density",
+       x = "Time from diagnosis to CRP (days)") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+  xlim(c(-100,100))+
+  facet_grid(rows = vars(cluster))
+
+ggsave(paste0(path_project, "/Illustrations/CRP_timing.png"),
+       p,
+       width = 16 * 2/3,
+       height = 18 * 2/3,
+       units = "in")
+
+```
+
+
+## Compare FC and CRP cluster assignment:
+```{r}
+#FC data:
+fcal <- read.csv(paste0(path_project, "/GeneratedData/Fcal_values_prep.txt"), sep="\t")
+fcal$value <- log(fcal$value+1)
+fcal$t <- fcal$t/365.24
+models.fcal <- list()
+models.fcal[[8]] <- readRDS(paste0(path_project, "/GeneratedData/cache/fcal-2knots-8.RDS"))
+cluster <- numeric()
+for (id in unique(fcal$lbnr)) { 
+  cluster <- c(cluster,
+               subset(models.fcal[[8]]$pprob, lbnr == id)$class)
+}
+cluster <- cbind(data.frame(lbnr = unique(fcal$lbnr)), cluster)
+fcal <- left_join(fcal, cluster, by="lbnr")
+
+fcal.dict <- fcal %>% select(-value, -t) %>% group_by(lbnr) %>% slice(1) %>% ungroup()
+
+#CRP data:
+crp <- read.csv(paste0(path_project, "/GeneratedData/CRP_values_prep.txt"), sep="\t")
+crp$value <- log(crp$value+1)
+crp$crp_time <- crp$t
+models.crp <- list()
+models.crp[[8]] <- readRDS(paste0(path_project, "/GeneratedData/cache/crp-2knots-8.RDS"))
+cluster <- numeric()
+for (id in unique(crp$lbnr)) { 
+  cluster <- c(cluster,
+               subset(models.crp[[8]]$pprob, lbnr == id)$class)
+}
+cluster <- cbind(data.frame(lbnr = unique(crp$lbnr)), cluster)
+crp <- left_join(crp, cluster, by="lbnr")
+
+crp.dict <- crp %>% select(-value, -t) %>% group_by(lbnr) %>% slice(1) %>% ungroup()
+table(crp.dict$cluster)
+
+
+fc.remapping <- function(x) {
+  plyr::mapvalues(x,
+                  from = seq(1, 8),
+                  to = c(3,1,7,5,8,2,4,6))
+}
+
+crp.remapping <- function(x) {
+  plyr::mapvalues(x,
+                  from = seq(1, 8),
+                  to = c(1,2,8,3,5,7,6,4))
+}
+
+col.vec <- c(
+  viridis::viridis(8),
+  viridis::inferno(8)
+)
+
+fcal.dict$cluster <- fc.remapping(fcal.dict$cluster )
+fcal.dict$cluster  <- as.factor(paste0("FC", fcal.dict$cluster))
+
+crp.dict$cluster <- crp.remapping(crp.dict$cluster )
+crp.dict$cluster  <- as.factor(paste0("CRP", crp.dict$cluster))
+
+fcal.dict$overlap <- ifelse(fcal.dict$lbnr %in% crp.dict$lbnr, TRUE, FALSE)
+crp.dict$overlap <- ifelse(crp.dict$lbnr %in% fcal.dict$lbnr, TRUE, FALSE)
+
+fcal.dict$type <- "FC"
+crp.dict$type <- "CRP"
+
+classes <- rbind(fcal.dict%>% filter(overlap==T)%>%select(lbnr, final_diag, cluster, type),
+                 crp.dict%>% filter(overlap==T)%>%select(lbnr, final_diag, cluster, type))
+classes$type <- factor(classes$type, levels=c("FC", "CRP"))
+
+p1 <- classes %>%
+  ggplot(aes(
+  x = type,
+  stratum = cluster,
+  alluvium = lbnr,
+  fill = cluster,
+  label = cluster
+)) +
+  geom_flow() +
+  geom_stratum(alpha = 1) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(axis.line = element_line(colour = "gray")) +
+  xlab("Biomarker") +
+  scale_fill_manual(values = col.vec)
+
+p2 <- classes %>%
+  filter(final_diag == "CD") %>%
+  ggplot(aes(
+  x = type,
+  stratum = cluster,
+  alluvium = lbnr,
+  fill = cluster,
+  label = cluster
+)) +
+  geom_flow() +
+  geom_stratum(alpha = 1) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(axis.line = element_line(colour = "gray")) +
+  xlab("Biomarker") +
+  scale_fill_manual(values = col.vec)
+
+
+p3 <- classes %>%
+  filter(final_diag == "UC") %>%
+  ggplot(aes(
+  x = type,
+  stratum = cluster,
+  alluvium = lbnr,
+  fill = cluster,
+  label = cluster
+)) +
+  geom_flow() +
+  geom_stratum(alpha = 1) +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(axis.line = element_line(colour = "gray")) +
+  xlab("Biomarker") +
+  scale_fill_manual(values = col.vec)
+
+
+p <- p1 + (p2 / p3) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "none",
+        plot.tag = element_text(size = 20, face = "bold")) &
+  guides(fill = guide_legend(nrow = 1))
+
+p
+
+ggsave(paste0(path_project, "/Illustrations/big-comp.png"), p, width = 12, height = 11)
+ggsave(paste0(path_project, "/Illustrations/big-comp.pdf"), p, width = 12, height = 11)
+
+
+#Summary stats for table
+both <- crp.dict %>% filter(overlap==T)
+
+summary(both$diag_age)
+
+sum(both$sex=="M")
+sum(both$sex=="M")/dim(both)[1]
+
+sum(both$final_diag=="CD")
+sum(both$final_diag=="CD")/dim(both)[1]
+
+sum(both$final_diag=="UC")
+sum(both$final_diag=="UC")/dim(both)[1]
+
+fcal_base <- fcal %>% filter(t>=-90/365.25 & t<=90/365.25 & lbnr %in% both$lbnr)
+summary(fcal_base$t)
+summary(exp(fcal_base$value))
+fcal %>% filter(lbnr %in% both$lbnr) %>% group_by(lbnr) %>% summarise(n=n()) %>% summary()
+
+crp %>% filter(lbnr %in% both$lbnr) %>% group_by(lbnr) %>% summarise(n=n()) %>% summary()
+
+lab_crp <- read.csv(paste0(path_project, "/GeneratedData/CRP_values_v2.txt"), sep="\t") %>% mutate(diag_date = as.Date(diag_date), SAMPLINGDATE = as.Date(SAMPLINGDATE), birth_date = as.Date(birth_date))
+lab_crp <- left_join(lab_crp, crp.dict %>% select(lbnr, new_diag_date), by="lbnr")
+crp_base <- lab_crp %>% filter(as.Date(SAMPLINGDATE)>=as.Date(new_diag_date) & as.Date(SAMPLINGDATE)<=as.Date(new_diag_date)+days(90) & lbnr %in% both$lbnr)
+summary(as.numeric(crp_base$VALUE))
+
+crp_total <- lab_crp %>% filter(as.Date(SAMPLINGDATE)>=as.Date(new_diag_date) & as.Date(SAMPLINGDATE)<=as.Date(new_diag_date)+years(5) & lbnr %in% both$lbnr)
+crp_total %>% group_by(lbnr) %>% summarise(n=n()) %>% summary()
+
+crp_total <- lab_crp %>% filter(as.Date(SAMPLINGDATE)>=as.Date(new_diag_date) & as.Date(SAMPLINGDATE)<=as.Date(new_diag_date)+years(5))
+crp_total %>% group_by(lbnr) %>% summarise(n=n()) %>% summary()
+```

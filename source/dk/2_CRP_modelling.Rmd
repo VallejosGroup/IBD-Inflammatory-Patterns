@@ -1,0 +1,230 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-04-30"
+editor_options: 
+  chunk_output_type: inline
+---
+
+Author: Marie Vibeke Vestergaard
+This is adapted from the code from Nathan Constantine-Cooke
+
+Read in packages and paths:
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(lubridate)
+library(lcmm)
+library(splines)
+library(kml)
+library(mice)
+library(patchwork)
+library(ggdist)
+library(ggalluvial)
+library(pander)
+library(qqplotr)
+
+path_registers <- "/ngc/projects2/predict_r/research/data/sds_registers/2022-09"
+path_project <- "/ngc/projects2/predict_r/research/projects/0042_IBD_fcal_crp_trajectories"
+path_basefiles <- "/ngc/projects2/predict_r/research/data/basefiles/2023-07" 
+```
+
+## Find optimal number of knots in a 4-cluster model:
+Search from 2-4
+Run the 2_crp_m1.R script
+Run the 2_crp_lcmm.R script
+
+Read in data:
+```{r}
+crp <- read.csv(paste0(path_project, "/GeneratedData/CRP_values_prep.txt"), sep="\t")
+crp$value <- log(crp$value+1)
+crp$crp_time <- crp$t
+
+```
+
+## 2 knots:
+```{r}
+#| label: fig-2-knots
+#| fig-cap: "Cluster profiles for the four-cluster model assuming two knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+
+knots.2 <- readRDS(paste0(path_project, "/GeneratedData/cache/crp-2knots-4.RDS"))
+knots.2.list <- list()
+knots.2.list[[4]] <- knots.2
+
+cairo_pdf(paste0(path_project, "/Illustrations/2-knots-CRP_4.pdf"), width = 9, height = 9)
+spaghettiPlot(crp, knots.2.list, G = 4, log = TRUE, tmax = 5, sizes = T, knots = TRUE, n.knots = 2, var.time = "crp_time", knot.type = "equal")
+invisible(dev.off())
+
+spaghettiPlot(crp, knots.2.list, G = 4, log = TRUE, tmax = 5, sizes = T, knots = TRUE, n.knots = 2, var.time = "crp_time", knot.type = "equal")
+
+
+```
+
+## 3 knots
+```{r}
+#| label: fig-3-knots
+#| fig-cap: "Cluster profiles for the four-cluster model assuming three knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+
+knots.3 <- readRDS(paste0(path_project, "/GeneratedData/cache/crp-3knots-4.RDS"))
+knots.3.list <- list()
+knots.3.list[[4]] <- knots.3
+
+cairo_pdf(paste0(path_project, "/Illustrations/3-knots-CRP_4.pdf"), width = 9, height = 9)
+spaghettiPlot(crp, knots.3.list, G = 4, log = TRUE, tmax = 5, sizes = TRUE, knots = TRUE, n.knots = 3, var.time = "crp_time", knot.type = "equal")
+invisible(dev.off())
+
+spaghettiPlot(crp, knots.3.list, G = 4, log = TRUE, tmax = 5, sizes = TRUE, knots = TRUE, n.knots = 3, var.time = "crp_time", knot.type = "equal")
+
+```
+
+
+## 4 knots
+```{r}
+#| label: fig-4-knots
+#| fig-cap: "Cluster profiles for the four-cluster model assuming four knots. The vertical teal lines indicate knot location. Mean cluster profiles are denoted by the red curves"
+
+knots.4 <- readRDS(paste0(path_project, "/GeneratedData/cache/crp-4knots-4.RDS"))
+knots.4.list <- list()
+knots.4.list[[4]] <- knots.4
+
+cairo_pdf(paste0(path_project, "/Illustrations/4-knots-CRP_4.pdf"), width = 9, height = 9)
+spaghettiPlot(crp, knots.4.list, G = 4, log = TRUE, tmax = 5, sizes = T, knots = TRUE, n.knots = 4, var.time = "crp_time", knot.type = "equal")
+invisible(dev.off())
+
+spaghettiPlot(crp, knots.4.list, G = 4, log = TRUE, tmax = 5, sizes = T, knots = TRUE, n.knots = 4, var.time = "crp_time", knot.type = "equal")
+```
+
+
+## Model statistics
+```{r}
+#| results: "hold"
+#| label: tbl-knot-stats
+#| tbl-cap: Model statistics for differing numbers of knots for natural cubic splines
+
+
+knots.df <- tibble(Knots = c(2, 3, 4),
+                   loglik = c(knots.2$loglik,
+                              knots.3$loglik,
+                              knots.4$loglik),
+                   AIC = c(knots.2$AIC,
+                           knots.3$AIC,
+                           knots.4$AIC),
+                   BIC = c(knots.2$BIC,
+                           knots.3$BIC,
+                           knots.4$BIC))
+knitr::kable(knots.df,
+             col.names = c("Knots",
+                           "Maxmum log likelihood",
+                           "AIC",
+                           "BIC"))
+```
+
+We have elected to use natural cubic splines with 2 knots placed at quantiles. 
+
+
+
+## Based on 2 knots, validate the 8 clusters:
+Run the 3_crp_lcmm.R script, that is using the m1 file with two knots:
+time
+
+## Load the model
+
+```{r}
+# set the number of groups
+models.crp <- list()
+file.name <- paste0(path_project, "/GeneratedData/cache/crp-2knots-8.RDS")
+models.crp[[8]] <- readRDS(file.name)
+```
+
+
+## Prosterior classification:
+```{r}
+#| results: "asis"
+#postprob_quiet <- quietly(postprob)
+  cat(paste0("##### G = ", 8, "\n"))
+  output <- postprob(models.crp[[8]])$result
+  cat(pander::pander(output[[1]]))
+  cat(pander::pander(output[[2]]))
+  cat(pander::pander(output[[3]]))
+
+```
+
+## Residual plots:
+```{r}
+#| results: "asis"
+
+  cat(paste0("##### G = ", 8, "\n"))
+  plot(models.crp[[8]], shades = TRUE)
+
+```
+
+## Chosen model:
+```{r}
+#| label: fig-NCS-norm
+#| fig-cap: "Plots assessing normality for the distribution of residuals for the chosen NCS model for FCAL. (A) Histrogram; (B) Q-Q plot."
+
+p1 <- data.frame(residuals = resid(models.crp[[8]])) %>%
+  ggplot(aes(x = residuals)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 fill = "#D8829D",
+                 color = "#AF6A80",
+                 bins = 30) +
+  geom_density(color = "#023777", size = 1.2) +
+  theme_classic() +
+  theme(axis.line = element_line(colour = "gray")) +
+  ylab("Density") +
+  xlab("Residuals") +
+  ggtitle("A")
+
+p2 <- data.frame(residuals = resid(models.crp[[8]])) %>%
+  ggplot(aes(sample = residuals)) +
+    stat_qq_band() +
+    stat_qq_line(color = "#D8829D") +
+    stat_qq_point(color = "#023777")  +
+    theme_classic() +
+    theme(axis.line = element_line(colour = "gray")) + 
+    ylab("Theoretical Quantiles") +
+    xlab("Sample Quantiles") +
+  ggtitle("B")
+
+ggsave(paste0(path_project, "/Illustrations/Residual-plot-crp-ncs.pdf"),
+       plot = p1 / p2,
+       width = 8,
+       height = 8,
+       units = "in")
+print(p1 / p2)
+```
+
+```{r}
+#| label: fig-NCS-norm-cluster
+#| fig-cap: "Q-Q plots assessing normality for the distribution of residuals stratifed by cluster assignment."
+
+predClass <- models.crp[[8]]$pprob[, c("lbnr", "class")]
+temp <- merge(models.crp[[8]]$pred, predClass, by = "lbnr")
+labels <- c("A", "B", "C", "D", "E", "F", "G", "H")
+p <- list()
+
+for (i in 1:8) {
+  p[[i]] <- subset(temp, class == i) %>%
+    ggplot(aes(sample = resid_ss)) +
+    stat_qq_band() +
+    stat_qq_line(color = "#D8829D") +
+    stat_qq_point(color = "#023777")  +
+    theme_classic() +
+    theme(axis.line = element_line(colour = "gray")) + 
+    ylab("Theoretical Quantiles") +
+    xlab("Sample Quantiles") +
+  ggtitle(labels[i])
+}
+
+ArrangedPlot <-  (p[[1]] + p[[2]]) / (p[[3]] + p[[4]]) / (p[[5]] + p[[6]])/ (p[[7]] + p[[8]])
+
+ggsave(paste0(path_project,"/Illustrations/cluster-resids-crp-ncs.pdf"),
+       ArrangedPlot,
+       width = 8,
+       height = 8,
+       units = "in")
+print(ArrangedPlot)
+```
+
