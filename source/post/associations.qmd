@@ -1340,7 +1340,7 @@ p1 <- km.df %>%
   geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::percent, limits = c(0, 0.8)) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
   labs(
     x = "Time (years)",
     y = "% of subjects receiving an advanced therapy",
@@ -2394,7 +2394,7 @@ p1 <- km.df %>%
   geom_line(aes(color = diag), lty = 1, lwd = 1.2) +
   facet_wrap(~class, ncol = 2) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::percent, limits = c(0, 0.7)) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
   labs(
     x = "Time (years)",
     y = "% of subjects receiving an advanced therapy",
