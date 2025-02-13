@@ -374,9 +374,9 @@ dict <- subset(dict, (year(date.of.diag) >= 2005) |
 As described in the [inclusion/exclusion criteria
 section](#inclusionexclusion-criteria-definitions), the inclusion criteria 
 considers upper and lower bounds for the diagnostic dates. In this case, we
-only consider subjects diagnosed after October 2004 and 13 August 2019 (this
-ensures individuals can be followed up by at least 5 year by the time of the
-last longitudinal measument obtained for the cohort; `r max_fup`). As
+only consider subjects diagnosed after October 2004 and before 13 August 2019
+(this ensures individuals can be followed up by at least 5 year by the time of
+the last longitudinal measument obtained for the cohort; `r max_fup`). As
 such, subjects who do not meet this criteria will be excluded.
 `r n.upper` subjects were diagnosed on 13 August 2019 or later and were removed,
 and `r n.lower` subjects were diagnosed prior to October 2004 and were
