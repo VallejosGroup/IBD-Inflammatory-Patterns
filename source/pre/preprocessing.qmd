@@ -116,10 +116,32 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
 }
 
 fcal.pheno <- read.csv(file.path(prefix, "2024-10-03/fcal-cleaned.csv"))
+fcal.pheno <- fix_date_df(fcal.pheno, "calpro_date")
+
 
 # Extract from TRAK which also now introduces CRP.
 labs <- read.csv(file.path(prefix, "2024-10-03/markers-cleaned.csv"))
 fcal <- subset(labs, TEST == "f-Calprotectin-ALP")
+fcal$COLLECTION_DATE <- readr::parse_date(
+  stringr::str_split_fixed(fcal$COLLECTION_DATE, " ", n = 2)[, 1],
+  format = "%Y-%m-%d"
+)
+
+
+fcal.pheno.pre <- subset(fcal.pheno, calpro_date < as.Date("2008-04-01"))
+temp <- data.frame(COLLECTION_DATE = fcal.pheno.pre$calpro_date, 
+                   RESULT_STATUS = NA,
+                   TEST = NA,
+                   TEST_CODE = NA,
+                   TEST_DATA = fcal.pheno.pre$calpro_result,
+                   TEST_SET = NA,
+                   ids = fcal.pheno.pre$ids)
+
+fcal <- rbind(fcal, temp)
+rm(temp)
+
+
+
 
 # Add sex and diagnosis type from fcal.pheno
 fcal <- fcal.pheno %>%
@@ -480,7 +502,7 @@ diag.ts %>%
   theme_minimal()
 ```
 
-## Faecal calprotectin
+å## Faecal calprotectin
 
 Faecal calprotectin (FC), a marker of intestinal inflammation, has been
 obtained from two datasets. The first dataset has been curated by
@@ -514,10 +536,7 @@ fcal <- subset(fcal, ids %in% dict$ids)
 
 # Collection dates include collection times which are not required. Discarding.
 
-fcal$COLLECTION_DATE <- readr::parse_date(
-  stringr::str_split_fixed(fcal$COLLECTION_DATE, " ", n = 2)[, 1],
-  format = "%Y-%m-%d"
-)
+
 
 colnames(fcal)[1:3] <- c("ids", "calpro_date", "calpro_result")
 

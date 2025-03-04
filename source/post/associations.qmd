@@ -529,6 +529,20 @@ ggsave("plots/associations/fc-sex-age.pdf",
 print(p)
 ```
 
+
+Diagnosis year
+
+```{R}
+myDF.fc %>%
+  ggplot(aes(x = as.character(year(date.of.diag)),
+             fill = class_order_original)) +
+  geom_bar(position="fill") + 
+  labs(x = "Year of diagnosis", y = "", fill = "Assigned cluster") + 
+  scale_fill_viridis_d(option = "inferno") +
+  scale_y_continuous(labels = scales::percent) + theme_minimal()
+```
+
+
 #### Crohn's disease only
 
 For CD patients, we also consider additional phenotyping information. This
