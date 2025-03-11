@@ -1800,7 +1800,7 @@ BY</a> unless otherwise stated.
 ##  {.appendix}
 
 ::: center
-<img src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" class="center" height="50px"/>
+<img src="../../images/MRC_HGU_Edinburgh_RGB.png" alt="MRC Human Genetics Unit logo" class="center" height="50px"/>
 <img src="../../images/cgem-logo.png" alt="Centre for Genomic &amp; Experimental Medicine logo" height="50px"/>
 :::
 

@@ -328,7 +328,7 @@ Licensed by
 ## {.appendix}
 
 <div class = "center">
-  <img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
+  <img class = "center" src="../../images/MRC_HGU_Edinburgh_RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
   <img src="../../images/cgem-logo.png" alt="Centre for Genomic & Experimental Medicine logo" height = 50px>
 </div>
 

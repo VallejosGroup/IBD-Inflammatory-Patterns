@@ -38,6 +38,7 @@ library(readxl)
 
 library(survival)
 library(survminer)
+library(pander)
 ```
 
 This page provides descriptive analyses of the cohort at baseline, the time of
@@ -1563,4 +1564,41 @@ table1(~ age + sex + diagnosis | model,
 
 ```{R}
 saveRDS(dict, paste0(prefix, "processed/dict.RDS"))
+```
+
+## Acknowledgments {.appendix}
+
+This work is funded by the Medical Research Council & University of
+Edinburgh via a Precision Medicine PhD studentship (MR/N013166/1, to
+**NC-C**).
+
+## Author contributions {.appendix}
+
+**NC-C** performed the processing and wrote the text. **NP**, **ML**,
+curated and provided datasets. **KM-G**, **CWL**, and **CAV** provided
+supervisory support and assisted with revisions.
+
+## References {.appendix}
+
+::: {#refs}
+:::
+
+## Reuse {.appendix}
+
+Licensed by <a href="https://creativecommons.org/licenses/by/4.0/">CC
+BY</a> unless otherwise stated.
+
+##  {.appendix}
+
+::: center
+<img src="../../images/MRC_HGU_Edinburgh_RGB.png" alt="MRC Human Genetics Unit logo" class="center" height="50px"/>
+<img src="../../images/cgem-logo.png" alt="Centre for Genomic &amp; Experimental Medicine logo" height="50px"/>
+:::
+
+------------------------------------------------------------------------
+
+## Session info {.appendix}
+
+```{R Session info}
+pander(sessionInfo())
 ```
