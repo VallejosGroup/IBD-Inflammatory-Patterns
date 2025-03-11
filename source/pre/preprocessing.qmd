@@ -79,12 +79,12 @@ unclassified.
 ##### Diagnosis date
 
 Study subjects are required to have been diagnosed with IBD between
-October 2004 and December 2017. The lower bound is required as FC tests
-were not introduced until 2005 and we require study subjects to have a
-FC available close to diagnosis (see the longitudinal tab). The upper
-bound is required to ensure subjects have the opportunity to have at
-least five years of follow-up. The most recent FC observation in this
-dataset is January 2023 which informed when deciding upon this cut-off.
+January 2008 and December 2017. The lower bound is required as FC tests
+were not typically used for disease monitoring prior to this period and were
+instead used only for diagnostic purposes. The upper bound is required to ensure
+subjects have the opportunity to have at least five years of follow-up. The most
+recent FC observation in this dataset is January 2023 which informed when
+deciding upon this cut-off.
 
 #### Longitudinal
 
@@ -362,24 +362,22 @@ max_fup <- as.Date(max_fup)
 n.upper <- nrow(subset(dict, max_fup - date.of.diag < 5 * 365.25))
 
 # no. subjects under lower bound
-n.lower <- nrow(subset(dict, (year(date.of.diag) < 2004) |
-  (year(date.of.diag) == 2004 & month(date.of.diag) <= 9)))
+n.lower <- nrow(subset(dict, year(date.of.diag) < 2008))
 
 # subset to subjects meeting the criteria.
 dict <- subset(dict, max_fup - date.of.diag >= 5 * 365.25)
-dict <- subset(dict, (year(date.of.diag) >= 2005) |
-  (year(date.of.diag) == 2004 & month(date.of.diag) >= 10))
+dict <- subset(dict, year(date.of.diag) >= 2008)
 ```
 
 As described in the [inclusion/exclusion criteria
 section](#inclusionexclusion-criteria-definitions), the inclusion criteria 
 considers upper and lower bounds for the diagnostic dates. In this case, we
-only consider subjects diagnosed after October 2004 and before 13 August 2019
+only consider subjects diagnosed from 1 January 2008 and before 13 August 2019
 (this ensures individuals can be followed up by at least 5 year by the time of
 the last longitudinal measument obtained for the cohort; `r max_fup`). As
 such, subjects who do not meet this criteria will be excluded.
 `r n.upper` subjects were diagnosed on 13 August 2019 or later and were removed,
-and `r n.lower` subjects were diagnosed prior to October 2004 and were
+and `r n.lower` subjects were diagnosed prior to 2008 and were
 likewise removed. This results in a cohort size of `r nrow(dict)`
 subjects.
 
@@ -578,8 +576,6 @@ insufficient sample by the laboratory) have been removed.
 ::: {.callout-note collapse="true"}
 #### More information on FC censoring
 
-
-
 The lower limit of detection is $<20 \mu g/g$ ($20 \mu g$ of
 calprotectin per $g$ of stool). By reducing the upper limit, it is
 possible to run more tests in parallel. As a higher throughput has been
@@ -590,7 +586,6 @@ This change has resulted in minimal impact in clinics as $1250 \mu g/g$
 is still considered a high result. However, this change has potential
 implications for research.
 :::
-
 
 ```{r fig-fcal-meas}
 #| label: "fig-fcal-meas"
@@ -730,6 +725,15 @@ fcal <- subset(fcal, ids %in% diagnostic$ids)
 ```
 
 After this exclusion, `r length(unique(fcal$ids))` subjects remain in the data. 
+
+```{R}
+dict.no.diag.fc <- subset(dict, !(ids %in% diagnostic$ids))
+```
+
+`r sum(month(dict.no.diag.fc$date.of.diag) == 1 & day(dict.no.diag.fc$date.of.diag) == 1)`
+subjects which were excluded due to not having a diagnostic FC had a reported
+date of diagnosis of 1st January. Only year of diagnosis was likely available
+for these subjects.
 
 ```{R}
 ##The following code is used to save the cleaned data generated so far. 
@@ -1215,6 +1219,15 @@ crp.dist <- data.frame(ids = crp.ids, diagnostic = diag.time)
 saveRDS(crp.dist, paste0(prefix, "processed/crp-diag-dist.RDS"))
 ```
 
+
+```{R}
+dict.no.diag.crp <- subset(dict, !(ids %in% diagnostic$ids))
+```
+
+`r sum(month(dict.no.diag.crp$date.of.diag) == 1 & day(dict.no.diag.crp$date.of.diag) == 1)`
+subjects which were excluded due to not having a diagnostic crp had a reported
+date of diagnosis of 1st January. 
+
 ### Retiming - part 2
 
 Here, we show the distribution of the diagnostic CRP measurements with
@@ -1454,11 +1467,9 @@ saveRDS(crp.ma.0, paste0(prefix, "processed/crp-ma-0.RDS"))
 
 crp.ma <- crp.ma %>%
   subset(ids %in% countsDF$ids[countsDF$n.total >= 3 & countsDF$crp.var != 0])
-
-length(unique(crp.ma$ids))
 ```
 
-This leaves a cohort with `r length(unique(crp$ids))` individuals.
+This leaves a cohort with `r length(unique(crp.ma$ids))` individuals.
 
 <!--- CAV: I think we could include the nonzero variance subjects here --->
 
