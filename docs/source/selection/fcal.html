@@ -2,13 +2,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.551">
+<meta name="generator" content="quarto-1.6.40">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <meta name="author" content="Nathan Constantine-Cooke">
 <meta name="author" content="Karla Monterrubio-Gómez">
 <meta name="author" content="Catalina A. Vallejos">
-<meta name="dcterms.date" content="2025-01-09">
-<title>Analysis by Constantine-Cooke et al.&nbsp;- Model selection</title>
+<meta name="dcterms.date" content="2025-03-11">
+<title>Model selection – Analysis by Constantine-Cooke et al.</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -34,7 +34,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
   { counter-reset: source-line 0; }
@@ -90,12 +90,12 @@ div.csl-indent {
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-549806ee2085284f45b00abea8c6df48.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark-8ea72dc5fed832574809a9c94082fbbb.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../site_libs/bootstrap/bootstrap-dark.min.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark"><script id="quarto-search-options" type="application/json">{
+<link href="../../site_libs/bootstrap/bootstrap-921e1929ebbeb16142c7112f1e1e4c71.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark-9e2d5e6b408795c0a15b8c4cfdb63aef.min.css" rel="prefetch" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark"><script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
   "collapse-after": 3,
@@ -121,7 +121,7 @@ div.csl-indent {
     "search-submit-button-title": "Submit",
     "search-label": "Search"
   }
-}</script><script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.js"></script><script>document.addEventListener("DOMContentLoaded", function () {
+}</script><script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script><script>document.addEventListener("DOMContentLoaded", function () {
  var mathElements = document.getElementsByClassName("math");
  var macros = [];
  for (var i = 0; i < mathElements.length; i++) {
@@ -134,7 +134,7 @@ div.csl-indent {
     fleqn: false
    });
 }}});
-  </script><script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css">
+  </script><script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
 <script type="text/javascript">
 const typesetMath = (el) => {
   if (window.MathJax) {
@@ -161,22 +161,24 @@ window.Quarto = {
   typesetMath
 };
 </script>
-<meta property="og:title" content="Analysis by Constantine-Cooke et al.&nbsp;- Model selection">
+<meta property="og:title" content="Model selection – Analysis by Constantine-Cooke et al.">
 <meta property="og:description" content="Faecal calprotectin">
+<meta property="og:image" content="fcal_files/figure-html/fig-1-knots-1.png">
 <meta property="og:site_name" content="Analysis by Constantine-Cooke et al.">
-<meta name="twitter:title" content="Analysis by Constantine-Cooke et al.&nbsp;- Model selection">
+<meta name="twitter:title" content="Model selection – Analysis by Constantine-Cooke et al.">
 <meta name="twitter:description" content="Faecal calprotectin">
+<meta name="twitter:image" content="fcal_files/figure-html/fig-1-knots-1.png">
 <meta name="twitter:creator" content="@IBDNathan">
 <meta name="twitter:site" content="@EdinUni_IGC">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="citation_title" content="Model selection">
 <meta name="citation_author" content="Nathan Constantine-Cooke">
 <meta name="citation_author" content="Karla Monterrubio-Gómez">
 <meta name="citation_author" content="Catalina A. Vallejos">
-<meta name="citation_publication_date" content="2025-01-09">
-<meta name="citation_cover_date" content="2025-01-09">
+<meta name="citation_publication_date" content="2025-03-11">
+<meta name="citation_cover_date" content="2025-03-11">
 <meta name="citation_year" content="2025">
-<meta name="citation_online_date" content="2025-01-09">
+<meta name="citation_online_date" content="2025-03-11">
 <meta name="citation_language" content="en">
 <meta name="citation_reference" content="citation_title=Longitudinal Fecal Calprotectin Profiles Characterize Disease Course Heterogeneity in Crohn’s Disease;,citation_author=Nathan Constantine-Cooke;,citation_author=Karla Monterrubio-Gómez;,citation_author=Nikolas Plevris;,citation_author=Lauranne A. A. P. Derikx;,citation_author=Beatriz Gros;,citation_author=Gareth-Rhys Jones;,citation_author=Riccardo E. Marioni;,citation_author=Charlie W. Lees;,citation_author=Catalina A. Vallejos;,citation_publication_date=2023-03;,citation_cover_date=2023-03;,citation_year=2023;,citation_fulltext_html_url=https://linkinghub.elsevier.com/retrieve/pii/S1542356523002343;,citation_doi=10.1016/j.cgh.2023.03.026;,citation_issn=15423565;,citation_journal_title=Clinical Gastroenterology and Hepatology;">
 <meta name="citation_reference" content="citation_title=Increasing incidences of inflammatory bowel disease and decreasing surgery rates in copenhagen city and county, 20032005: A population-based study from the danish crohn colitis database;,citation_author=Ida Vind;,citation_author=Lene Riis;,citation_author=Tine Jess;,citation_author=Elisabeth Knudsen;,citation_author=Natalia Pedersen;,citation_author=Margarita Elkjær;,citation_author=Inger Bak Andersen;,citation_author=Vibeke Wewer;,citation_author=Peter Nørregaard;,citation_author=Flemming Moesgaard;,citation_author=Flemming Bendtsen;,citation_author=Pia Munkholm;,citation_publication_date=2006-06;,citation_cover_date=2006-06;,citation_year=2006;,citation_fulltext_html_url=https://doi.org/10.1111%2Fj.1572-0241.2006.00552.x;,citation_issue=6;,citation_doi=10.1111/j.1572-0241.2006.00552.x;,citation_volume=101;,citation_journal_title=The American Journal of Gastroenterology;,citation_publisher=Ovid Technologies (Wolters Kluwer Health);">
@@ -199,7 +201,7 @@ window.Quarto = {
     </a>
   </div>
             <div id="quarto-search" class="" title="Search"></div>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
   <span class="navbar-toggler-icon"></span>
 </button>
           <div class="collapse navbar-collapse" id="navbarCollapse">
@@ -209,7 +211,7 @@ window.Quarto = {
 <span class="menu-text">About</span></a>
   </li>  
   <li class="nav-item dropdown ">
-    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-before-model-fitting" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-before-model-fitting" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Before model fitting</span>
     </a>
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-menu-before-model-fitting">
@@ -224,7 +226,7 @@ window.Quarto = {
     </ul>
 </li>
   <li class="nav-item dropdown ">
-    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-model-fitting" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-model-fitting" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Model fitting</span>
     </a>
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-menu-model-fitting">
@@ -239,7 +241,7 @@ window.Quarto = {
     </ul>
 </li>
   <li class="nav-item dropdown ">
-    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-after-model-fitting" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-after-model-fitting" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">After model fitting</span>
     </a>
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-menu-after-model-fitting">
@@ -260,7 +262,7 @@ window.Quarto = {
   </li>  
 </ul>
 </div> <!-- /navcollapse -->
-          <div class="quarto-navbar-tools">
+            <div class="quarto-navbar-tools">
   <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
   <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="Toggle reader mode">
   <div class="quarto-reader-toggle-btn">
@@ -362,7 +364,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">January 9, 2025</p>
+      <p class="date">March 11, 2025</p>
     </div>
   </div>
   
@@ -590,7 +592,7 @@ Code used to fit models
 <span>  var.time <span class="op">=</span> <span class="st">"calpro_time"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-1-knots" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-1-knots" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-1-knots-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-1-knots-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -632,7 +634,7 @@ Figure&nbsp;1: Cluster profiles for the six-cluster model assuming one knot. The
 <span>  var.time <span class="op">=</span> <span class="st">"calpro_time"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-2-knots" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-2-knots" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-2-knots-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-2-knots-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -674,7 +676,7 @@ Figure&nbsp;2: Cluster profiles for the six-cluster model assuming two knots. Th
 <span>  var.time <span class="op">=</span> <span class="st">"calpro_time"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-3-knots" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-3-knots" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-3-knots-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-3-knots-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -724,7 +726,7 @@ Figure&nbsp;3: Cluster profiles for the six-cluster model assuming three knots. 
 (`geom_line()`).</code></pre>
 </div>
 <div class="cell-output-display">
-<div id="fig-4-knots" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-4-knots" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-4-knots-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-4-knots-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -775,12 +777,12 @@ Figure&nbsp;4: Cluster profiles for the six-cluster model assuming four knots. T
 <span>  <span class="va">knots.4</span>,</span>
 <span>  <span class="va">knots.4.list</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details><div id="tbl-knot-stats-ncs" class="cell quarto-float anchored">
+</details><div id="tbl-knot-stats-ncs" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure"><figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-knot-stats-ncs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Table&nbsp;1: Model statistics for differing numbers of knots for natural cubic splines
 </figcaption><div aria-describedby="tbl-knot-stats-ncs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
-<table class="do-not-create-environment cell table table-sm table-striped small">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
 <thead><tr class="header">
 <th style="text-align: left;">Knots</th>
 <th style="text-align: right;">Maxmum log likelihood</th>
@@ -928,7 +930,7 @@ Table&nbsp;1: Model statistics for differing numbers of knots for natural cubic 
 <span>  units <span class="op">=</span> <span class="st">"in"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-fcal-alluvial" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-fcal-alluvial" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-fcal-alluvial-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-fcal-alluvial-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -970,7 +972,7 @@ Figure&nbsp;5: Alluvial plot of cluster membership across G for FC
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">ylab</a></span><span class="op">(</span><span class="st">"Frequency"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-fcal-alluvial-unadjusted" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-fcal-alluvial-unadjusted" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-fcal-alluvial-unadjusted-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-fcal-alluvial-unadjusted-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -998,7 +1000,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </ul>
 <div class="tab-content">
 <div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -1022,7 +1024,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -1046,7 +1048,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -1077,7 +1079,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -1105,7 +1107,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -1139,7 +1141,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -1175,7 +1177,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-3-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -1207,7 +1209,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -1253,7 +1255,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -1294,7 +1296,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-4-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -1330,7 +1332,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -1390,7 +1392,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -1436,7 +1438,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-5" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-5-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -1476,7 +1478,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -1552,7 +1554,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -1603,7 +1605,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-6" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-6-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -1647,7 +1649,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 17%">
 <col style="width: 11%">
@@ -1741,7 +1743,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 19%">
 <col style="width: 11%">
@@ -1797,7 +1799,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-7" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-7-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
 <col style="width: 11%">
@@ -1845,7 +1847,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 15%">
 <col style="width: 10%">
@@ -1959,7 +1961,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 17%">
 <col style="width: 10%">
@@ -2020,7 +2022,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-8" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-8-tab">
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 11%">
@@ -2069,7 +2071,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -2089,7 +2091,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 17%">
@@ -2204,7 +2206,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -2263,7 +2265,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 19%">
@@ -2318,7 +2320,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -2349,7 +2351,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-9" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-9-tab">
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 11%">
@@ -2398,7 +2400,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -2422,7 +2424,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 18%">
@@ -2547,7 +2549,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 19%">
 <col style="width: 12%">
@@ -2623,7 +2625,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 19%">
@@ -2678,7 +2680,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -2714,7 +2716,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </table>
 </div>
 <div id="tabset-2-10" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-10-tab">
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 11%">
@@ -2763,7 +2765,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -2791,7 +2793,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 18%">
@@ -2926,7 +2928,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 19%">
 <col style="width: 12%">
@@ -3021,7 +3023,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <caption>Table continues below</caption>
 <colgroup>
 <col style="width: 19%">
@@ -3076,7 +3078,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -3279,7 +3281,7 @@ Figure&nbsp;6: Alluvial plot of cluster membership across G for FC
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">p1</span> <span class="op">/</span> <span class="va">p2</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-NCS-norm" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-NCS-norm" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-NCS-norm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-NCS-norm-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -3321,7 +3323,7 @@ Figure&nbsp;7: Plots assessing normality for the distribution of residuals for t
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">ArrangedPlot</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-NCS-norm-cluster" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-NCS-norm-cluster" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-NCS-norm-cluster-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-NCS-norm-cluster-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -3346,7 +3348,7 @@ Figure&nbsp;8: Q-Q plots assessing normality for the distribution of residuals s
 <span>  axis <span class="op">=</span> <span class="st">"Class"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-fcal-metrics" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-fcal-metrics" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-fcal-metrics-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-fcal-metrics-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -3360,7 +3362,7 @@ Figure&nbsp;9: Model metrics for FCAL for G = 4-9
 <details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb20"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">fcal.metrics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/libdr/man/makeMetrics.html">makeMetrics</a></span><span class="op">(</span><span class="va">G.fcal</span>, <span class="va">models.fcal</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/libdr/man/buildDT.html">buildDT</a></span><span class="op">(</span><span class="va">fcal.metrics</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<table class="table table-sm table-striped small">
+<table class="caption-top table table-sm table-striped small">
 <thead><tr class="header">
 <th style="text-align: right;">Clusters</th>
 <th style="text-align: right;">Maximum log-likelihood</th>
@@ -4137,7 +4139,7 @@ Figure&nbsp;9: Model metrics for FCAL for G = 4-9
 <span>  var.time <span class="op">=</span> <span class="st">"calpro_time"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-grbf-k-2" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-grbf-k-2" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-grbf-k-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-grbf-k-2-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -4181,7 +4183,7 @@ Figure&nbsp;10: Cluster profiles for the six-cluster model assuming two knots. T
 <span>  var.time <span class="op">=</span> <span class="st">"calpro_time"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-grbf-spec-k-3" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-grbf-spec-k-3" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-grbf-spec-k-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-grbf-spec-k-3-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -4276,7 +4278,7 @@ Figure&nbsp;11: Cluster profiles for the six-cluster model assuming three knots.
 <span>  units <span class="op">=</span> <span class="st">"in"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-grbf-alluvial" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-grbf-alluvial" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-grbf-alluvial-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-grbf-alluvial-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -4314,12 +4316,12 @@ Figure&nbsp;12: Alluvial plot of cluster membership across G for FCAL
 <span>  <span class="va">knots.grbf.2.list</span>,</span>
 <span>  <span class="va">knots.grbf.3.list</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details><div id="tbl-knot-stats-grbf" class="cell quarto-float anchored">
+</details><div id="tbl-knot-stats-grbf" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure"><figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-knot-stats-grbf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic splines
 </figcaption><div aria-describedby="tbl-knot-stats-grbf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
-<table class="do-not-create-environment cell table table-sm table-striped small">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
 <thead><tr class="header">
 <th style="text-align: left;">Knots</th>
 <th style="text-align: right;">Maxmum log likelihood</th>
@@ -4362,7 +4364,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </ul>
 <div class="tab-content">
 <div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -4386,7 +4388,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -4410,7 +4412,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -4441,7 +4443,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </table>
 </div>
 <div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -4469,7 +4471,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -4503,7 +4505,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -4539,7 +4541,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </table>
 </div>
 <div id="tabset-4-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-3-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -4571,7 +4573,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -4617,7 +4619,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -4658,7 +4660,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </table>
 </div>
 <div id="tabset-4-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-4-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -4694,7 +4696,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -4754,7 +4756,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -4800,7 +4802,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </table>
 </div>
 <div id="tabset-4-5" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-5-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -4840,7 +4842,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 18%">
 <col style="width: 12%">
@@ -4916,7 +4918,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
 <col style="width: 12%">
@@ -4967,7 +4969,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </table>
 </div>
 <div id="tabset-4-6" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-6-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
 <col style="width: 12%">
@@ -5011,7 +5013,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 17%">
 <col style="width: 11%">
@@ -5105,7 +5107,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 19%">
 <col style="width: 11%">
@@ -5161,7 +5163,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </table>
 </div>
 <div id="tabset-4-7" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-7-tab">
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
 <col style="width: 11%">
@@ -5209,7 +5211,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 15%">
 <col style="width: 10%">
@@ -5323,7 +5325,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 </tr>
 </tbody>
 </table>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 17%">
 <col style="width: 10%">
@@ -5529,7 +5531,7 @@ Table&nbsp;2: Model statistics for differing numbers of knots for natural cubic 
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">p1</span> <span class="op">/</span> <span class="va">p2</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-GRBF-norm" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-GRBF-norm" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-GRBF-norm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-GRBF-norm-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -5568,7 +5570,7 @@ Figure&nbsp;13: Plots assessing normality for the distribution of residuals for 
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html">print</a></span><span class="op">(</span><span class="va">ArrangedPlot</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-GRBF-norm-cluster" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-GRBF-norm-cluster" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-GRBF-norm-cluster-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-GRBF-norm-cluster-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -5592,7 +5594,7 @@ Figure&nbsp;14: Q-Q plots assessing normality for the distribution of residuals 
 <span>  axis <span class="op">=</span> <span class="st">"Class"</span></span>
 <span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<div id="fig-grbf-metrics" class="quarto-figure quarto-figure-center quarto-float anchored">
+<div id="fig-grbf-metrics" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure"><div aria-describedby="fig-grbf-metrics-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="fcal_files/figure-html/fig-grbf-metrics-1.png" class="img-fluid figure-img" width="672">
 </div>
@@ -5606,7 +5608,7 @@ Figure&nbsp;15: Model metrics for FCAL for G = 2-8
 <details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb53"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">grbf.metrics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/libdr/man/makeMetrics.html">makeMetrics</a></span><span class="op">(</span><span class="va">G.grbf</span>, <span class="va">models.grbf</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/libdr/man/buildDT.html">buildDT</a></span><span class="op">(</span><span class="va">grbf.metrics</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<table class="table table-sm table-striped small">
+<table class="caption-top table table-sm table-striped small">
 <thead><tr class="header">
 <th style="text-align: right;">Clusters</th>
 <th style="text-align: right;">Maximum log-likelihood</th>
@@ -6013,18 +6015,18 @@ Proust-Lima, Cécile, Viviane Philipps, and Benoit Liquet. 2017. <span>“Estima
 <p>Licensed by <a href="https://creativecommons.org/licenses/by/4.0/">CC BY</a> unless otherwise stated.</p>
 </div></section><section id="section" class="level2 appendix"><h2 class="anchored quarto-appendix-heading"></h2><div class="quarto-appendix-contents">
 <div class="center">
-<p><img class="center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height="50px"><img src="../../images/cgem-logo.png" alt="Centre for Genomic &amp; Experimental Medicine logo" height="50px"></p>
+<p><img class="center" src="../../images/MRC_HGU_Edinburgh_RGB.png" alt="MRC Human Genetics Unit logo" height="50px"><img src="../../images/cgem-logo.png" alt="Centre for Genomic &amp; Experimental Medicine logo" height="50px"></p>
 </div>
 <hr></div></section><section id="session-info" class="level2 appendix"><h2 class="anchored quarto-appendix-heading">Session info</h2><div class="quarto-appendix-contents">
 <div class="cell">
 <details class="code-fold"><summary>Code</summary><div class="sourceCode" id="cb80"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/pander/man/pander.html">pander</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html">sessionInfo</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details><div class="cell-output-display">
-<p><strong>R version 4.4.2 (2024-10-31)</strong></p>
+<p><strong>R version 4.4.3 (2025-02-28)</strong></p>
 <p><strong>Platform:</strong> aarch64-apple-darwin20</p>
 <p><strong>locale:</strong> en_GB.UTF-8||en_GB.UTF-8||en_GB.UTF-8||C||en_GB.UTF-8||en_GB.UTF-8</p>
 <p><strong>attached base packages:</strong> <em>splines</em>, <em>stats</em>, <em>graphics</em>, <em>grDevices</em>, <em>utils</em>, <em>datasets</em>, <em>methods</em> and <em>base</em></p>
-<p><strong>other attached packages:</strong> <em>qqplotr(v.0.0.6)</em>, <em>pander(v.0.6.5)</em>, <em>ggalluvial(v.0.12.5)</em>, <em>ggdist(v.3.3.2)</em>, <em>kml(v.2.5.0)</em>, <em>longitudinalData(v.2.4.7)</em>, <em>misc3d(v.0.9-1)</em>, <em>rgl(v.1.3.16)</em>, <em>clv(v.0.3-2.4)</em>, <em>class(v.7.3-22)</em>, <em>cluster(v.2.1.6)</em>, <em>lcmm(v.2.1.0)</em>, <em>libdr(v.1.0.1)</em>, <em>magrittr(v.2.0.3)</em>, <em>patchwork(v.1.3.0)</em>, <em>lubridate(v.1.9.4)</em>, <em>forcats(v.1.0.0)</em>, <em>stringr(v.1.5.1)</em>, <em>dplyr(v.1.1.4)</em>, <em>purrr(v.1.0.2)</em>, <em>readr(v.2.1.5)</em>, <em>tidyr(v.1.3.1)</em>, <em>tibble(v.3.2.1)</em>, <em>ggplot2(v.3.5.1)</em> and <em>tidyverse(v.2.0.0)</em></p>
-<p><strong>loaded via a namespace (and not attached):</strong> <em>tidyselect(v.1.2.1)</em>, <em>viridisLite(v.0.4.2)</em>, <em>farver(v.2.1.2)</em>, <em>viridis(v.0.6.5)</em>, <em>bitops(v.1.0-9)</em>, <em>fastmap(v.1.2.0)</em>, <em>pracma(v.2.4.4)</em>, <em>digest(v.0.6.37)</em>, <em>timechange(v.0.3.0)</em>, <em>lifecycle(v.1.0.4)</em>, <em>survival(v.3.7-0)</em>, <em>compiler(v.4.4.2)</em>, <em>rlang(v.1.1.4)</em>, <em>tools(v.4.4.2)</em>, <em>yaml(v.2.3.10)</em>, <em>knitr(v.1.49)</em>, <em>labeling(v.0.4.3)</em>, <em>htmlwidgets(v.1.6.4)</em>, <em>plyr(v.1.8.9)</em>, <em>withr(v.3.0.2)</em>, <em>numDeriv(v.2016.8-1.1)</em>, <em>grid(v.4.4.2)</em>, <em>opdisDownsampling(v.1.0.1)</em>, <em>caTools(v.1.18.3)</em>, <em>colorspace(v.2.1-1)</em>, <em>extrafontdb(v.1.0)</em>, <em>scales(v.1.3.0)</em>, <em>iterators(v.1.0.14)</em>, <em>MASS(v.7.3-61)</em>, <em>cli(v.3.6.3)</em>, <em>mvtnorm(v.1.3-2)</em>, <em>rmarkdown(v.2.29)</em>, <em>ragg(v.1.3.3)</em>, <em>marqLevAlg(v.2.0.8)</em>, <em>generics(v.0.1.3)</em>, <em>twosamples(v.2.0.1)</em>, <em>robustbase(v.0.99-4-1)</em>, <em>reshape2(v.1.4.4)</em>, <em>tzdb(v.0.4.0)</em>, <em>parallel(v.4.4.2)</em>, <em>base64enc(v.0.1-3)</em>, <em>vctrs(v.0.6.5)</em>, <em>Matrix(v.1.7-1)</em>, <em>jsonlite(v.1.8.9)</em>, <em>hms(v.1.1.3)</em>, <em>pbmcapply(v.1.5.1)</em>, <em>systemfonts(v.1.1.0)</em>, <em>foreach(v.1.5.2)</em>, <em>glue(v.1.8.0)</em>, <em>DEoptimR(v.1.1-3-1)</em>, <em>codetools(v.0.2-20)</em>, <em>rngWELL(v.0.10-10)</em>, <em>distributional(v.0.5.0)</em>, <em>stringi(v.1.8.4)</em>, <em>gtable(v.0.3.6)</em>, <em>quadprog(v.1.5-8)</em>, <em>extrafont(v.0.19)</em>, <em>randtoolbox(v.2.0.5)</em>, <em>munsell(v.0.5.1)</em>, <em>pillar(v.1.10.1)</em>, <em>htmltools(v.0.5.8.1)</em>, <em>R6(v.2.5.1)</em>, <em>textshaping(v.0.4.1)</em>, <em>tcltk(v.4.4.2)</em>, <em>doParallel(v.1.0.17)</em>, <em>evaluate(v.1.0.1)</em>, <em>lattice(v.0.22-6)</em>, <em>qqconf(v.1.3.2)</em>, <em>Rcpp(v.1.0.13-1)</em>, <em>gridExtra(v.2.3)</em>, <em>nlme(v.3.1-166)</em>, <em>Rttf2pt1(v.1.3.12)</em>, <em>xfun(v.0.50)</em> and <em>pkgconfig(v.2.0.3)</em></p>
+<p><strong>other attached packages:</strong> <em>qqplotr(v.0.0.6)</em>, <em>pander(v.0.6.6)</em>, <em>ggalluvial(v.0.12.5)</em>, <em>ggdist(v.3.3.2)</em>, <em>kml(v.2.5.0)</em>, <em>longitudinalData(v.2.4.7)</em>, <em>misc3d(v.0.9-1)</em>, <em>rgl(v.1.3.17)</em>, <em>clv(v.0.3-2.4)</em>, <em>class(v.7.3-23)</em>, <em>cluster(v.2.1.8)</em>, <em>lcmm(v.2.2.1)</em>, <em>libdr(v.1.0.1)</em>, <em>magrittr(v.2.0.3)</em>, <em>patchwork(v.1.3.0)</em>, <em>lubridate(v.1.9.4)</em>, <em>forcats(v.1.0.0)</em>, <em>stringr(v.1.5.1)</em>, <em>dplyr(v.1.1.4)</em>, <em>purrr(v.1.0.4)</em>, <em>readr(v.2.1.5)</em>, <em>tidyr(v.1.3.1)</em>, <em>tibble(v.3.2.1)</em>, <em>ggplot2(v.3.5.1)</em> and <em>tidyverse(v.2.0.0)</em></p>
+<p><strong>loaded via a namespace (and not attached):</strong> <em>tidyselect(v.1.2.1)</em>, <em>viridisLite(v.0.4.2)</em>, <em>farver(v.2.1.2)</em>, <em>viridis(v.0.6.5)</em>, <em>bitops(v.1.0-9)</em>, <em>fastmap(v.1.2.0)</em>, <em>pracma(v.2.4.4)</em>, <em>digest(v.0.6.37)</em>, <em>timechange(v.0.3.0)</em>, <em>lifecycle(v.1.0.4)</em>, <em>survival(v.3.8-3)</em>, <em>compiler(v.4.4.3)</em>, <em>rlang(v.1.1.5)</em>, <em>tools(v.4.4.3)</em>, <em>yaml(v.2.3.10)</em>, <em>knitr(v.1.49)</em>, <em>spacefillr(v.0.4.0)</em>, <em>labeling(v.0.4.3)</em>, <em>htmlwidgets(v.1.6.4)</em>, <em>plyr(v.1.8.9)</em>, <em>withr(v.3.0.2)</em>, <em>numDeriv(v.2016.8-1.1)</em>, <em>grid(v.4.4.3)</em>, <em>opdisDownsampling(v.1.0.1)</em>, <em>caTools(v.1.18.3)</em>, <em>colorspace(v.2.1-1)</em>, <em>extrafontdb(v.1.0)</em>, <em>scales(v.1.3.0)</em>, <em>iterators(v.1.0.14)</em>, <em>MASS(v.7.3-64)</em>, <em>cli(v.3.6.4)</em>, <em>mvtnorm(v.1.3-3)</em>, <em>rmarkdown(v.2.29)</em>, <em>ragg(v.1.3.3)</em>, <em>marqLevAlg(v.2.0.8)</em>, <em>generics(v.0.1.3)</em>, <em>twosamples(v.2.0.1)</em>, <em>robustbase(v.0.99-4-1)</em>, <em>reshape2(v.1.4.4)</em>, <em>tzdb(v.0.4.0)</em>, <em>parallel(v.4.4.3)</em>, <em>base64enc(v.0.1-3)</em>, <em>vctrs(v.0.6.5)</em>, <em>Matrix(v.1.7-2)</em>, <em>jsonlite(v.1.9.1)</em>, <em>hms(v.1.1.3)</em>, <em>pbmcapply(v.1.5.1)</em>, <em>systemfonts(v.1.2.1)</em>, <em>foreach(v.1.5.2)</em>, <em>glue(v.1.8.0)</em>, <em>DEoptimR(v.1.1-3-1)</em>, <em>codetools(v.0.2-20)</em>, <em>distributional(v.0.5.0)</em>, <em>stringi(v.1.8.4)</em>, <em>gtable(v.0.3.6)</em>, <em>quadprog(v.1.5-8)</em>, <em>extrafont(v.0.19)</em>, <em>munsell(v.0.5.1)</em>, <em>pillar(v.1.10.1)</em>, <em>htmltools(v.0.5.8.1)</em>, <em>R6(v.2.6.1)</em>, <em>textshaping(v.1.0.0)</em>, <em>tcltk(v.4.4.3)</em>, <em>doParallel(v.1.0.17)</em>, <em>evaluate(v.1.0.3)</em>, <em>lattice(v.0.22-6)</em>, <em>qqconf(v.1.3.2)</em>, <em>Rcpp(v.1.0.14)</em>, <em>gridExtra(v.2.3)</em>, <em>nlme(v.3.1-167)</em>, <em>Rttf2pt1(v.1.3.12)</em>, <em>xfun(v.0.51)</em> and <em>pkgconfig(v.2.0.3)</em></p>
 </div>
 </div>
 
@@ -6210,18 +6212,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     }
     return false;
   }
-  const clipboard = new window.ClipboardJS('.code-copy-button', {
-    text: function(trigger) {
-      const codeEl = trigger.previousElementSibling.cloneNode(true);
-      for (const childEl of codeEl.children) {
-        if (isCodeAnnotation(childEl)) {
-          childEl.remove();
-        }
-      }
-      return codeEl.innerText;
-    }
-  });
-  clipboard.on('success', function(e) {
+  const onCopySuccess = function(e) {
     // button target
     const button = e.trigger;
     // don't keep focus
@@ -6253,7 +6244,27 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     }, 1000);
     // clear code selection
     e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
   });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
   const viewSource = window.document.getElementById('quarto-view-source') ||
                      window.document.getElementById('quarto-code-tools-source');
   if (viewSource) {
@@ -6312,7 +6323,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
         return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
     }
     // Inspect non-navigation links and adorn them if external
- 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
     for (var i=0; i<links.length; i++) {
       const link = links[i];
       if (!isInternal(link.href)) {
@@ -6409,7 +6420,6 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       if (window.Quarto?.typesetMath) {
         window.Quarto.typesetMath(note);
       }
-      // TODO in 1.5, we should make sure this works without a callout special case
       if (note.classList.contains("callout")) {
         return note.outerHTML;
       } else {
@@ -8663,7 +8673,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb81-2086"><a href="#cb81-2086" aria-hidden="true" tabindex="-1"></a><span class="fu">## {.appendix}</span></span>
 <span id="cb81-2087"><a href="#cb81-2087" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb81-2088"><a href="#cb81-2088" aria-hidden="true" tabindex="-1"></a>&lt;div class = "center"&gt;</span>
-<span id="cb81-2089"><a href="#cb81-2089" aria-hidden="true" tabindex="-1"></a>  &lt;img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px&gt;</span>
+<span id="cb81-2089"><a href="#cb81-2089" aria-hidden="true" tabindex="-1"></a>  &lt;img class = "center" src="../../images/MRC_HGU_Edinburgh_RGB.png" alt="MRC Human Genetics Unit logo" height = 50px&gt;</span>
 <span id="cb81-2090"><a href="#cb81-2090" aria-hidden="true" tabindex="-1"></a>  &lt;img src="../../images/cgem-logo.png" alt="Centre for Genomic &amp; Experimental Medicine logo" height = 50px&gt;</span>
 <span id="cb81-2091"><a href="#cb81-2091" aria-hidden="true" tabindex="-1"></a>&lt;/div&gt;</span>
 <span id="cb81-2092"><a href="#cb81-2092" aria-hidden="true" tabindex="-1"></a></span>
@@ -8674,7 +8684,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb81-2097"><a href="#cb81-2097" aria-hidden="true" tabindex="-1"></a><span class="in">```{R Session info}</span></span>
 <span id="cb81-2098"><a href="#cb81-2098" aria-hidden="true" tabindex="-1"></a><span class="in">pander(sessionInfo())</span></span>
 <span id="cb81-2099"><a href="#cb81-2099" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-</code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 <footer class="footer"><div class="nav-footer">
