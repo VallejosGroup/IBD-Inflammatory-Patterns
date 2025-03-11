@@ -210,10 +210,11 @@ myDF.fc <- fcal %>%
   )
 
 myDF.fc <- merge(myDF.fc,
-                 model.fc$pprob,
-                 by = "ids",
-                 all.x = FALSE,
-                 all.y = TRUE)
+  model.fc$pprob,
+  by = "ids",
+  all.x = FALSE,
+  all.y = TRUE
+)
 myDF.fc <- myDF.fc %>%
   mutate(probmax = pmax(
     prob1, prob2, prob3, prob4,
@@ -319,12 +320,17 @@ Next, we calculate average posterior probabilities of cluster assignment.
 ```{r}
 myDF.fc_means <- myDF.fc %>%
   group_by(class_order_original, followup_cut) %>%
-  summarise(across(starts_with("prob_order_original"),
-                   function(x) mean(x, na.rm = TRUE)),
+  summarise(
+    across(
+      starts_with("prob_order_original"),
+      function(x) mean(x, na.rm = TRUE)
+    ),
     .groups = "drop"
   ) %>%
-  pivot_longer(cols = starts_with("prob_order_original"),
-               names_to = "prob_order_original")
+  pivot_longer(
+    cols = starts_with("prob_order_original"),
+    names_to = "prob_order_original"
+  )
 ```
 
 @fig-fc-prob-fup shows how cluster assignment probabilities change as follow-up
@@ -393,6 +399,91 @@ fc_fup
 
 ggsave("plots/fc-prob-fup.png", fc_fup, width = 11, height = 8, units = "in")
 ggsave("plots/fc-prob-fup.pdf", fc_fup, width = 11, height = 8, units = "in")
+```
+
+
+### Cluster assignment and year of diagnosis
+
+```{R}
+x <- with(myDF.fc, table(as.factor(year(date.of.diag)), class_order_original))
+x <- as.matrix(x)
+i <- 0
+while (any(x < 5)) {
+  if (any(x[i, ] < 5)) {
+    if (i == nrow(x)) {
+      x[i - 1, ] <- x[i - 1, ] + x[i, ]
+      rownames(x)[i - 1] <- paste0(rownames(x)[i - 1], ", ", rownames(x)[i])
+      x <- x[-i, ]
+    } else {
+      x[i, ] <- x[i, ] + x[i + 1, ]
+      rownames(x)[i] <- paste0(rownames(x)[i], ", ", rownames(x)[i + 1])
+      x <- x[-(i + 1), ]
+      i <- i - 1
+    }
+  }
+  i <- i + 1
+}
+if (any(x < 5)) {
+  stop("Failed to find a grouping for diagnosis year with at least 5 subjects in each cluster.")
+}
+```
+
+To explore a potential relationship between cluster assignment and era effect,
+we have investigated year of diagnosis and cluster assignment. However, as fewer than five subjects were diagnosed in some years for specific clusters, we have grouped years together.
+
+The following  groupings ensure at least five subjects are in every stratum: 
+
+```{R}
+#| results: "asis"
+#| echo: false
+htmltools::tags$ul(lapply(rownames(x), function(x) htmltools::tags$li(x)))
+```
+
+
+```{R}
+#| label: fig-fc-year
+#| fig-cap: "Proportion of subjects assigned to each FC cluster by year of diagnosis. Years with fewer than five subjects in a cluster are grouped together."
+myDF.fc <- myDF.fc %>%
+  mutate(year = plyr::mapvalues(year(date.of.diag),
+    from = c(
+      2008,
+      2009,
+      2010,
+      2013,
+      2014,
+      2015,
+      2016,
+      2018,
+      2019
+    ),
+    to = c(
+      "2008-2010",
+      "2008-2010",
+      "2008-2010",
+      "2013-2014",
+      "2013-2014",
+      "2015-2016",
+      "2015-2016",
+      "2018-2019",
+      "2018-2019"
+    )
+  ))
+
+p <- myDF.fc %>%
+  ggplot(aes(x = year, fill = class_order_original)) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d(option = "inferno") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::label_percent()) +
+  labs(x = "Year of IBD diagnosis", y = "", fill = "Assigned cluster")
+ggsave("plots/associations/fc-diagyear.pdf",
+  p,
+  width = 8,
+  height = 6,
+  units = "in",
+  create.dir = TRUE
+)
+p
 ```
 
 
@@ -474,7 +565,6 @@ ggsave("plots/associations/fc-diagnosis.pdf",
   units = "in",
   create.dir = TRUE
 )
-
 print(p)
 ```
 
@@ -534,12 +624,15 @@ Diagnosis year
 
 ```{R}
 myDF.fc %>%
-  ggplot(aes(x = as.character(year(date.of.diag)),
-             fill = class_order_original)) +
-  geom_bar(position="fill") + 
-  labs(x = "Year of diagnosis", y = "", fill = "Assigned cluster") + 
+  ggplot(aes(
+    x = as.character(year(date.of.diag)),
+    fill = class_order_original
+  )) +
+  geom_bar(position = "fill") +
+  labs(x = "Year of diagnosis", y = "", fill = "Assigned cluster") +
   scale_fill_viridis_d(option = "inferno") +
-  scale_y_continuous(labels = scales::percent) + theme_minimal()
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal()
 ```
 
 
@@ -632,11 +725,10 @@ will facilitate the application of such filter.
 ```{r}
 myDF.fc <- myDF.fc %>%
   mutate(missingN_cd = is.na(Smoke) +
-           is.na(Location) +
-           is.na(L4) +
-           is.na(Behaviour) +
-           is.na(Perianal)
-         )
+    is.na(Location) +
+    is.na(L4) +
+    is.na(Behaviour) +
+    is.na(Perianal))
 
 with(myDF.fc[myDF.fc$diagnosis == "Crohn's Disease", ], table(missingN_cd > 0))
 ```
@@ -683,8 +775,9 @@ p_behaviour_cd <- myDF.fc %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
   mutate(Behaviour = ifelse(!is.na(Behaviour_merged),
-                            Behaviour_merged,
-                            "Missing")) %>%
+    Behaviour_merged,
+    "Missing"
+  )) %>%
   plotCat("Behaviour", class = "class_order")
 
 p_L4_cd <- myDF.fc %>%
@@ -941,8 +1034,10 @@ will facilitate the application of such filter.
 ```{r}
 myDF.fc <- myDF.fc %>%
   mutate(missingN_uc = is.na(Smoke) + is.na(Extent))
-with(myDF.fc[myDF.fc$diagnosis == "Ulcerative Colitis", ],
-     table(missingN_uc > 0))
+with(
+  myDF.fc[myDF.fc$diagnosis == "Ulcerative Colitis", ],
+  table(missingN_uc > 0)
+)
 ```
 
 As shown above, `r sum(myDF.fc$missingN_uc[myDF.fc$diagnosis == "Ulcerative Colitis"] > 0)` 
@@ -1117,8 +1212,9 @@ myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
   mutate(class_aux = ifelse(class_order %in% c("FC8"),
-                            class_order,
-                            "Other")) %>%
+    class_order,
+    "Other"
+  )) %>%
   group_by(class_aux, sex) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -1128,8 +1224,9 @@ myDF.fc %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
   mutate(class_aux = ifelse(class_order %in% c("FC3"),
-                            class_order,
-                            "Other")) %>%
+    class_order,
+    "Other"
+  )) %>%
   group_by(class_aux, Extent) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -1174,8 +1271,9 @@ table(myDF.fc$AT_7Y)
 
 myDF.fc %>%
   mutate(class_aux = ifelse(class_order %in% c("FC2"),
-                            class_order_original,
-                            "Other")) %>%
+    class_order_original,
+    "Other"
+  )) %>%
   group_by(class_aux, AT_7Y) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100))
@@ -1467,9 +1565,11 @@ Next, we calculate average posterior probabilities of cluster assignment.
 ```{r}
 myDF.crp_means <- myDF.crp %>%
   group_by(class_order, followup_cut) %>%
-  summarise(across(starts_with("prob_order"),
-                   function(x) mean(x, na.rm = TRUE)
-                   ),
+  summarise(
+    across(
+      starts_with("prob_order"),
+      function(x) mean(x, na.rm = TRUE)
+    ),
     .groups = "drop"
   ) %>%
   pivot_longer(cols = starts_with("prob_order"), names_to = "prob_order")
@@ -1562,6 +1662,96 @@ ggsave("plots/prob-fup.png",
   height = 16 * 3 / 4,
   units = "in"
 )
+```
+
+### Cluster assignment and year of diagnosis
+
+```{R}
+x <- with(myDF.crp, table(as.factor(year(date.of.diag)), class_order))
+x <- as.matrix(x)
+i <- 0
+while (any(x < 5)) {
+  if (any(x[i, ] < 5)) { # if any cluster has fewer than 5 subjects
+    if (i == nrow(x)) { # if last row add to previous
+      x[i - 1, ] <- x[i - 1, ] + x[i, ]
+      rownames(x)[i - 1] <- paste0(rownames(x)[i - 1], ", ", rownames(x)[i])
+      x <- x[-i, ]
+    } else { # else add to next row
+      x[i, ] <- x[i, ] + x[i + 1, ]
+      rownames(x)[i] <- paste0(rownames(x)[i], ", ", rownames(x)[i + 1])
+      x <- x[-(i + 1), ]
+      i <- i - 1
+    }
+  }
+  i <- i + 1
+}
+if (any(x < 5)) {
+  stop("Failed to find a grouping for diagnosis year with at least 5 subjects in each cluster.")
+}
+```
+
+To explore a potential relationship between cluster assignment and era effect,
+we have investigated year of diagnosis and cluster assignment. However, as fewer
+than five subjects were diagnosed in some years for specific clusters, we have
+grouped years together.
+
+The following  groupings ensure at least five subjects are in every stratum: 
+
+```{R}
+#| results: "asis"
+#| echo: false
+htmltools::tags$ul(lapply(rownames(x), function(x) htmltools::tags$li(x)))
+```
+
+
+```{R}
+#| label: fig-crp-year
+#| fig-cap: "Proportion of subjects assigned to each CRP cluster by year of diagnosis. Years with fewer than five subjects in a cluster are grouped together."
+myDF.crp <- myDF.crp %>%
+  mutate(year = plyr::mapvalues(year(date.of.diag),
+    from = c(
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2017,
+      2018,
+      2019
+    ),
+    to = c(
+      "2008-2010",
+      "2008-2010",
+      "2008-2010",
+      "2011-2012",
+      "2011-2012",
+      "2013-2015",
+      "2013-2015",
+      "2013-2015",
+      "2017-2019",
+      "2017-2019",
+      "2017-2019"
+    )
+  ))
+p <- myDF.crp %>%
+  ggplot(aes(x = year, fill = class_order)) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d(option = "D") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::label_percent()) +
+  labs(x = "Year of IBD diagnosis", y = "", fill = "Assigned cluster")
+
+ggsave("plots/associations/crp-diagyear.pdf",
+  p,
+  width = 8,
+  height = 6,
+  units = "in",
+  create.dir = TRUE
+)
+p
 ```
 
 ### Associations with respect to cluster assignments
@@ -1835,9 +2025,10 @@ myDF.crp <- myDF.crp %>%
   mutate(missingN_cd = is.na(Smoke) + is.na(Location) + is.na(L4) +
     is.na(Behaviour) + is.na(Perianal))
 
-with(myDF.crp[myDF.crp$diagnosis == "Crohn's Disease", ],
-     table(missingN_cd > 0)
-             )
+with(
+  myDF.crp[myDF.crp$diagnosis == "Crohn's Disease", ],
+  table(missingN_cd > 0)
+)
 ```
 
 As shown above, `r sum(myDF.crp$missingN_cd[myDF.crp$diagnosis == "Crohn's Disease"] > 0)` will be excluded hereafter. 
@@ -1879,8 +2070,9 @@ p_behaviour_cd <- myDF.crp %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
   mutate(Behaviour = ifelse(!is.na(Behaviour_merged),
-                            Behaviour_merged,
-                            "Missing")) %>%
+    Behaviour_merged,
+    "Missing"
+  )) %>%
   plotCat("Behaviour", class = "class_order")
 
 p_L4_cd <- myDF.crp %>%
@@ -2001,8 +2193,9 @@ myDF.crp %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
   mutate(class_aux = ifelse(class_order %in% c("FC1", "FC2"),
-                            class_order,
-                            "Other")) %>%
+    class_order,
+    "Other"
+  )) %>%
   group_by(class_aux, L4) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -2013,8 +2206,9 @@ myDF.crp %>%
   filter(diagnosis == "Crohn's Disease") %>%
   filter(missingN_cd == 0) %>%
   mutate(class_aux = ifelse(class_order %in% c("CRP1", "CRP8"),
-                            class_order,
-                            "Other")) %>%
+    class_order,
+    "Other"
+  )) %>%
   group_by(class_aux, Smoke) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -2050,8 +2244,10 @@ will facilitate the application of such filter.
 myDF.crp <- myDF.crp %>%
   mutate(missingN_uc = is.na(Smoke) + is.na(Extent))
 
-with(myDF.crp[myDF.crp$diagnosis == "Ulcerative Colitis", ],
-     table(missingN_uc > 0))
+with(
+  myDF.crp[myDF.crp$diagnosis == "Ulcerative Colitis", ],
+  table(missingN_uc > 0)
+)
 ```
 
 As shown above, `r sum(myDF.crp$missingN_uc[myDF.crp$diagnosis == "Ulcerative Colitis"] > 0)` 
@@ -2153,8 +2349,9 @@ myDF.crp %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
   mutate(class_aux = ifelse(class_order %in% c("FC8"),
-                            class_order,
-                            "Other")) %>%
+    class_order,
+    "Other"
+  )) %>%
   group_by(class_aux, sex) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -2164,8 +2361,9 @@ myDF.crp %>%
   filter(diagnosis == "Ulcerative Colitis") %>%
   filter(missingN_uc == 0) %>%
   mutate(class_aux = ifelse(class_order %in% c("FC3"),
-                            class_order,
-                            "Other")) %>%
+    class_order,
+    "Other"
+  )) %>%
   group_by(class_aux, Extent) %>%
   summarise(count = n()) %>%
   mutate(percentage = (count / sum(count) * 100)) %>%
@@ -2419,7 +2617,6 @@ p1 <- km.df %>%
 
 ggsave("paper/CRP-AT.pdf", p1, width = 8 * 3 / 4, height = 12 * 3 / 4, units = "in")
 ggsave("paper/CRP-AT.png", p1, width = 8 * 3 / 4, height = 12 * 3 / 4, units = "in")
-
 ```
 
 
@@ -2434,7 +2631,6 @@ Licensed by
 ## {.appendix}
 
 <div class = "center">
-  <img class = "center" src="../../images/MRC_HGU_Edinburgh RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
   <img class = "center" src="../../images/MRC_HGU_Edinburgh_RGB.png" alt="MRC Human Genetics Unit logo" height = 50px>
   <img src="../../images/cgem-logo.png" alt="Centre for Genomic & Experimental Medicine logo" height = 50px>
 </div>
