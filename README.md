@@ -1,12 +1,16 @@
 # Lothian-IBDR
 
+[![R logo](https://img.shields.io/badge/R-276DC3?style=for-the-badge&logo=r&logoColor=white)](https://cran.r-project.org/)
+[![Docker badge](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/nathansam/predicct-analysis/pkgs/container//vedo-vs-tofa)
+[![Quarto](https://img.shields.io/badge/built_with-quarto-69b1e9?style=for-the-badge)](https://quarto.org/docs/get-started/)
+
 Clustering of faecal calprotectin and CRP profiles obtained from the Lothian IBD
 Registry (LIBDR), a population cohort of patients with IBD receiving care from
 the [NHS Lothian health board](https://www.nhslothian.scot/). This code was used
 to conduct analyses described in _Analysis for Large-scale clustering of
 longitudinal faecal calprotectin and C-reactive protein profiles in inflammatory
-bowel disease_ by Constantine et al. If you re-use any this code for your own 
-analyses, we would be very grateful if you cited our paper. 
+bowel disease_ by Constantine-Cooke & Vestergaard et al. If you re-use any this code for your own 
+analyses, we would be very grateful if you cited [our paper](https://doi.org/10.1101/2024.11.08.24316916). 
 
 ## Getting Started
 
