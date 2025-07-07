@@ -1294,8 +1294,8 @@ crp <- subset(crp, crp_time <= 7)
 length(unique(crp$ids))
 ```
 
-At this point, the data contains `r nrow(fcal)` FCAL measurements across all
-`r length(unique(fcal$ids))` individuals. 
+At this point, the data contains `r nrow(crp)` CRP measurements across all
+`r length(unique(crp$ids))` individuals. 
 
 ### Additional pre-processing
 
@@ -1460,7 +1460,6 @@ The following is used to select individuals with at least 3 CRP measurements
 and non-zero variance.
 
 ```{R CRP frequency}
-
 crp.ma.0 <- crp.ma %>%
   subset(ids %in% countsDF$ids[countsDF$n.total >= 3 & countsDF$crp.var == 0])
 saveRDS(crp.ma.0, paste0(prefix, "processed/crp-ma-0.RDS"))

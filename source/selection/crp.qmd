@@ -85,7 +85,7 @@ for (G.cand in G.cands) {
 rm(G.cand)
 ```
 
-```{R Processed CRP alluvial}
+```{R}
 #| label: fig-crp-alluvial-ma
 #| fig-cap: Alluvial plot of cluster membership across G for CRP
 
@@ -185,7 +185,7 @@ for (format in c("png", "pdf")) {
 }
 ```
 
-```{R Processed CRP alluvial no switching}
+```{R}
 #| label: fig-crp-alluvial-ma-noswitch
 #| fig-cap: Alluvial plot of cluster membership across G for CRP without label switching
 
@@ -197,6 +197,7 @@ for (G in G.crp) {
     G = G
   ))
 }
+
 alluvial.df <- as.data.frame(alluvial.df)
 
 alluvial.df$ids <- as.character(alluvial.df$ids)
