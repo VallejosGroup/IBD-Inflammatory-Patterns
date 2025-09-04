@@ -38,6 +38,8 @@ library(pander) # Pretty markdown rendering
 library(datefixR) # Standardising dates
 library(lubridate) # Date handling
 library(patchwork) # Arranging plots
+library(ragg) # Better graphics device
+library(Cairo) # Cairo graphics device
 ```
 
 This page details preprocessing steps undertaken prior to model fitting.
@@ -115,10 +117,10 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
   prefix <- "/Volumes/igmm/cvallejo-predicct/libdr/"
 }
 
-fcal.pheno <- read.csv(file.path(prefix, "2024-10-03/fcal-cleaned.csv"))
+fcal.pheno <- read.csv(paste0(prefix, "2024-10-03/fcal-cleaned.csv"))
 
 # Extract from TRAK which also now introduces CRP.
-labs <- read.csv(file.path(prefix, "2024-10-03/markers-cleaned.csv"))
+labs <- read.csv(paste0(prefix, "2024-10-03/markers-cleaned.csv"))
 fcal <- subset(labs, TEST == "f-Calprotectin-ALP")
 
 # Add sex and diagnosis type from fcal.pheno
@@ -128,10 +130,10 @@ fcal <- fcal.pheno %>%
   merge(x = fcal, by = "ids", all.x = TRUE, all.y = FALSE)
 
 crp <- subset(labs, TEST == "C-Reactive Prot")
-updated <- read.csv(file.path(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
-outcomes <- read.csv(file.path(prefix, "2024-10-03/cd-cleaned.csv"))
+updated <- read.csv(paste0(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
+outcomes <- read.csv(paste0(prefix, "2024-10-03/cd-cleaned.csv"))
 
-non.ibd <- read.csv(file.path (prefix, "2024-10-24/non-ibd.csv"))
+non.ibd <- read.csv(paste0 (prefix, "2024-10-24/non-ibd.csv"))
 ```
 
 Multiple datasets are used in this report with varying degrees of
@@ -763,24 +765,81 @@ Here, we show the distribution of the diagnostic FCAL measurements with
 respect to diagnosis date (in days). 
 
 ```{r fcal days before diag}
-p <- fcal %>%
+# Create plot data first (safer approach)
+fcal_diag_data <- fcal %>%
   group_by(ids) %>%
   filter(calpro_time == min(calpro_time)) %>%
-  ggplot(aes(x = calpro_time * 365.25)) +
-  geom_density(fill = "#20A39E", color = "#187370") +
-  theme_minimal() +
-  labs(
-    y = "Density",
-    x = "Time from diagnosis to first faecal calprotectin (days)"
-  ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+  ungroup() %>%
+  mutate(days_from_diag = calpro_time * 365.25)
 
-ggsave("plots/fc-diagnostic-dist.png",
-  p,
-  width = 16 * 2 / 3,
-  height = 6,
-  units = "in"
-)
+# Try multiple rendering approaches to avoid segfault
+plot_success <- FALSE
+
+# Approach 1: Try with Cairo PNG device directly
+if (!plot_success) {
+  tryCatch({
+    Cairo::CairoPNG("plots/fc-diagnostic-dist.png", 
+                    width = 16 * 2 / 3 * 300, 
+                    height = 6 * 300, 
+                    dpi = 300)
+    
+    p <- ggplot(fcal_diag_data, aes(x = days_from_diag)) +
+      geom_density(fill = "#20A39E", color = "#187370") +
+      theme_minimal() +
+      labs(
+        y = "Density",
+        x = "Time from diagnosis to first faecal calprotectin (days)"
+      ) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+    
+    print(p)
+    dev.off()
+    plot_success <- TRUE
+    cat("Plot saved successfully with Cairo\n")
+  }, error = function(e) {
+    if (!is.null(dev.list())) dev.off()
+    cat("Cairo approach failed:", e$message, "\n")
+  })
+}
+
+# Approach 2: Try with basic png device if Cairo failed
+if (!plot_success) {
+  tryCatch({
+    png("plots/fc-diagnostic-dist.png", 
+        width = 16 * 2 / 3 * 300, 
+        height = 6 * 300, 
+        res = 300)
+    
+    p <- ggplot(fcal_diag_data, aes(x = days_from_diag)) +
+      geom_density(fill = "#20A39E", color = "#187370") +
+      theme_minimal() +
+      labs(
+        y = "Density",
+        x = "Time from diagnosis to first faecal calprotectin (days)"
+      ) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+    
+    print(p)
+    dev.off()
+    plot_success <- TRUE
+    cat("Plot saved successfully with PNG\n")
+  }, error = function(e) {
+    if (!is.null(dev.list())) dev.off()
+    cat("PNG approach failed:", e$message, "\n")
+  })
+}
+
+# If both approaches failed, just display basic summary
+if (!plot_success) {
+  cat("Could not render plot due to graphics issues.\n")
+  cat("Summary of diagnostic FC timing:\n")
+  print(summary(fcal_diag_data$days_from_diag))
+  # Create a simple plot for display only (no saving)
+  p <- ggplot(fcal_diag_data, aes(x = days_from_diag)) +
+    stat_density(geom = "line", color = "#20A39E", linewidth = 1) +
+    theme_void() +
+    labs(x = "Days from diagnosis", y = "")
+}
 ```
 
 Although most diagnostic measurements were observed around the recorded 
@@ -1234,24 +1293,76 @@ Here, we show the distribution of the diagnostic CRP measurements with
 respect to diagnosis date (in days). 
 
 ```{r crp days before diag}
-p <- crp %>%
+# Create plot data first (safer approach)
+crp_diag_data <- crp %>%
   group_by(ids) %>%
   filter(crp_time == min(crp_time)) %>%
-  ggplot(aes(x = crp_time * 365.25)) +
-  geom_density(fill = "#415A77", color = "#1B263B") +
-  theme_minimal() +
-  labs(
-    y = "Density",
-    x = "Time from diagnosis to first CRP (days)"
-  ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+  ungroup() %>%
+  mutate(days_from_diag = crp_time * 365.25)
 
-ggsave("plots/crp-diagnostic-dist.png",
-  p,
-  width = 16 * 2 / 3,
-  height = 6,
-  units = "in"
-)
+# Try multiple rendering approaches to avoid segfault
+plot_success <- FALSE
+
+# Approach 1: Try with Cairo PNG device directly
+if (!plot_success) {
+  tryCatch({
+    Cairo::CairoPNG("plots/crp-diagnostic-dist.png", 
+                    width = 16 * 2 / 3 * 300, 
+                    height = 6 * 300, 
+                    dpi = 300)
+    
+    p <- ggplot(crp_diag_data, aes(x = days_from_diag)) +
+      geom_density(fill = "#415A77", color = "#1B263B") +
+      theme_minimal() +
+      labs(
+        y = "Density",
+        x = "Time from diagnosis to first CRP (days)"
+      ) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+    
+    print(p)
+    dev.off()
+    plot_success <- TRUE
+    cat("CRP plot saved successfully with Cairo\n")
+  }, error = function(e) {
+    if (!is.null(dev.list())) dev.off()
+    cat("Cairo approach failed for CRP:", e$message, "\n")
+  })
+}
+
+# Approach 2: Try with basic png device if Cairo failed
+if (!plot_success) {
+  tryCatch({
+    png("plots/crp-diagnostic-dist.png", 
+        width = 16 * 2 / 3 * 300, 
+        height = 6 * 300, 
+        res = 300)
+    
+    p <- ggplot(crp_diag_data, aes(x = days_from_diag)) +
+      geom_density(fill = "#415A77", color = "#1B263B") +
+      theme_minimal() +
+      labs(
+        y = "Density",
+        x = "Time from diagnosis to first CRP (days)"
+      ) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "red")
+    
+    print(p)
+    dev.off()
+    plot_success <- TRUE
+    cat("CRP plot saved successfully with PNG\n")
+  }, error = function(e) {
+    if (!is.null(dev.list())) dev.off()
+    cat("PNG approach failed for CRP:", e$message, "\n")
+  })
+}
+
+# If both approaches failed, just display basic summary
+if (!plot_success) {
+  cat("Could not render CRP plot due to graphics issues.\n")
+  cat("Summary of diagnostic CRP timing:\n")
+  print(summary(crp_diag_data$days_from_diag))
+}
 ```
 
 Similar to what was observed for FC, most diagnostic measurements were around 
@@ -1538,7 +1649,10 @@ p2 <- crp.ma %>%
 
 print(p1 + p2)
 
-ggsave("plots/crp-dist-ma.pdf", p1 + p2, width = 8, height = 4.5, units = "in")
+# Use Cairo for PDF output
+Cairo::CairoPDF("plots/crp-dist-ma.pdf", width = 8, height = 4.5)
+print(p1 + p2)
+dev.off()
 ```
 
 There are `r nrow(crp.ma)` total data points after the additional
@@ -1614,7 +1728,10 @@ p2 <- fcal %>%
   ylab("Density")
 print(p2)
 
-ggsave("plots/fcal-dist.pdf", p1 + p2, width = 8, height = 4.5, units = "in")
+# Use Cairo for PDF output
+Cairo::CairoPDF("plots/fcal-dist.pdf", width = 8, height = 4.5)
+print(p1 + p2)
+dev.off()
 ```
 
 ```{R Updated CRP distribution}
@@ -1652,7 +1769,11 @@ p4 <- crp %>%
   xlab("log(CRP (mg/L))") +
   ylab("Density")
 print(p4)
-ggsave("plots/crp-dist.pdf", p3 + p4, width = 8, height = 4.5, units = "in")
+
+# Use Cairo for PDF output
+Cairo::CairoPDF("plots/crp-dist.pdf", width = 8, height = 4.5)
+print(p3 + p4)
+dev.off()
 ```
 
 ```{R Updated CRP distribution}
@@ -1690,25 +1811,20 @@ p6 <- crp.ma %>%
   xlab("log(processed CRP (mg/L))") +
   ylab("Density")
 print(p6)
-ggsave("plots/crp-processed-dist.pdf",
-  p5 + p6,
-  width = 8,
-  height = 4.5,
-  units = "in"
-)
 
+# Use Cairo for PDF output
+Cairo::CairoPDF("plots/crp-processed-dist.pdf", width = 8, height = 4.5)
+print(p5 + p6)
+dev.off()
 
 p <- (p1 + p2) / (p5 + p6) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = 18, face = "bold"))
 
-
-ggsave("plots/Sup-Figure-1.pdf",
-  p,
-  width = 8,
-  height = 8,
-  units = "in"
-)
+# Use Cairo for PDF output
+Cairo::CairoPDF("plots/Sup-Figure-1.pdf", width = 8, height = 8)
+print(p)
+dev.off()
 ```
 
 ```{R}
