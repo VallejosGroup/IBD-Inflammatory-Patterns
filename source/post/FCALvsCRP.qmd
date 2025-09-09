@@ -25,6 +25,7 @@ author:
 suppressPackageStartupMessages(library(libdr))
 suppressPackageStartupMessages(library(ComplexHeatmap))
 suppressPackageStartupMessages(library(tidyverse))
+library(Cairo) # For stable graphics rendering
 library(ggalluvial)
 library(lcmm)
 library(patchwork)
@@ -133,8 +134,27 @@ p <- wrap_elements(p_overlap_fc) +
   wrap_elements(p_overlap_crp) + 
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = 20, face = "bold"))
-ggsave("plots/overlap.pdf", p, width = 14, height = 10)
-ggsave("plots/overlap.png", p, width = 14, height = 10)
+
+# Save PDF with Cairo device
+tryCatch({
+  Cairo::CairoPDF("plots/overlap.pdf", width = 14, height = 10)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+# Save PNG with Cairo device
+tryCatch({
+  Cairo::CairoPNG("plots/overlap.png", width = 14, height = 10, units = "in", res = 300)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
 p
 ```
 
@@ -224,8 +244,27 @@ p <- p1 + (p2 / p3) +
 
 p
 
-ggsave("paper/big-comp.png", p, width = 12, height = 11)
-ggsave("paper/big-comp.pdf", p, width = 12, height = 11)
+# Save PNG with Cairo device
+tryCatch({
+  dir.create("paper", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPNG("paper/big-comp.png", width = 12, height = 11, units = "in", res = 300)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("paper", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("paper/big-comp.pdf", width = 12, height = 11)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 Calculate some numbers in the overlap

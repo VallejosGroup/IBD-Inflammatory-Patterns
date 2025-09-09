@@ -43,6 +43,8 @@ if (file.exists("/.dockerenv")) { # Check if running in Docker
 library(tidyverse)
 # Support package (source found in libdr/)
 library(libdr)
+## Graphics ##
+library(Cairo) # For stable graphics rendering
 ## Modelling ##
 library(lcmm)
 library(kml) # K-means
@@ -175,14 +177,25 @@ p <- ggplot(
 print(p)
 
 
-for (format in c("png", "pdf")) {
-  ggsave(paste0("plots/ma-nocor/alluvial.", format),
-    p,
-    width = 12,
-    height = 6.75,
-    units = "in"
-  )
-}
+# Save PNG with Cairo device
+tryCatch({
+  Cairo::CairoPNG("plots/ma-nocor/alluvial.png", width = 12, height = 6.75, units = "in", res = 300)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+# Save PDF with Cairo device  
+tryCatch({
+  Cairo::CairoPDF("plots/ma-nocor/alluvial.pdf", width = 12, height = 6.75)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 ```{R}
@@ -339,18 +352,27 @@ p <- pprobs %>%
   ) +
   theme_minimal() +
   scale_y_discrete(limits = rev)
-ggsave("plots/pprob-distribution-crp-ma.png",
-  p,
-  width = 8.5,
-  height = 8.5,
-  units = "in"
-)
-ggsave("plots/pprob-distribution-crp-ma.pdf",
-  p,
-  width = 8.5,
-  height = 8.5,
-  units = "in"
-)
+
+# Save PNG with Cairo device
+tryCatch({
+  Cairo::CairoPNG("plots/pprob-distribution-crp-ma.png", width = 8.5, height = 8.5, units = "in", res = 300)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+# Save PDF with Cairo device
+tryCatch({
+  Cairo::CairoPDF("plots/pprob-distribution-crp-ma.pdf", width = 8.5, height = 8.5)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
 print(p)
 ```
 
@@ -920,14 +942,25 @@ p <- ggplot(
 print(p)
 
 
-for (format in c("png", "pdf")) {
-  ggsave(paste0("plots/ma-nocor/anchored-alluvial.", format),
-    p,
-    width = 12,
-    height = 6.75,
-    units = "in"
-  )
-}
+# Save PNG with Cairo device
+tryCatch({
+  Cairo::CairoPNG("plots/ma-nocor/anchored-alluvial.png", width = 12, height = 6.75, units = "in", res = 300)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+# Save PDF with Cairo device
+tryCatch({
+  Cairo::CairoPDF("plots/ma-nocor/anchored-alluvial.pdf", width = 12, height = 6.75)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 saveRDS(p, paste0(prefix, "processed/plots/crp-alluvial.RDS"))
 ```

@@ -35,6 +35,8 @@ library(tidyverse)
 library(dplyr)
 # Support package (source found in libdr/)
 library(libdr)
+## Graphics ##
+library(Cairo) # For stable graphics rendering
 ## Modelling ##
 library(lcmm)
 library(nnet) # Multinomial logistic regression
@@ -397,8 +399,25 @@ fc_fup <- myDF.fc_means %>%
 
 fc_fup
 
-ggsave("plots/fc-prob-fup.png", fc_fup, width = 11, height = 8, units = "in")
-ggsave("plots/fc-prob-fup.pdf", fc_fup, width = 11, height = 8, units = "in")
+# Save PNG with Cairo device
+tryCatch({
+  Cairo::CairoPNG("plots/fc-prob-fup.png", width = 11, height = 8, units = "in", res = 300)
+  print(fc_fup)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+# Save PDF with Cairo device
+tryCatch({
+  Cairo::CairoPDF("plots/fc-prob-fup.pdf", width = 11, height = 8)
+  print(fc_fup)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 
@@ -476,13 +495,18 @@ p <- myDF.fc %>%
   theme_minimal() +
   scale_y_continuous(labels = scales::label_percent()) +
   labs(x = "Year of IBD diagnosis", y = "", fill = "Assigned cluster")
-ggsave("plots/associations/fc-diagyear.pdf",
-  p,
-  width = 8,
-  height = 6,
-  units = "in",
-  create.dir = TRUE
-)
+
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-diagyear.pdf", width = 8, height = 6)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
 p
 ```
 
@@ -558,13 +582,17 @@ p <- wrap_elements(p_diagnosis_all) +
   plot_layout(widths = c(1.25, 2)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/fc-diagnosis.pdf",
-  p,
-  width = 15,
-  height = 12,
-  units = "in",
-  create.dir = TRUE
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-diagnosis.pdf", width = 15, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
 print(p)
 ```
 
@@ -580,13 +608,16 @@ p <- dk %>%
   mutate(Model = factor(Model, levels = c("Multivariate (prob >=0.5)", "Multivariate"))) %>%
   libdr:::.plotCI("diagnosisUlcerative Colitis")
 
-ggsave("plots/associations/fc-diagnosis-dk-forest.pdf",
-  p,
-  width = 15,
-  height = 12,
-  units = "in",
-  create.dir = TRUE
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-diagnosis-dk-forest.pdf", width = 15, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 ```{R}
@@ -610,12 +641,17 @@ p <- (wrap_elements(p_age_all) + p_mlr_all$plot_everything$age & theme(legend.po
   plot_layout(widths = c(1, 1)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/fc-sex-age.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-sex-age.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
 print(p)
 ```
 
@@ -821,12 +857,16 @@ p <- (p_age_cd + ylim(0, 90) + ggplot()) / (p_mlr_cd$plot_everything$age + ggplo
   theme(legend.position = "bottom") &
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/fc-cd-age.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-cd-age.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 p <- (wrap_elements(p_sex_cd) + ggplot()) /
   (p_mlr_cd$plot_everything$sexMale + ggplot()) +
@@ -834,12 +874,16 @@ p <- (wrap_elements(p_sex_cd) + ggplot()) /
   theme(legend.position = "bottom") &
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/fc-cd-sex.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-cd-sex.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 ```{R}
@@ -865,12 +909,16 @@ p <- wrap_elements(p_smoke_cd) +
   theme(plot.tag = element_text(face = "bold", size = 22))
 
 
-ggsave("plots/associations/fc-cd-smoking.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-cd-smoking.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 p
 ```
@@ -887,12 +935,16 @@ p <- wrap_elements(p_location_cd) +
   plot_layout(widths = c(1.25, 2)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/fc-location.pdf",
-  p,
-  width = 15,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-location.pdf", width = 15, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 print(p)
 ```
 
@@ -906,12 +958,16 @@ p <- wrap_elements(p_L4_cd) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/fc-L4.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-L4.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 print(p)
 ```
@@ -926,12 +982,16 @@ p <- wrap_elements(p_behaviour_cd) +
   (p_mlr_cd$p_both$`Behaviour_mergedB2 or B3` & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/fc-behaviour.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-behaviour.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 print(p)
 ```
 
@@ -944,12 +1004,16 @@ p <- wrap_elements(p_perianal_cd) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/fc-perianal.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-perianal.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 print(p)
 ```
@@ -1102,12 +1166,16 @@ p <- (p_age_uc + ylim(0, 90) + ggplot()) / (p_mlr_uc$plot_everything$age + ggplo
   theme(legend.position = "bottom") &
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/fc-uc-age.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-uc-age.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 p <- (wrap_elements(p_sex_uc) + ggplot()) /
   (p_mlr_uc$plot_everything$sexMale + ggplot()) +
@@ -1115,12 +1183,16 @@ p <- (wrap_elements(p_sex_uc) + ggplot()) /
   theme(legend.position = "bottom") &
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/fc-uc-sex.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-uc-sex.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 
@@ -1142,12 +1214,16 @@ p <- wrap_elements(p_smoke_uc) +
   (p_mlr_uc$p_both$SmokeYes & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/fc-uc-smoking.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-uc-smoking.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 print(p)
 ```
 
@@ -1165,12 +1241,16 @@ p <- wrap_elements(p_extent_uc) +
   plot_layout(widths = c(1.25, 2)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/fc-extent.pdf",
-  p,
-  width = 15,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-extent.pdf", width = 15, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 print(p)
 ```
 
@@ -1461,18 +1541,27 @@ p1 <- km.df %>%
   theme(legend.position = "bottom")
 # p1
 
-ggsave("paper/Figure-3.pdf",
-  p1,
-  width = 8 * 3 / 4,
-  height = 12 * 3 / 4,
-  units = "in"
-)
-ggsave("paper/Figure-3.png",
-  p1,
-  width = 8 * 3 / 4,
-  height = 12 * 3 / 4,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("paper", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("paper/Figure-3.pdf", width = 8 * 3 / 4, height = 12 * 3 / 4)
+  print(p1)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+# Save PNG with Cairo device
+tryCatch({
+  dir.create("paper", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPNG("paper/Figure-3.png", width = 8 * 3 / 4, height = 12 * 3 / 4, units = "in", res = 300)
+  print(p1)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 ```{R}
@@ -1639,8 +1728,24 @@ crp_fup <- myDF.crp_means %>%
 
 crp_fup
 
-ggsave("plots/crp-prob-fup.png", crp_fup, width = 11, height = 8, units = "in")
-ggsave("plots/crp-prob-fup.pdf", crp_fup, width = 11, height = 8, units = "in")
+# Save CRP followup plots with Cairo device
+tryCatch({
+  Cairo::CairoPNG("plots/crp-prob-fup.png", width = 11, height = 8, units = "in", res = 300)
+  print(crp_fup)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+tryCatch({
+  Cairo::CairoPDF("plots/crp-prob-fup.pdf", width = 11, height = 8)
+  print(crp_fup)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 
 p <- fc_fup / crp_fup + plot_annotation(tag_levels = "A") &
@@ -1650,18 +1755,24 @@ p <- fc_fup / crp_fup + plot_annotation(tag_levels = "A") &
     legend.text = element_text(size = 12)
   )
 
-ggsave("plots/prob-fup.pdf",
-  p,
-  width = 11 * 3 / 4,
-  height = 16 * 3 / 4,
-  units = "in"
-)
-ggsave("plots/prob-fup.png",
-  p,
-  width = 11 * 3 / 4,
-  height = 16 * 3 / 4,
-  units = "in"
-)
+# Save combined probability plots with Cairo device
+tryCatch({
+  Cairo::CairoPDF("plots/prob-fup.pdf", width = 11 * 3 / 4, height = 16 * 3 / 4)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+tryCatch({
+  Cairo::CairoPNG("plots/prob-fup.png", width = 11 * 3 / 4, height = 16 * 3 / 4, units = "in", res = 300)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 ### Cluster assignment and year of diagnosis
@@ -1744,13 +1855,16 @@ p <- myDF.crp %>%
   scale_y_continuous(labels = scales::label_percent()) +
   labs(x = "Year of IBD diagnosis", y = "", fill = "Assigned cluster")
 
-ggsave("plots/associations/crp-diagyear.pdf",
-  p,
-  width = 8,
-  height = 6,
-  units = "in",
-  create.dir = TRUE
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-diagyear.pdf", width = 8, height = 6)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 p
 ```
 
@@ -1808,13 +1922,16 @@ p <- wrap_elements(p_diagnosis_all) +
   plot_layout(widths = c(1.25, 2)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/crp-diagnosis.pdf",
-  p,
-  width = 15,
-  height = 12,
-  units = "in",
-  create.dir = TRUE
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-diagnosis.pdf", width = 15, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 print(p)
 ```
@@ -1826,13 +1943,16 @@ p <- dk.crp %>%
   mutate(Model = factor(Model, levels = c("Multivariate (prob >=0.5)", "Multivariate"))) %>%
   libdr:::.plotCI("diagnosisUlcerative Colitis")
 
-ggsave("plots/associations/crp-diagnosis-dk-forest.pdf",
-  p,
-  width = 15,
-  height = 12,
-  units = "in",
-  create.dir = TRUE
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-diagnosis-dk-forest.pdf", width = 15, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 ```{R}
@@ -1856,12 +1976,16 @@ p <- (wrap_elements(p_age_all) + p_mlr_all$plot_everything$age & theme(legend.po
   plot_layout(widths = c(1, 1)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/crp-sex-age.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-sex-age.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 print(p)
 
 
@@ -1874,12 +1998,16 @@ p <- (wrap_elements(p_age_all) + p_mlr_all$plot_both$age & theme(legend.position
   plot_layout(widths = c(1, 1)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/crp-sex-age.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-sex-age.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 print(p)
 ```
 
@@ -1889,24 +2017,32 @@ p <- (p_age_all + ylim(0, 98) + ggplot()) / (p_mlr_all$plot_everything$age + ggp
   theme(legend.position = "bottom") &
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/crp-age.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-age.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 p <- (wrap_elements(p_sex_all) + ggplot()) / (p_mlr_all$plot_everything$sexMale + ggplot()) +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom") &
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/crp-sex.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-sex.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 
@@ -2117,12 +2253,16 @@ p <- wrap_elements(p_smoke_cd) +
   theme(plot.tag = element_text(face = "bold", size = 22))
 
 
-ggsave("plots/associations/crp-cd-smoking.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-cd-smoking.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 ```{R}
@@ -2137,12 +2277,16 @@ p <- wrap_elements(p_location_cd) +
   plot_layout(widths = c(1.25, 2)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/crp-location.pdf",
-  p,
-  width = 15,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-location.pdf", width = 15, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 print(p)
 ```
 
@@ -2156,12 +2300,16 @@ p <- wrap_elements(p_L4_cd) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/crp-L4.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-L4.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 print(p)
 ```
@@ -2176,12 +2324,16 @@ p <- wrap_elements(p_behaviour_cd) +
   (p_mlr_cd$p_both$`Behaviour_mergedB2 or B3` & theme(legend.position = "bottom")) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
-ggsave("plots/associations/crp-behaviour.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-behaviour.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 
 print(p)
 ```
@@ -2307,12 +2459,16 @@ p <- wrap_elements(p_extent_uc) +
   plot_layout(widths = c(1.25, 2)) &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/crp-extent.pdf",
-  p,
-  width = 15,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-extent.pdf", width = 15, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 print(p)
 ```
 
@@ -2334,12 +2490,16 @@ p <- wrap_elements(p_smoke_uc) + (p_mlr_uc$p_both$SmokeYes & theme(legend.positi
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(face = "bold", size = 22))
 
-ggsave("plots/associations/crp-uc-smoking.pdf",
-  p,
-  width = 12,
-  height = 12,
-  units = "in"
-)
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/crp-uc-smoking.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 Some statistics to be used in the text:
@@ -2615,8 +2775,26 @@ p1 <- km.df %>%
   theme(legend.position = "bottom")
 # p1
 
-ggsave("paper/CRP-AT.pdf", p1, width = 8 * 3 / 4, height = 12 * 3 / 4, units = "in")
-ggsave("paper/CRP-AT.png", p1, width = 8 * 3 / 4, height = 12 * 3 / 4, units = "in")
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("paper", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("paper/CRP-AT.pdf", width = 8 * 3 / 4, height = 12 * 3 / 4)
+  print(p1)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+# Save PNG with Cairo device
+tryCatch({
+  dir.create("paper", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPNG("paper/CRP-AT.png", width = 8 * 3 / 4, height = 12 * 3 / 4, units = "in", res = 300)
+  print(p1)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PNG:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
 ```
 
 
