@@ -520,6 +520,8 @@ using multinomial logistic regression. As a sensitivity analysis, we also
 consider restricting the analysis to only consider individuals whose class 
 assignment was less uncertain (with posterior probability > 0.5).
 
+
+
 <!--- CAV: add here a table with summary statistics per cluster;
 include, for each cluster, the proportion of individuals assigned with
 prob > 0.5---> 
@@ -544,9 +546,18 @@ p_age_all <- myDF.fc %>%
   xlab("Cluster") +
   ylab("Age at diagnosis")
 
+
+p_n.total_all <- myDF.fc %>%
+  ggplot(aes(x = class_order, y = n.total)) +
+  geom_violin(fill = "#5DB7DE", color = "#434371") +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.2) +
+  theme_minimal() +
+  xlab("Cluster") +
+  ylab("FC count")
+
 p_mlr_all <- myDF.fc %>%
   mutate(class_order = relevel(class_order, ref = "FC1")) %>%
-  mlrPlot(var = c("diagnosis", "age", "sex"), class = "class_order")
+  mlrPlot(var = c("diagnosis", "age", "sex", "n.total"), class = "class_order")
 
 temp.1 <- myDF.fc %>% filter(class_order == "FC1")
 temp.2 <- myDF.fc %>% filter(class_order != "FC1")
@@ -591,7 +602,7 @@ tryCatch({
 }, error = function(e) {
   cat("Error saving PDF:", e$message, "\n")
   if (dev.cur() > 1) dev.off()
-})
+}) 
 
 print(p)
 ```
@@ -628,7 +639,7 @@ tryCatch({
 p_mlr_all <- myDF.fc %>%
   mutate(class_order = relevel(class_order, ref = "FC1")) %>%
   mlrPlot(
-    var = c("diagnosis", "age", "sex"),
+    var = c("diagnosis", "age", "sex", "n.total"),
     class = "class_order",
     extern = dk
   )
@@ -655,6 +666,26 @@ tryCatch({
 print(p)
 ```
 
+```{R}
+p <- ((wrap_elements(p_n.total_all) + p_mlr_all$plot_everything$n.total) + 
+    plot_layout(guides = "collect")) &
+    theme(legend.position = "bottom") &
+    plot_annotation(tag_levels = "A")  &
+    theme(plot.tag = element_text(face = "bold", size = 22))
+
+# Save PDF with Cairo device
+tryCatch({
+  dir.create("plots/associations", recursive = TRUE, showWarnings = FALSE)
+  Cairo::CairoPDF("plots/associations/fc-n.total.pdf", width = 12, height = 12)
+  print(p)
+  dev.off()
+}, error = function(e) {
+  cat("Error saving PDF:", e$message, "\n")
+  if (dev.cur() > 1) dev.off()
+})
+
+print(p)
+```
 
 Diagnosis year
 
