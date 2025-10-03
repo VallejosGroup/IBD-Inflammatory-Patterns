@@ -4,7 +4,8 @@ library(patchwork)
 library(splines)
 
 set.seed(123)
-if (file.exists("/.dockerenv")) { # Check if running in Docker
+if (file.exists("/.dockerenv")) {
+  # Check if running in Docker
   # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
   prefix <- "data/"
 } else {
@@ -22,10 +23,11 @@ pred.fc.df <- data.frame(
     rep("Ulcerative Colitis", 701)
   )
 )
-pred.fc.df.update <- predictY(model.fc,
-                              pred.fc.df,
-                              var.time = "calpro_time",
-                              draws = TRUE
+pred.fc.df.update <- predictY(
+  model.fc,
+  pred.fc.df,
+  var.time = "calpro_time",
+  draws = TRUE
 )$pred
 
 temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
@@ -49,9 +51,11 @@ for (g in 1:8) {
     ggplot(aes(x = Time, y = Value)) +
     geom_line(color = "#757575") +
     theme_classic() +
-    theme(text = element_blank(),
-          axis.ticks = element_blank(),
-          axis.line = element_line(color = "#dfdfdf")) +
+    theme(
+      text = element_blank(),
+      axis.ticks = element_blank(),
+      axis.line = element_line(color = "#dfdfdf")
+    ) +
     ylim(3, 6.5)
 }
 
@@ -62,22 +66,14 @@ p <- traj.outlines[[1]] +
   traj.outlines[[5]] +
   traj.outlines[[6]] +
   traj.outlines[[7]] +
-  traj.outlines[[8]] + plot_layout(ncol = 8)
+  traj.outlines[[8]] +
+  plot_layout(ncol = 8)
 
-ggsave("plots/fc-traj-outline.pdf",
-       p,
-       width = 8 * 1.65,
-       height = 1 * 1.65
-)
-ggsave("plots/fc-traj-outline.png",
-       p,
-       width = 8 * 1.65,
-       height = 1 * 1.65
-)
+ggsave("plots/fc-traj-outline.pdf", p, width = 8 * 1.65, height = 1 * 1.65)
+ggsave("plots/fc-traj-outline.png", p, width = 8 * 1.65, height = 1 * 1.65)
 
 
 model.crp <- readRDS(paste0(prefix, "/cache/crp-ma/crp-8.RDS"))
-
 
 
 pred.crp.df <- data.frame(
@@ -87,10 +83,11 @@ pred.crp.df <- data.frame(
     rep("Ulcerative Colitis", 626)
   )
 )
-pred.crp.df.update <- predictY(model.crp,
-                              pred.crp.df,
-                              var.time = "crp_time",
-                              draws = TRUE
+pred.crp.df.update <- predictY(
+  model.crp,
+  pred.crp.df,
+  var.time = "crp_time",
+  draws = TRUE
 )$pred
 
 temp <- data.frame(Time = NULL, Cluster = NULL, Value = NULL)
@@ -114,9 +111,11 @@ for (g in 1:8) {
     ggplot(aes(x = Time, y = Value)) +
     geom_line(color = "#757575") +
     theme_classic() +
-    theme(text = element_blank(),
-          axis.ticks = element_blank(),
-          axis.line = element_line(color = "#dfdfdf")) +
+    theme(
+      text = element_blank(),
+      axis.ticks = element_blank(),
+      axis.line = element_line(color = "#dfdfdf")
+    ) +
     ylim(0, 4.2)
 }
 
@@ -130,14 +129,5 @@ p <- traj.outlines[[1]] +
   traj.outlines[[8]] +
   plot_layout(ncol = 8)
 
-ggsave("plots/crp-traj-outline.pdf",
-       p,
-       width = 8 * 1.65,
-       height = 1 * 1.65
-)
-ggsave("plots/crp-traj-outline.png",
-       p,
-       width = 8 * 1.65,
-       height = 1 * 1.65
-)
-
+ggsave("plots/crp-traj-outline.pdf", p, width = 8 * 1.65, height = 1 * 1.65)
+ggsave("plots/crp-traj-outline.png", p, width = 8 * 1.65, height = 1 * 1.65)

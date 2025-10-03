@@ -1,7 +1,8 @@
 library(tidyverse)
 library(Cairo) # For graphics device
 
-if (file.exists("/.dockerenv")) { # Check if running in Docker
+if (file.exists("/.dockerenv")) {
+  # Check if running in Docker
   # Assume igmm/Vallejo-predict/libdr/ is passed to the data volume
   prefix <- "data/"
 } else {
@@ -17,45 +18,63 @@ model.fcal <- readRDS(paste0(prefix, "/cache/fcal/ncs/fcal-8.RDS"))
 fc.dist <- subset(fc.dist, ids %in% model.fcal$pprob$ids)
 fc.dist <- merge(fc.dist, model.fcal$pprob[, c("ids", "class")], by = "ids")
 fc.dist$class <- paste0("FC", fc.dist$class)
-fc.dist$class <- plyr::mapvalues(fc.dist$class,
-                                 from = paste0("FC", seq(1, 8)),
-                                 to = paste0("FC", c(7, 6, 4, 8, 1, 5, 2, 3)))
+fc.dist$class <- plyr::mapvalues(
+  fc.dist$class,
+  from = paste0("FC", seq(1, 8)),
+  to = paste0("FC", c(7, 6, 4, 8, 1, 5, 2, 3))
+)
 
 p <- fc.dist %>%
   ggplot(aes(x = diagnostic * 365.25)) +
   geom_density(fill = "#20A39E", color = "#187370") +
   theme_minimal() +
-  labs(y = "Density",
-       x = "Time from diagnosis to first faecal calprotectin (days)") +
+  labs(
+    y = "Density",
+    x = "Time from diagnosis to first faecal calprotectin (days)"
+  ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
   facet_grid(rows = vars(class))
 
 # Use Cairo for safe PNG output
-tryCatch({
-  Cairo::CairoPNG("plots/fc-diagnostic-dist-cluster.png", 
-                  width = 16 * 2/3 * 300, 
-                  height = 18 * 2/3 * 300, 
-                  dpi = 300)
-  print(p)
-  dev.off()
-  cat("FC cluster PNG saved successfully with Cairo\n")
-}, error = function(e) {
-  if (!is.null(dev.list())) dev.off()
-  cat("FC cluster PNG Cairo approach failed:", e$message, "\n")
-})
+tryCatch(
+  {
+    Cairo::CairoPNG(
+      "plots/fc-diagnostic-dist-cluster.png",
+      width = 16 * 2 / 3 * 300,
+      height = 18 * 2 / 3 * 300,
+      dpi = 300
+    )
+    print(p)
+    dev.off()
+    cat("FC cluster PNG saved successfully with Cairo\n")
+  },
+  error = function(e) {
+    if (!is.null(dev.list())) {
+      dev.off()
+    }
+    cat("FC cluster PNG Cairo approach failed:", e$message, "\n")
+  }
+)
 
 # Use Cairo for safe PDF output
-tryCatch({
-  Cairo::CairoPDF("plots/fc-diagnostic-dist-cluster.pdf", 
-                  width = 16 * 2/3, 
-                  height = 18 * 2/3)
-  print(p)
-  dev.off()
-  cat("FC cluster PDF saved successfully with Cairo\n")
-}, error = function(e) {
-  if (!is.null(dev.list())) dev.off()
-  cat("FC cluster PDF Cairo approach failed:", e$message, "\n")
-})
+tryCatch(
+  {
+    Cairo::CairoPDF(
+      "plots/fc-diagnostic-dist-cluster.pdf",
+      width = 16 * 2 / 3,
+      height = 18 * 2 / 3
+    )
+    print(p)
+    dev.off()
+    cat("FC cluster PDF saved successfully with Cairo\n")
+  },
+  error = function(e) {
+    if (!is.null(dev.list())) {
+      dev.off()
+    }
+    cat("FC cluster PDF Cairo approach failed:", e$message, "\n")
+  }
+)
 
 
 crp.dist <- readRDS(paste0(prefix, "processed/crp-diag-dist.RDS"))
@@ -64,44 +83,58 @@ model.crp <- readRDS(paste0(prefix, "/cache/crp-ma/crp-8.RDS"))
 crp.dist <- subset(crp.dist, ids %in% model.crp$pprob$ids)
 crp.dist <- merge(crp.dist, model.crp$pprob[, c("ids", "class")], by = "ids")
 crp.dist$class <- paste("CRP", crp.dist$class)
-crp.dist$class <- plyr::mapvalues(crp.dist$class,
-                                 from = paste0("CRP ", seq(1, 8)),
-                                 to = paste0("CRP", c(2, 3, 1, 4, 5, 7, 6, 8)))
+crp.dist$class <- plyr::mapvalues(
+  crp.dist$class,
+  from = paste0("CRP ", seq(1, 8)),
+  to = paste0("CRP", c(2, 3, 1, 4, 5, 7, 6, 8))
+)
 
 
 p <- crp.dist %>%
   ggplot(aes(x = diagnostic * 365.25)) +
   geom_density(fill = "#415A77", color = "#1B263B") +
   theme_minimal() +
-  labs(y = "Density",
-       x = "Time from diagnosis to first CRP (days)") +
+  labs(y = "Density", x = "Time from diagnosis to first CRP (days)") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
   facet_grid(rows = vars(class))
 
 # Use Cairo for safe PNG output
-tryCatch({
-  Cairo::CairoPNG("plots/crp-diagnostic-dist-cluster.png", 
-                  width = 16 * 2/3 * 300, 
-                  height = 20 * 2/3 * 300, 
-                  dpi = 300)
-  print(p)
-  dev.off()
-  cat("CRP cluster PNG saved successfully with Cairo\n")
-}, error = function(e) {
-  if (!is.null(dev.list())) dev.off()
-  cat("CRP cluster PNG Cairo approach failed:", e$message, "\n")
-})
+tryCatch(
+  {
+    Cairo::CairoPNG(
+      "plots/crp-diagnostic-dist-cluster.png",
+      width = 16 * 2 / 3 * 300,
+      height = 20 * 2 / 3 * 300,
+      dpi = 300
+    )
+    print(p)
+    dev.off()
+    cat("CRP cluster PNG saved successfully with Cairo\n")
+  },
+  error = function(e) {
+    if (!is.null(dev.list())) {
+      dev.off()
+    }
+    cat("CRP cluster PNG Cairo approach failed:", e$message, "\n")
+  }
+)
 
 # Use Cairo for safe PDF output
-tryCatch({
-  Cairo::CairoPDF("plots/crp-diagnostic-dist-cluster.pdf", 
-                  width = 16 * 2/3, 
-                  height = 20 * 2/3)
-  print(p)
-  dev.off()
-  cat("CRP cluster PDF saved successfully with Cairo\n")
-}, error = function(e) {
-  if (!is.null(dev.list())) dev.off()
-  cat("CRP cluster PDF Cairo approach failed:", e$message, "\n")
-})
-
+tryCatch(
+  {
+    Cairo::CairoPDF(
+      "plots/crp-diagnostic-dist-cluster.pdf",
+      width = 16 * 2 / 3,
+      height = 20 * 2 / 3
+    )
+    print(p)
+    dev.off()
+    cat("CRP cluster PDF saved successfully with Cairo\n")
+  },
+  error = function(e) {
+    if (!is.null(dev.list())) {
+      dev.off()
+    }
+    cat("CRP cluster PDF Cairo approach failed:", e$message, "\n")
+  }
+)

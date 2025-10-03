@@ -3,7 +3,8 @@ library(libdr)
 library(lcmm)
 
 set.seed(123)
-if (file.exists("/.dockerenv")) { # Check if running in Docker
+if (file.exists("/.dockerenv")) {
+  # Check if running in Docker
   # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
   prefix <- "data/"
 } else {
@@ -34,10 +35,12 @@ for (id in dict.fcal$ids) {
 dict.fcal$cluster <- as.factor(cluster)
 
 # Data frame to hold processed data
-new.fc <- data.frame(ids = numeric(),
-                     calpro_result = numeric(),
-                     calpro_time = numeric(),
-                     class = numeric())
+new.fc <- data.frame(
+  ids = numeric(),
+  calpro_result = numeric(),
+  calpro_time = numeric(),
+  class = numeric()
+)
 
 for (clust in 1:8) {
   ids.clust <- subset(dict.fcal, cluster == clust)$ids
@@ -65,46 +68,42 @@ for (clust in 1:8) {
         )
       }
       if (nrow(sub.obs) > 0) {
-        fcal.ma[i+1, j + 1] <- median(sub.obs$calpro_result)
+        fcal.ma[i + 1, j + 1] <- median(sub.obs$calpro_result)
       }
     }
   }
 
   rownames(fcal.ma) <- 1:iters
-  fcal.ma <- reshape2::melt(t(fcal.ma ),
-                            id.vars = row.names(fcal.ma),
-                            na.rm = TRUE)
+  fcal.ma <- reshape2::melt(
+    t(fcal.ma),
+    id.vars = row.names(fcal.ma),
+    na.rm = TRUE
+  )
   colnames(fcal.ma) <- c("calpro_time", "ids", "calpro_result")
-  fcal.ma  <- fcal.ma[, c(2, 3, 1)] # Make ids first column
+  fcal.ma <- fcal.ma[, c(2, 3, 1)] # Make ids first column
   fcal.ma$calpro_time <- fcal.ma$calpro_time - 1
   # Take into account uneven spacing at start and end
-  fcal.ma$calpro_time <- plyr::mapvalues(fcal.ma$calpro_time,
-                                         from = c(0, 6),
-                                         to = c(0.25, 6.25))
+  fcal.ma$calpro_time <- plyr::mapvalues(
+    fcal.ma$calpro_time,
+    from = c(0, 6),
+    to = c(0.25, 6.25)
+  )
   fcal.ma$class <- clust # Identify cluster assignment
   new.fc <- rbind(new.fc, fcal.ma)
 }
 
 cairo_pdf("paper/NCS-8-cluster-smoothed.pdf", width = 7, height = 9)
 grid::grid.newpage()
-spaghettiPlot(new.fc,
-              models.fcal,
-              8,
-              clusters = TRUE,
-              tmax = 7,
-              sizes = TRUE)
+spaghettiPlot(new.fc, models.fcal, 8, clusters = TRUE, tmax = 7, sizes = TRUE)
 invisible(dev.off())
 
-png("paper/NCS-8-cluster-smoothed.png",
-    width = 7,
-    height = 9,
-    units = "in",
-    res = 300)
+png(
+  "paper/NCS-8-cluster-smoothed.png",
+  width = 7,
+  height = 9,
+  units = "in",
+  res = 300
+)
 grid::grid.newpage()
-spaghettiPlot(new.fc,
-              models.fcal,
-              8,
-              clusters = TRUE,
-              tmax = 7,
-              sizes = TRUE)
+spaghettiPlot(new.fc, models.fcal, 8, clusters = TRUE, tmax = 7, sizes = TRUE)
 invisible(dev.off())

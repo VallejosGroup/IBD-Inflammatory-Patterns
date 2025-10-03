@@ -9,7 +9,6 @@ fcal.pheno <- fcal.pheno %>%
 names(fcal.pheno) <- c("COLLECTION_DATE", "TEST_DATA", "ids")
 
 
-
 fcal <- rbind(fcal, fcal.pheno) %>%
   distinct() %>%
   fix_date_df("COLLECTION_DATE")
@@ -17,4 +16,6 @@ fcal <- rbind(fcal, fcal.pheno) %>%
 data.frame(year.of.test = year(fcal$COLLECTION_DATE)) %>%
   filter(year.of.test <= 2023) %>%
   ggplot(aes(x = year.of.test)) +
-  geom_bar() + theme_minimal() +labs(y = "Number of Faecal calprotectin tests")
+  geom_bar() +
+  theme_minimal() +
+  labs(y = "Number of Faecal calprotectin tests")

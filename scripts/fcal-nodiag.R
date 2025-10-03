@@ -1,7 +1,8 @@
 ## ----Setup---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #| message: false
 set.seed(123)
-if (file.exists("/.dockerenv")) { # Check if running in Docker
+if (file.exists("/.dockerenv")) {
+  # Check if running in Docker
   # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
   prefix <- "data/"
 } else {
@@ -36,8 +37,10 @@ library(Cairo) # For graphics device
 dict <- readRDS(paste0(prefix, "processed/dict.RDS"))
 fcal <- readRDS(paste0(prefix, "processed/fcal.RDS"))
 
-dk.fcal <- read.csv(paste0(prefix, "Denmark/2024-11-29/Fcal_8_models.csv"),
-                    sep = ";")
+dk.fcal <- read.csv(
+  paste0(prefix, "Denmark/2024-11-29/Fcal_8_models.csv"),
+  sep = ";"
+)
 
 
 ## ----Load NCS FCAL models------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -80,7 +83,8 @@ for (G in G.fcal) {
 #| fig-cap: "Plots assessing normality for the distribution of residuals for the chosen NCS model for FCAL. (A) Histrogram; (B) Q-Q plot."
 p1 <- data.frame(residuals = resid(models.fcal[[8]])) %>%
   ggplot(aes(x = residuals)) +
-  geom_histogram(aes(y = after_stat(density)),
+  geom_histogram(
+    aes(y = after_stat(density)),
     fill = "#D8829D",
     color = "#AF6A80",
     bins = 30
@@ -104,17 +108,24 @@ p2 <- data.frame(residuals = resid(models.fcal[[8]])) %>%
   ggtitle("B")
 
 # Use Cairo for safe PDF output
-tryCatch({
-  Cairo::CairoPDF("paper/Residual-plot-fcal-nodiag.pdf",
-                  width = 8,
-                  height = 8)
-  print(p1 / p2)
-  dev.off()
-  cat("Residual plot PDF saved successfully with Cairo\n")
-}, error = function(e) {
-  if (!is.null(dev.list())) dev.off()
-  cat("Residual plot PDF Cairo approach failed:", e$message, "\n")
-})
+tryCatch(
+  {
+    Cairo::CairoPDF(
+      "paper/Residual-plot-fcal-nodiag.pdf",
+      width = 8,
+      height = 8
+    )
+    print(p1 / p2)
+    dev.off()
+    cat("Residual plot PDF saved successfully with Cairo\n")
+  },
+  error = function(e) {
+    if (!is.null(dev.list())) {
+      dev.off()
+    }
+    cat("Residual plot PDF Cairo approach failed:", e$message, "\n")
+  }
+)
 
 print(p1 / p2)
 
@@ -146,20 +157,22 @@ ArrangedPlot <- (p[[1]] + p[[2]]) /
   (p[[7]] + p[[8]])
 
 # Use Cairo for safe PDF output
-tryCatch({
-  Cairo::CairoPDF("paper/cluster-resids-ncs.pdf",
-                  width = 8,
-                  height = 8)
-  print(ArrangedPlot)
-  dev.off()
-  cat("Cluster residuals PDF saved successfully with Cairo\n")
-}, error = function(e) {
-  if (!is.null(dev.list())) dev.off()
-  cat("Cluster residuals PDF Cairo approach failed:", e$message, "\n")
-})
+tryCatch(
+  {
+    Cairo::CairoPDF("paper/cluster-resids-ncs.pdf", width = 8, height = 8)
+    print(ArrangedPlot)
+    dev.off()
+    cat("Cluster residuals PDF saved successfully with Cairo\n")
+  },
+  error = function(e) {
+    if (!is.null(dev.list())) {
+      dev.off()
+    }
+    cat("Cluster residuals PDF Cairo approach failed:", e$message, "\n")
+  }
+)
 
 print(ArrangedPlot)
-
 
 
 ## ----FCAL spaghetti plots------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -181,7 +194,6 @@ for (G in G.fcal) {
     # Matrix to hold the smoothed data
     fcal.ma <- matrix(NA, nrow = iters, ncol = 7)
     fcal.time <- matrix(NA, nrow = iters, ncol = 7)
-
 
     for (i in 0:(iters - 1)) {
       # Find ids for group of five
@@ -208,16 +220,17 @@ for (G in G.fcal) {
     }
 
     rownames(fcal.ma) <- 1:iters
-    fcal.ma <- reshape2::melt(t(fcal.ma),
+    fcal.ma <- reshape2::melt(
+      t(fcal.ma),
       id.vars = row.names(fcal.ma),
       na.rm = TRUE
     )
     colnames(fcal.ma) <- c("calpro_time", "ids", "calpro_result")
     fcal.ma <- fcal.ma[, c(2, 3, 1)] # Make ids first column
 
-
     rownames(fcal.time) <- 1:iters
-    fcal.time <- reshape2::melt(t(fcal.time),
+    fcal.time <- reshape2::melt(
+      t(fcal.time),
       id.vars = row.names(fcal.time),
       na.rm = TRUE
     )
@@ -233,15 +246,19 @@ for (G in G.fcal) {
     new.fc <- rbind(new.fc, fcal.ma)
   }
 
-  if (!dir.exists("plots/spaghetti")) dir.create("plots/spaghetti")
-  png(paste0("plots/spaghetti/fcal-nodiag-", G, ".png"),
+  if (!dir.exists("plots/spaghetti")) {
+    dir.create("plots/spaghetti")
+  }
+  png(
+    paste0("plots/spaghetti/fcal-nodiag-", G, ".png"),
     width = 10,
     height = 17.5,
     units = "in",
     res = 300
   )
   grid::grid.newpage()
-  spaghettiPlot(new.fc,
+  spaghettiPlot(
+    new.fc,
     models.fcal,
     G = G,
     log = TRUE,
@@ -253,12 +270,14 @@ for (G in G.fcal) {
   )
   invisible(dev.off())
 
-  cairo_pdf(paste0("plots/spaghetti/fcal-nodiag-", G, ".pdf"),
+  cairo_pdf(
+    paste0("plots/spaghetti/fcal-nodiag-", G, ".pdf"),
     width = 10,
     height = 17.5
   )
   grid::grid.newpage()
-  spaghettiPlot(new.fc,
+  spaghettiPlot(
+    new.fc,
     models.fcal,
     G = G,
     log = TRUE,
@@ -271,7 +290,8 @@ for (G in G.fcal) {
   invisible(dev.off())
 
   grid::grid.newpage()
-  print(spaghettiPlot(new.fc,
+  print(spaghettiPlot(
+    new.fc,
     models.fcal,
     G = G,
     log = TRUE,
@@ -302,7 +322,6 @@ for (clust in 1:8) {
   fcal.ma <- matrix(NA, nrow = iters, ncol = 7)
   fcal.time <- matrix(NA, nrow = iters, ncol = 7)
 
-
   for (i in 0:(iters - 1)) {
     # Find ids for group of five
     ids.select <- ids.clust[rand[((i * 6) + 1):((i * 6) + 6)]]
@@ -328,16 +347,17 @@ for (clust in 1:8) {
   }
 
   rownames(fcal.ma) <- 1:iters
-  fcal.ma <- reshape2::melt(t(fcal.ma),
+  fcal.ma <- reshape2::melt(
+    t(fcal.ma),
     id.vars = row.names(fcal.ma),
     na.rm = TRUE
   )
   colnames(fcal.ma) <- c("calpro_time", "ids", "calpro_result")
   fcal.ma <- fcal.ma[, c(2, 3, 1)] # Make ids first column
 
-
   rownames(fcal.time) <- 1:iters
-  fcal.time <- reshape2::melt(t(fcal.time),
+  fcal.time <- reshape2::melt(
+    t(fcal.time),
     id.vars = row.names(fcal.time),
     na.rm = TRUE
   )
@@ -366,14 +386,16 @@ rank.full %>%
 
 
 ## ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-png(paste0("plots/spaghetti/fcal-nodiag-reordered.png"),
+png(
+  paste0("plots/spaghetti/fcal-nodiag-reordered.png"),
   width = 10,
   height = 16,
   units = "in",
   res = 300
 )
 grid::grid.newpage()
-spaghettiPlot(new.fc,
+spaghettiPlot(
+  new.fc,
   models.fcal,
   G = 8,
   log = TRUE,
@@ -386,12 +408,14 @@ spaghettiPlot(new.fc,
 )
 invisible(dev.off())
 
-cairo_pdf(paste0("plots/spaghetti/fcal-nodiag-reordered.pdf"),
+cairo_pdf(
+  paste0("plots/spaghetti/fcal-nodiag-reordered.pdf"),
   width = 10,
   height = 16
 )
 grid::grid.newpage()
-spaghettiPlot(new.fc,
+spaghettiPlot(
+  new.fc,
   models.fcal,
   G = 8,
   log = TRUE,
@@ -404,7 +428,8 @@ spaghettiPlot(new.fc,
 )
 invisible(dev.off())
 
-spaghettiPlot(new.fc,
+spaghettiPlot(
+  new.fc,
   models.fcal,
   G = 8,
   log = TRUE,
@@ -424,102 +449,105 @@ table(no.diag$class)
 no.diag.clust.new <- subset(no.diag, !(ids %in% original$ids))
 
 
-
 # % of each cluster not in diagnostic model.
 round((table(no.diag.clust.new$class) / table(no.diag$class)) * 100, 2)
 
 
-hist.df <- data.frame(pprob = apply(no.diag[, 3:10], 1, max),
-                      type = "Previously excluded")
+hist.df <- data.frame(
+  pprob = apply(no.diag[, 3:10], 1, max),
+  type = "Previously excluded"
+)
 
-hist.df <- rbind(hist.df,
-                 data.frame(pprob = apply(original[, 3:10], 1, max),
-                            type = "Original"))
+hist.df <- rbind(
+  hist.df,
+  data.frame(pprob = apply(original[, 3:10], 1, max), type = "Original")
+)
 
 p <- hist.df %>%
   ggplot(aes(x = pprob, fill = type)) +
   geom_density(alpha = 0.6) +
   scale_fill_manual(values = c("#D8829D", "#20A39E")) +
   theme_minimal() +
-  labs(y = "Density",
-       x = "Maximum posterior probability") +
-  theme(legend.title = element_blank(),
-        legend.position = c(0.75, 0.8))
+  labs(y = "Density", x = "Maximum posterior probability") +
+  theme(legend.title = element_blank(), legend.position = c(0.75, 0.8))
 
-cairo_pdf("plots/fcal-nodiag-pprob.pdf",
-            width = 10,
-            height = 7)
+cairo_pdf("plots/fcal-nodiag-pprob.pdf", width = 10, height = 7)
 p
 invisible(dev.off())
 p
 
 
-
-
 original <- original %>%
-  mutate(class_order = plyr::mapvalues(
-    class,
-    from = seq_len(8), to = c(7, 6, 4, 8, 1, 5, 2, 3)
-    )) %>%
-  mutate(class_order = factor(
-    class_order,
-    levels = 1:8,
-    labels = paste0("FC", 1:8)
+  mutate(
+    class_order = plyr::mapvalues(
+      class,
+      from = seq_len(8),
+      to = c(7, 6, 4, 8, 1, 5, 2, 3)
+    )
+  ) %>%
+  mutate(
+    class_order = factor(
+      class_order,
+      levels = 1:8,
+      labels = paste0("FC", 1:8)
+    )
   )
-)
 
 temp <- original$class_order %>% table()
 
-original.percent <- data.frame(x = names(temp),
-                               y = as.numeric(temp) / sum(as.numeric(temp)),
-                               type = "Original")
+original.percent <- data.frame(
+  x = names(temp),
+  y = as.numeric(temp) / sum(as.numeric(temp)),
+  type = "Original"
+)
 
 
 p1 <- original.percent %>%
   ggplot(aes(x = x, y = y)) +
   geom_bar(stat = "identity", fill = "#D8829D", color = "#AF6A80") +
   theme_minimal() +
-  labs(x = "Cluster",
-       y = "Proportion of cohort") +
-  scale_y_continuous(labels = scales::label_percent(),
-                     limits = c(0, 0.4))
-
+  labs(x = "Cluster", y = "Proportion of cohort") +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 0.4))
 
 
 no.diag <- no.diag %>%
-  mutate(class_order = plyr::mapvalues(
-    class,
-    from = seq_len(8), to = c(2, 7, 8, 1, 5, 6, 4, 3)
-    )) %>%
-  mutate(class_order = factor(
-    class_order,
-    levels = 1:8,
-    labels = paste0("FC", 1:8)
+  mutate(
+    class_order = plyr::mapvalues(
+      class,
+      from = seq_len(8),
+      to = c(2, 7, 8, 1, 5, 6, 4, 3)
+    )
+  ) %>%
+  mutate(
+    class_order = factor(
+      class_order,
+      levels = 1:8,
+      labels = paste0("FC", 1:8)
+    )
   )
-)
 
 temp2 <- no.diag$class_order %>% table()
 
-no.diag.percent <- data.frame(x = names(temp2),
-                               y = as.numeric(temp2) / sum(as.numeric(temp2)),
-                               type = "Previously excluded")
+no.diag.percent <- data.frame(
+  x = names(temp2),
+  y = as.numeric(temp2) / sum(as.numeric(temp2)),
+  type = "Previously excluded"
+)
 
 p2 <- no.diag.percent %>%
   ggplot(aes(x = x, y = y)) +
-  geom_bar(stat = "identity", fill = "#20A39E", color =  "#05817D") +
+  geom_bar(stat = "identity", fill = "#20A39E", color = "#05817D") +
   theme_minimal() +
-  labs(x = "Cluster",
-       y = "Proportion of cohort") +
-  scale_y_continuous(labels = scales::label_percent(),
-                     limits = c(0, 0.4))
+  labs(x = "Cluster", y = "Proportion of cohort") +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 0.4))
 
-p <- p2/p1 + plot_annotation(tag_levels = "A") &
+p <- p2 /
+  p1 +
+  plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
 
-cairo_pdf("plots/fcal-nodiag-cluster-prop.pdf",
-            width = 10,
-            height = 10)
+cairo_pdf("plots/fcal-nodiag-cluster-prop.pdf", width = 10, height = 10)
 p
 invisible(dev.off())
 

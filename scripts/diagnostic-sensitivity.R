@@ -12,7 +12,8 @@ library(lubridate) # Date handling
 
 
 ## ----Read files---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-if (file.exists("/.dockerenv")) { # Check if running in Docker
+if (file.exists("/.dockerenv")) {
+  # Check if running in Docker
   # Assume igmm/Vallejo-predict/libdr/ is passed to the data volume
   prefix <- "data/"
 } else {
@@ -37,7 +38,7 @@ crp <- subset(labs, TEST == "C-Reactive Prot")
 updated <- read.csv(paste0(prefix, "2024-10-03/allPatientsNathanCleaned.csv"))
 outcomes <- read.csv(paste0(prefix, "2024-10-03/cd-cleaned.csv"))
 
-non.ibd <- read.csv(paste0 (prefix, "2024-10-24/non-ibd.csv"))
+non.ibd <- read.csv(paste0(prefix, "2024-10-24/non-ibd.csv"))
 
 
 ## ----Create subject dictionary------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -111,13 +112,12 @@ dict$diagnosis <- plyr::mapvalues(
 ## ----add sex to dict----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Merge with fcal to add sex information
 dict <- fcal.pheno[, c("ids", "sex")] %>%
-  distinct(ids,
-    .keep_all = TRUE
-  ) %>%
+  distinct(ids, .keep_all = TRUE) %>%
   merge(x = dict, by = "ids", all.x = TRUE, all.y = FALSE)
 
 # Update NA sex if sex available from updated
-dict <- merge(dict,
+dict <- merge(
+  dict,
   updated[, c("ids", "sex")],
   by = "ids",
   all.x = TRUE,
@@ -136,7 +136,8 @@ dict$sex.x <- dict$sex.y <- NULL
 # Add age at IBD diagnosis
 updated <- fix_date_df(updated, "diagnosisDate")
 updated$age <- with(updated, year(diagnosisDate) - dateOfBirth)
-dict <- merge(dict,
+dict <- merge(
+  dict,
   updated[, c("ids", "age")],
   by = "ids",
   all.x = TRUE,
@@ -145,7 +146,8 @@ dict <- merge(dict,
 
 
 ## ----add date.of.death--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-dict <- merge(dict,
+dict <- merge(
+  dict,
   updated[, c("ids", "death")],
   by = "ids",
   all.x = TRUE,
@@ -205,7 +207,8 @@ fcal <- subset(fcal, ids %in% dict$ids)
 fcal <- fcal %>%
   select(-diagnosis)
 
-fcal <- merge(fcal,
+fcal <- merge(
+  fcal,
   dict[, c("ids", "diagnosis", "date.of.diag")],
   by = "ids",
   all.x = TRUE
@@ -282,7 +285,7 @@ fcal <- subset(fcal, calpro_time >= -0.25)
 ##The following code is used to save the cleaned data generated so far.
 
 diag.time <- c()
-fc.ids <-  unique(fcal$ids)
+fc.ids <- unique(fcal$ids)
 
 for (id in fc.ids) {
   temp <- subset(fcal, ids == id)
@@ -348,11 +351,7 @@ crp$COLLECTION_DATE <- readr::parse_date(
 
 colnames(crp) <- c("ids", "crp_date", "crp_result")
 
-crp <- merge(crp,
-  dict[, c("ids", "diagnosis")],
-  by = "ids",
-  all.x = TRUE
-)
+crp <- merge(crp, dict[, c("ids", "diagnosis")], by = "ids", all.x = TRUE)
 
 
 ## ----crp censor mapping-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -361,8 +360,16 @@ crp$crp_result <- as.numeric(
   plyr::mapvalues(
     crp$crp_result,
     from = c(
-      "<0.2", "<1", "<1.", "<1.0", "<2", "<3", "<3.0", "<5",
-      ">90", ">320"
+      "<0.2",
+      "<1",
+      "<1.",
+      "<1.0",
+      "<2",
+      "<3",
+      "<3.0",
+      "<5",
+      ">90",
+      ">320"
     ),
     to = c(1, 1, 1, 1, 2, 3, 3, 5, 90, 320)
   )
@@ -376,21 +383,20 @@ crp <- crp %>%
 crp <- crp[!is.na(crp[, "crp_result"]), ]
 # Map numerical <1 test results (e.g 0.2) to 1.
 
-
 ## -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-crp <- crp %>% distinct(ids,
-  crp_date,
-  crp_result,
-  .keep_all = TRUE
-)
+crp <- crp %>% distinct(ids, crp_date, crp_result, .keep_all = TRUE)
 
 
 ## ----CRP time mapping---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #| label: fig-crp-spag-pre
 #| fig-cap: "Spaghetti plot of CRP trajectories (preprocessed)"
 
-crp <- merge(crp, dict[, c("ids", "date.of.diag")],
-  by = "ids", all.x = TRUE, all.y = FALSE
+crp <- merge(
+  crp,
+  dict[, c("ids", "date.of.diag")],
+  by = "ids",
+  all.x = TRUE,
+  all.y = FALSE
 )
 
 # Dates have already been converted to Date class by fix_date_char() for dict
@@ -403,15 +409,13 @@ crp <- subset(crp, crp_time >= -0.25)
 
 ## -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 diag.time <- c()
-crp.ids <-  unique(crp$ids)
+crp.ids <- unique(crp$ids)
 
 for (id in crp.ids) {
   temp <- subset(crp, ids == id)
   temp <- temp[order(temp$crp_time), ]
   diag.time <- c(diag.time, temp[1, "crp_time"])
 }
-
-
 
 
 ## -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -428,7 +432,6 @@ for (id in unique(crp$ids)) {
 
 ## ----remove crp after 7 years-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 crp <- subset(crp, crp_time <= 7)
-
 
 
 ## ----crp additional preproc---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -465,7 +468,8 @@ crp.ma <- crp.ma[, c(2, 3, 1)]
 crp.ma$crp_time <- crp.ma$crp_time - 1
 
 # Take into account uneven spacing at start and end
-crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+crp.ma$crp_time <- plyr::mapvalues(
+  crp.ma$crp_time,
   from = c(0, 6),
   to = c(0.25, 6.25)
 )

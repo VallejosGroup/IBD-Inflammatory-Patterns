@@ -43,11 +43,13 @@ rm(G.cand, G.cands)
 
 
 # Function to create co-clustering matrix for FCAL and CRP models
-compareClustering <- function(G,
-                              models.fcal,
-                              models.crp,
-                              cutoff = FALSE,
-                              threshold = 0.8) {
+compareClustering <- function(
+  G,
+  models.fcal,
+  models.crp,
+  cutoff = FALSE,
+  threshold = 0.8
+) {
   # Extract posterior probabilities
   fcal.pprob <- models.fcal[[G]]$pprob
   crp.pprob <- models.crp[[G]]$pprob
@@ -61,12 +63,12 @@ compareClustering <- function(G,
       # If posterior probability for assigned class is above threshold
       if (fcal.pprob[i, 2 + fcal.pprob[i, 2]] > threshold) {
         inc <- c(inc, TRUE)
-      } else { # Not above threshold
+      } else {
+        # Not above threshold
         inc <- c(inc, FALSE)
       }
     }
     fcal.pprob <- fcal.pprob[inc, ] # Reduce to only subjects above threshold
-
 
     ##################
     ### CRP cutoff ###
@@ -89,7 +91,6 @@ compareClustering <- function(G,
   ids.comb <- fcal.ids[fcal.ids %in% crp.ids]
   ids.comb <- ids.comb[order(ids.comb)]
 
-
   # Reduce datasets to only shared IDS
   fcal.prob <- subset(fcal.pprob, ids %in% ids.comb)
   fcal.prob <- fcal.prob[order(fcal.prob$ids), ] # Order by ID
@@ -108,7 +109,8 @@ compareClustering <- function(G,
   mat.crp <- mat
 
   # FCAL
-  for (i in seq_along(ids.comb)) { # Row i
+  for (i in seq_along(ids.comb)) {
+    # Row i
     cluster <- fcal.prob[i, "class"]
     mat.fcal[i, ] <- ifelse(fcal.prob[, "class"] == cluster, 1, 0)
     # for (j in seq_along(ids.comb)) { # Column j
@@ -117,14 +119,14 @@ compareClustering <- function(G,
   }
 
   # CRP
-  for (i in seq_along(ids.comb)) { # Row i
+  for (i in seq_along(ids.comb)) {
+    # Row i
     cluster <- crp.prob[i, "class"]
     mat.crp[i, ] <- ifelse(crp.prob[, "class"] == cluster, 1, 0)
     # for (j in seq_along(ids.comb)) { # Column j
     #   if (crp.prob[j, "class"] == cluster) mat.crp[i, j] <- 1
     # } # Else 0
   }
-
 
   # Assign values to comparison co-cluster matrix
   # 0 means no co-clustering
@@ -139,12 +141,13 @@ compareClustering <- function(G,
 }
 
 
-if (!dir.exists("plots/cluster-comp")) dir.create("plots/cluster-comp")
+if (!dir.exists("plots/cluster-comp")) {
+  dir.create("plots/cluster-comp")
+}
 
 ################################
 ### No posterior prob cutoff ###
 ################################
-
 
 col.vec <- c(
   "1" = "#77AADD",
@@ -164,7 +167,8 @@ col.vec.ibd <- c(
   "IBDU" = "#329F5B"
 )
 
-for (G in 2:8) { # No G = 8 for FCAL
+for (G in 2:8) {
+  # No G = 8 for FCAL
   comp.mat <- compareClustering(G, models.fcal, models.crp)
 
   ids.fcal <- models.fcal[[G]]$pprob$ids
@@ -174,8 +178,12 @@ for (G in 2:8) { # No G = 8 for FCAL
   dict.sub <- subset(dict, ids %in% ids.common)
 
   column_ha <- HeatmapAnnotation(
-    "CRP cluster" = models.crp[[G]]$pprob$class[models.crp[[G]]$pprob$ids %in% ids.common],
-    "FCAL cluster" = models.fcal[[G]]$pprob$class[models.fcal[[G]]$pprob$ids %in% ids.common],
+    "CRP cluster" = models.crp[[G]]$pprob$class[
+      models.crp[[G]]$pprob$ids %in% ids.common
+    ],
+    "FCAL cluster" = models.fcal[[G]]$pprob$class[
+      models.fcal[[G]]$pprob$ids %in% ids.common
+    ],
     col = list("FCAL cluster" = col.vec, "CRP cluster" = col.vec)
   )
 
@@ -186,7 +194,8 @@ for (G in 2:8) { # No G = 8 for FCAL
     which = "row"
   )
 
-  heat <- Heatmap(comp.mat,
+  heat <- Heatmap(
+    comp.mat,
     name = sprintf("Cluster Concordance"),
     col = gameR::gameR_cols("cyberpunk", reverse = TRUE),
     show_row_names = FALSE,
@@ -210,7 +219,8 @@ for (G in 2:8) { # No G = 8 for FCAL
     raster_by_magick = TRUE
   )
   # Save heatmaps to file
-  png(paste0("plots/cluster-comp/G=", G, ".png"),
+  png(
+    paste0("plots/cluster-comp/G=", G, ".png"),
     width = 10.82,
     height = 6.8 * 1.138947,
     units = "in",
@@ -219,7 +229,8 @@ for (G in 2:8) { # No G = 8 for FCAL
   draw(heat)
   dev.off()
 
-  pdf(paste0("plots/cluster-comp/G=", G, ".pdf"),
+  pdf(
+    paste0("plots/cluster-comp/G=", G, ".pdf"),
     width = 10.82,
     height = 6.8 * 1.138947
   )
@@ -232,7 +243,6 @@ for (G in 2:8) { # No G = 8 for FCAL
 ### With posterior prob cutoff ###
 ##################################
 
-
 col.vec.ibd <- c(
   "Crohn's Disease" = "#052F5F",
   "Ulcerative Colitis" = "#F15BB5",
@@ -242,17 +252,24 @@ col.vec.ibd <- c(
 for (G in 2:8) {
   comp.mat <- compareClustering(G, models.fcal, models.crp, cutoff = TRUE)
 
-  ids.fcal <- models.fcal[[G]]$pprob[apply(models.fcal[[G]]$pprob[, c(-1, -2)] > 0.8, 1, any), ]$ids
-  ids.crp <- models.crp[[G]]$pprob[apply(models.crp[[G]]$pprob[, c(-1, -2)] > 0.8, 1, any), ]$ids
+  ids.fcal <- models.fcal[[G]]$pprob[
+    apply(models.fcal[[G]]$pprob[, c(-1, -2)] > 0.8, 1, any),
+  ]$ids
+  ids.crp <- models.crp[[G]]$pprob[
+    apply(models.crp[[G]]$pprob[, c(-1, -2)] > 0.8, 1, any),
+  ]$ids
 
   ids.common <- intersect(ids.fcal, ids.crp)
 
   dict.sub <- subset(dict, ids %in% ids.common)
 
-
   column_ha <- HeatmapAnnotation(
-    "CRP cluster" = models.crp[[G]]$pprob$class[models.crp[[G]]$pprob$ids %in% ids.common],
-    "FCAL cluster" = models.fcal[[G]]$pprob$class[models.fcal[[G]]$pprob$ids %in% ids.common],
+    "CRP cluster" = models.crp[[G]]$pprob$class[
+      models.crp[[G]]$pprob$ids %in% ids.common
+    ],
+    "FCAL cluster" = models.fcal[[G]]$pprob$class[
+      models.fcal[[G]]$pprob$ids %in% ids.common
+    ],
     col = list("FCAL cluster" = col.vec, "CRP cluster" = col.vec)
   )
 
@@ -263,8 +280,8 @@ for (G in 2:8) {
     which = "row"
   )
 
-
-  heat <- Heatmap(comp.mat,
+  heat <- Heatmap(
+    comp.mat,
     name = paste0("Cluster Concordance, n = ", nrow(comp.mat)),
     col = gameR::gameR_cols("cyberpunk", reverse = TRUE),
     show_row_names = FALSE,
@@ -288,7 +305,8 @@ for (G in 2:8) {
     raster_by_magick = TRUE
   )
   # Save heatmaps to file
-  png(paste0("plots/cluster-comp/G=", G, "-pprob.png"),
+  png(
+    paste0("plots/cluster-comp/G=", G, "-pprob.png"),
     width = 10.82,
     height = 8,
     units = "in",
@@ -297,7 +315,8 @@ for (G in 2:8) {
   draw(heat)
   dev.off()
 
-  pdf(paste0("plots/cluster-comp/G=", G, "-pprob.pdf"),
+  pdf(
+    paste0("plots/cluster-comp/G=", G, "-pprob.pdf"),
     width = 10.82,
     height = 8
   )
@@ -327,13 +346,16 @@ classes$class <- as.factor(classes$class)
 classes$type <- as.factor(classes$type)
 classes$type <- relevel(classes$type, "FC")
 
-p1 <- ggplot(classes, aes(
-  x = type,
-  stratum = class,
-  alluvium = ids,
-  fill = class,
-  label = class
-)) +
+p1 <- ggplot(
+  classes,
+  aes(
+    x = type,
+    stratum = class,
+    alluvium = ids,
+    fill = class,
+    label = class
+  )
+) +
   geom_flow() +
   geom_stratum() +
   geom_text(stat = "stratum", size = 3) +
@@ -356,7 +378,11 @@ new.data <- rbind(
 
 
 preds.fcal <- predictY(models.fcal[[6]], newdata = new.data, draws = TRUE)
-plot.fcal <- data.frame(time = calpro_time, pred = preds.fcal$pred[, "Ypred_class1"], class = "1")
+plot.fcal <- data.frame(
+  time = calpro_time,
+  pred = preds.fcal$pred[, "Ypred_class1"],
+  class = "1"
+)
 for (class in as.character(2:6)) {
   plot.fcal <- rbind(
     plot.fcal,
@@ -379,7 +405,6 @@ p2 <- ggplot(plot.fcal, aes(x = time, y = pred, color = class)) +
   scale_color_manual(values = col.vec)
 
 
-
 crp_time <- seq(0, 7, by = 0.1)
 
 new.data <- cbind(crp_time, ns(crp_time, df = 4, Boundary.knots = c(0, 7)))
@@ -391,7 +416,8 @@ new.data <- rbind(
 preds.crp <- predictY(models.crp[[8]], newdata = new.data, draws = TRUE)
 plot.crp <- data.frame(
   time = crp_time,
-  pred = preds.crp$pred[, "Ypred_class1"], class = "1"
+  pred = preds.crp$pred[, "Ypred_class1"],
+  class = "1"
 )
 for (class in as.character(2:8)) {
   plot.crp <- rbind(
@@ -415,7 +441,8 @@ p3 <- ggplot(plot.crp, aes(x = time, y = pred, color = class)) +
   scale_color_manual(values = col.vec)
 
 
-p <- p1 + (p2 / p3) +
+p <- p1 +
+  (p2 / p3) +
   plot_annotation(tag_levels = "A") +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom") &

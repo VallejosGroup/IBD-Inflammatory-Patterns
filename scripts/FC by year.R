@@ -3,7 +3,8 @@ library(patchwork)
 library(datefixR)
 
 
-if (file.exists("/.dockerenv")) { # Check if running in Docker
+if (file.exists("/.dockerenv")) {
+  # Check if running in Docker
   # Assume igmm/Vallejo-predict/libdr/ is passed to the data volume
   prefix <- "data/"
 } else {
@@ -24,18 +25,16 @@ fcal <- fcal[, c("ids", "calpro_date", "calpro_result")]
 labs.fcal <- labs.fcal[, c("CHI", "COLLECTION_DATE", "TEST_DATA")]
 
 # Collection dates include collection times which are not required. Discarding.
-labs.fcal$COLLECTION_DATE <- stringr::str_split_fixed(labs.fcal$COLLECTION_DATE,
-                                                      " ",
-                                                      n = 2)[, 1]
+labs.fcal$COLLECTION_DATE <- stringr::str_split_fixed(
+  labs.fcal$COLLECTION_DATE,
+  " ",
+  n = 2
+)[, 1]
 
 colnames(labs.fcal) <- c("ids", "calpro_date", "calpro_result")
 fcal <- rbind(fcal, labs.fcal)
 fcal <- fix_date_df(fcal, "calpro_date")
-fcal <- fcal %>% distinct(ids,
-                          calpro_date,
-                          calpro_result,
-                          .keep_all = TRUE
-)
+fcal <- fcal %>% distinct(ids, calpro_date, calpro_result, .keep_all = TRUE)
 
 p1 <- fcal %>%
   ggplot(aes(x = year(calpro_date))) +
@@ -44,12 +43,14 @@ p1 <- fcal %>%
   labs(x = "Year", y = "Faecal calprotectin test count")
 
 
-ggsave("plots/fcal-by-year.png",
-       p1,
-       width = 14 * 2/3,
-       height = 5.5,
-       units = "in",
-       dpi = 300)
+ggsave(
+  "plots/fcal-by-year.png",
+  p1,
+  width = 14 * 2 / 3,
+  height = 5.5,
+  units = "in",
+  dpi = 300
+)
 
 
 crp <- subset(labs, TEST == "C-Reactive Prot")
@@ -59,11 +60,7 @@ crp$COLLECTION_DATE <- readr::parse_date(
 )
 
 crp <- crp %>%
-  distinct(CHI,
-           COLLECTION_DATE,
-           TEST_DATA,
-           .keep_all = TRUE
-)
+  distinct(CHI, COLLECTION_DATE, TEST_DATA, .keep_all = TRUE)
 
 p2 <- crp %>%
   ggplot(aes(x = year(COLLECTION_DATE))) +
@@ -71,18 +68,19 @@ p2 <- crp %>%
   theme_minimal() +
   labs(x = "Year", y = "CRP test count")
 
-p <- p1 / p2 + plot_annotation(tag_levels = "A") &
+p <- p1 /
+  p2 +
+  plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
-ggsave("plots/all-biomarkers.png",
-       p,
-       width = 12 * 2/3,
-       height = 7,
-       units = "in",
-       dpi = 300)
+ggsave(
+  "plots/all-biomarkers.png",
+  p,
+  width = 12 * 2 / 3,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
 
 
-ggsave("plots/all-biomarkers.pdf",
-       p,
-       width = 12 * 2/3,
-       height = 7)
+ggsave("plots/all-biomarkers.pdf", p, width = 12 * 2 / 3, height = 7)

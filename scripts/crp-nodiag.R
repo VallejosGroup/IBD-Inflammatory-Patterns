@@ -1,7 +1,8 @@
 ## ----Setup----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #| message: false
 set.seed(123)
-if (file.exists("/.dockerenv")) { # Check if running in Docker
+if (file.exists("/.dockerenv")) {
+  # Check if running in Docker
   # Assume igmm/cvallejo-predicct/libdr/ is passed to the data volume
   prefix <- "data/"
 } else {
@@ -60,7 +61,6 @@ for (seed in 1:10) {
 G.crp <- 8
 models.crp.ma <- list()
 models.crp.ma[[8]] <- best.model.seed
-
 
 
 ## ----CRP-ma postpro-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -125,7 +125,8 @@ for (G in G.crp) {
     }
 
     rownames(crp.ma) <- 1:iters
-    crp.ma <- reshape2::melt(t(crp.ma),
+    crp.ma <- reshape2::melt(
+      t(crp.ma),
       id.vars = row.names(crp.ma),
       na.rm = TRUE
     )
@@ -133,7 +134,8 @@ for (G in G.crp) {
     crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
     crp.ma$crp_time <- crp.ma$crp_time - 1
     # Take into account uneven spacing at start and end
-    crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+    crp.ma$crp_time <- plyr::mapvalues(
+      crp.ma$crp_time,
       from = c(0, 6),
       to = c(0.25, 6.25)
     )
@@ -141,12 +143,14 @@ for (G in G.crp) {
     new.crp <- rbind(new.crp, crp.ma)
   }
 
-  cairo_pdf(paste0("plots/spaghetti/crp-nodiag-", G, ".pdf"),
+  cairo_pdf(
+    paste0("plots/spaghetti/crp-nodiag-", G, ".pdf"),
     width = 10,
     height = 17.5
   )
   grid::grid.newpage()
-  spaghettiPlot(new.crp,
+  spaghettiPlot(
+    new.crp,
     models.crp.ma,
     G,
     clusters = TRUE,
@@ -157,14 +161,16 @@ for (G in G.crp) {
   )
   invisible(dev.off())
 
-  png(paste0("plots/spaghetti/crp-nodiag-", G, ".png"),
+  png(
+    paste0("plots/spaghetti/crp-nodiag-", G, ".png"),
     width = 10,
     height = 17.5,
     units = "in",
     res = 300
   )
   grid::grid.newpage()
-  spaghettiPlot(new.crp,
+  spaghettiPlot(
+    new.crp,
     models.crp.ma,
     G,
     clusters = TRUE,
@@ -176,7 +182,8 @@ for (G in G.crp) {
   invisible(dev.off())
 
   grid::grid.newpage()
-  spaghettiPlot(new.crp,
+  spaghettiPlot(
+    new.crp,
     models.crp.ma,
     G,
     clusters = TRUE,
@@ -228,15 +235,13 @@ for (clust in 1:8) {
   }
 
   rownames(crp.ma) <- 1:iters
-  crp.ma <- reshape2::melt(t(crp.ma),
-    id.vars = row.names(crp.ma),
-    na.rm = TRUE
-  )
+  crp.ma <- reshape2::melt(t(crp.ma), id.vars = row.names(crp.ma), na.rm = TRUE)
   colnames(crp.ma) <- c("crp_time", "ids", "crp_result")
   crp.ma <- crp.ma[, c(2, 3, 1)] # Make ids first column
   crp.ma$crp_time <- crp.ma$crp_time - 1
   # Take into account uneven spacing at start and end
-  crp.ma$crp_time <- plyr::mapvalues(crp.ma$crp_time,
+  crp.ma$crp_time <- plyr::mapvalues(
+    crp.ma$crp_time,
     from = c(0, 6),
     to = c(0.25, 6.25)
   )
@@ -245,7 +250,8 @@ for (clust in 1:8) {
 }
 
 ## -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-rank.full <- rankCumulative(models.crp.ma[[8]],
+rank.full <- rankCumulative(
+  models.crp.ma[[8]],
   tmax = 6.25,
   var.time = "crp_time"
 )
@@ -258,14 +264,16 @@ rank.full %>%
 
 
 ## -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-png(paste0("plots/spaghetti/crp-nodiag-reordered.png"),
+png(
+  paste0("plots/spaghetti/crp-nodiag-reordered.png"),
   width = 10,
   height = 16,
   units = "in",
   res = 300
 )
 grid::grid.newpage()
-spaghettiPlot(new.crp,
+spaghettiPlot(
+  new.crp,
   models.crp.ma,
   G = 8,
   log = TRUE,
@@ -279,12 +287,14 @@ spaghettiPlot(new.crp,
 )
 invisible(dev.off())
 
-cairo_pdf(paste0("plots/spaghetti/crp-nodiag-reordered.pdf"),
+cairo_pdf(
+  paste0("plots/spaghetti/crp-nodiag-reordered.pdf"),
   width = 10,
   height = 16
 )
 grid::grid.newpage()
-spaghettiPlot(new.crp,
+spaghettiPlot(
+  new.crp,
   models.crp.ma,
   G = 8,
   log = TRUE,
@@ -298,7 +308,8 @@ spaghettiPlot(new.crp,
 )
 invisible(dev.off())
 
-spaghettiPlot(new.crp,
+spaghettiPlot(
+  new.crp,
   models.crp.ma,
   G = 8,
   log = TRUE,
@@ -323,98 +334,105 @@ no.diag.clust.new <- subset(no.diag, !(ids %in% original$ids))
 # % of each cluster not in diagnostic model.
 round((table(no.diag.clust.new$class) / table(no.diag$class)) * 100, 2)
 
-hist.df <- data.frame(pprob = apply(no.diag[, 3:10], 1, max),
-                      type = "Previously excluded")
+hist.df <- data.frame(
+  pprob = apply(no.diag[, 3:10], 1, max),
+  type = "Previously excluded"
+)
 
-hist.df <- rbind(hist.df,
-                 data.frame(pprob = apply(original[, 3:10], 1, max),
-                            type = "Original"))
+hist.df <- rbind(
+  hist.df,
+  data.frame(pprob = apply(original[, 3:10], 1, max), type = "Original")
+)
 
 p <- hist.df %>%
   ggplot(aes(x = pprob, fill = type)) +
   geom_density(alpha = 0.6) +
   scale_fill_manual(values = c("#D8829D", "#20A39E")) +
   theme_minimal() +
-  labs(y = "Density",
-       x = "Maximum posterior probability") +
-  theme(legend.title = element_blank(),
-        legend.position = c(0.75, 0.8))
+  labs(y = "Density", x = "Maximum posterior probability") +
+  theme(legend.title = element_blank(), legend.position = c(0.75, 0.8))
 
-cairo_pdf("plots/crp-nodiag-pprob.pdf",
-          width = 10,
-          height = 7)
+cairo_pdf("plots/crp-nodiag-pprob.pdf", width = 10, height = 7)
 p
 invisible(dev.off())
 p
 
 
-
 original <- original %>%
-  mutate(class_order = plyr::mapvalues(
-    class,
-    from = seq_len(8), to = c(2, 3, 1, 4, 5, 7, 6, 8)
-  )) %>%
-  mutate(class_order = factor(
-    class_order,
-    levels = 1:8, labels = paste0("CRP", 1:8)
-  ))
+  mutate(
+    class_order = plyr::mapvalues(
+      class,
+      from = seq_len(8),
+      to = c(2, 3, 1, 4, 5, 7, 6, 8)
+    )
+  ) %>%
+  mutate(
+    class_order = factor(
+      class_order,
+      levels = 1:8,
+      labels = paste0("CRP", 1:8)
+    )
+  )
 
 
 temp <- original$class_order %>% table()
 
-original.percent <- data.frame(x = names(temp),
-                               y = as.numeric(temp) / sum(as.numeric(temp)),
-                               type = "Original")
+original.percent <- data.frame(
+  x = names(temp),
+  y = as.numeric(temp) / sum(as.numeric(temp)),
+  type = "Original"
+)
 
 
 p1 <- original.percent %>%
   ggplot(aes(x = x, y = y)) +
   geom_bar(stat = "identity", fill = "#D8829D", color = "#AF6A80") +
   theme_minimal() +
-  labs(x = "Cluster",
-       y = "Proportion of cohort") +
+  labs(x = "Cluster", y = "Proportion of cohort") +
   scale_y_continuous(labels = scales::label_percent(), limits = c(0, 0.45))
 
 
-
 no.diag <- no.diag %>%
-  mutate(class_order = plyr::mapvalues(
-    class,
-    from = seq_len(8), to = c(4, 6, 7, 1, 2, 5, 8, 3)
-  )) %>%
-  mutate(class_order = factor(
-    class_order,
-    levels = 1:8,
-    labels = paste0("CRP", 1:8)
-  )
+  mutate(
+    class_order = plyr::mapvalues(
+      class,
+      from = seq_len(8),
+      to = c(4, 6, 7, 1, 2, 5, 8, 3)
+    )
+  ) %>%
+  mutate(
+    class_order = factor(
+      class_order,
+      levels = 1:8,
+      labels = paste0("CRP", 1:8)
+    )
   )
 
 temp2 <- no.diag$class_order %>% table()
 
-no.diag.percent <- data.frame(x = names(temp2),
-                              y = as.numeric(temp2) / sum(as.numeric(temp2)),
-                              type = "Previously excluded")
+no.diag.percent <- data.frame(
+  x = names(temp2),
+  y = as.numeric(temp2) / sum(as.numeric(temp2)),
+  type = "Previously excluded"
+)
 
 p2 <- no.diag.percent %>%
   ggplot(aes(x = x, y = y)) +
-  geom_bar(stat = "identity", fill = "#20A39E", color =  "#05817D") +
+  geom_bar(stat = "identity", fill = "#20A39E", color = "#05817D") +
   theme_minimal() +
-  labs(x = "Cluster",
-       y = "Proportion of cohort") +
+  labs(x = "Cluster", y = "Proportion of cohort") +
   scale_y_continuous(labels = scales::label_percent(), limits = c(0, 0.45))
 
-p <- p2/p1 + plot_annotation(tag_levels = "A") &
+p <- p2 /
+  p1 +
+  plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
 
-cairo_pdf("plots/crp-nodiag-cluster-prop.pdf",
-          width = 10,
-          height = 10)
+cairo_pdf("plots/crp-nodiag-cluster-prop.pdf", width = 10, height = 10)
 p
 invisible(dev.off())
 
 
-
 ## ----Session info---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 pander(sessionInfo())
-
