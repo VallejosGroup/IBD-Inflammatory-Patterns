@@ -481,8 +481,8 @@ p1 <- original.percent %>%
   theme_minimal() +
   labs(x = "Cluster",
        y = "Proportion of cohort") +
-  ylim(0, 0.4) +
-  scale_y_continuous(labels = scales::label_percent())
+  scale_y_continuous(labels = scales::label_percent(),
+                     limits = c(0, 0.4))
 
 
 
@@ -510,7 +510,8 @@ p2 <- no.diag.percent %>%
   theme_minimal() +
   labs(x = "Cluster",
        y = "Proportion of cohort") +
-  ylim(0, 0.4) + scale_y_continuous(labels = scales::label_percent())
+  scale_y_continuous(labels = scales::label_percent(),
+                     limits = c(0, 0.4))
 
 p <- p2/p1 + plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = 16, face = "bold"))
