@@ -421,12 +421,13 @@ no.diag <- models.fcal[[8]]$pprob
 
 
 table(no.diag$class)
-no.diag.clust.new <- subset(no.diag, !(ids %in% original$pprob$ids))
+no.diag.clust.new <- subset(no.diag, !(ids %in% original$ids))
 
 
 
 # % of each cluster not in diagnostic model.
 round((table(no.diag.clust.new$class) / table(no.diag$class)) * 100, 2)
+
 
 hist.df <- data.frame(pprob = apply(no.diag[, 3:10], 1, max),
                       type = "Previously excluded")
@@ -451,6 +452,75 @@ cairo_pdf("plots/fcal-nodiag-pprob.pdf",
 p
 invisible(dev.off())
 p
+
+
+
+
+original <- original %>%
+  mutate(class_order = plyr::mapvalues(
+    class,
+    from = seq_len(8), to = c(7, 6, 4, 8, 1, 5, 2, 3)
+    )) %>%
+  mutate(class_order = factor(
+    class_order,
+    levels = 1:8,
+    labels = paste0("FC", 1:8)
+  )
+)
+
+temp <- original$class_order %>% table()
+
+original.percent <- data.frame(x = names(temp),
+                               y = as.numeric(temp) / sum(as.numeric(temp)),
+                               type = "Original")
+
+
+p1 <- original.percent %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_bar(stat = "identity", fill = "#D8829D", color = "#AF6A80") +
+  theme_minimal() +
+  labs(x = "Cluster",
+       y = "Proportion of cohort") +
+  ylim(0, 0.4) +
+  scale_y_continuous(labels = scales::label_percent())
+
+
+
+no.diag <- no.diag %>%
+  mutate(class_order = plyr::mapvalues(
+    class,
+    from = seq_len(8), to = c(2, 7, 8, 1, 5, 6, 4, 3)
+    )) %>%
+  mutate(class_order = factor(
+    class_order,
+    levels = 1:8,
+    labels = paste0("FC", 1:8)
+  )
+)
+
+temp2 <- no.diag$class_order %>% table()
+
+no.diag.percent <- data.frame(x = names(temp2),
+                               y = as.numeric(temp2) / sum(as.numeric(temp2)),
+                               type = "Previously excluded")
+
+p2 <- no.diag.percent %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_bar(stat = "identity", fill = "#20A39E", color =  "#05817D") +
+  theme_minimal() +
+  labs(x = "Cluster",
+       y = "Proportion of cohort") +
+  ylim(0, 0.4) + scale_y_continuous(labels = scales::label_percent())
+
+p <- p2/p1 + plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(size = 16, face = "bold"))
+
+
+cairo_pdf("plots/fcal-nodiag-cluster-prop.pdf",
+            width = 10,
+            height = 10)
+p
+invisible(dev.off())
 
 ## ----Session info--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 pander(sessionInfo())
